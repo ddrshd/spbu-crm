@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#111827"/>
+<title>SPBU CRM — Pertamina Patra Niaga</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ff:'IBM Plex Sans',sans-serif;--fm:'IBM Plex Mono',monospace;
+  --blue:#1a56db;--blue-light:#e8f0fe;
+  --green:#0e9f6e;--red:#e02424;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
+  --gray-400:#9ca3af;--gray-600:#4b5563;--gray-800:#1f2937;--gray-900:#111827;
+  --surface:#fff;--bg:#f0f2f5;--border:#e5e7eb;
+  --text:#111827;--text-muted:#6b7280;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+.app{max-width:960px;margin:0 auto;}
+.topbar{background:var(--gray-900);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.topbar-brand{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
+.topbar-sub{font-size:11px;color:var(--gray-400);font-family:var(--fm);}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#6b7280;display:inline-block;margin-right:6px;transition:background .3s;}
+.conn-dot.ok{background:#10b981;}.conn-dot.err{background:#ef4444;}
+.conn-label{font-size:11px;color:var(--gray-400);font-family:var(--fm);}
+.tabs{background:var(--gray-900);display:flex;border-top:1px solid #374151;position:sticky;top:49px;z-index:9;}
+.tab{padding:10px 20px;font-size:12px;font-weight:500;color:var(--gray-400);cursor:pointer;border-bottom:2px solid transparent;letter-spacing:.04em;text-transform:uppercase;transition:color .15s;user-select:none;}
+.tab.active{color:#fff;border-bottom-color:var(--blue);}
+.tab:hover:not(.active){color:#d1d5db;}
+.view{display:none;padding:20px;}
+.view.active{display:block;}
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+.form-header{background:var(--gray-50);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;}
+.form-title{font-size:13px;font-weight:600;color:var(--gray-800);}
+.time-display{font-family:var(--fm);font-size:13px;color:var(--blue);font-weight:500;}
+.form-body{padding:20px;}
+.field-group{margin-bottom:18px;}
+.field-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-600);margin-bottom:6px;display:block;}
+.field-input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:var(--ff);color:var(--text);background:#fff;transition:border-color .15s;outline:none;}
+.field-input:focus{border-color:var(--blue);}
+.field-input.nopol{font-family:var(--fm);font-size:20px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;}
+.nopol-hint{margin-top:6px;font-size:12px;color:var(--blue);font-family:var(--fm);min-height:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.repeat-badge{background:var(--blue-light);color:var(--blue);font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;}
+.produk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.produk-btn{padding:12px 8px;border:1.5px solid var(--border);border-radius:var(--radius);background:#fff;cursor:pointer;text-align:center;transition:all .15s;font-family:var(--ff);}
+.produk-btn:hover{border-color:var(--blue);background:var(--blue-light);}
+.produk-btn.selected{border-color:var(--blue);background:var(--blue-light);}
+.produk-name{font-size:13px;font-weight:600;color:var(--gray-800);display:block;}
+.produk-price{font-size:11px;color:var(--gray-400);font-family:var(--fm);display:block;margin-top:2px;}
+.produk-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
+.vol-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.operator-select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:var(--ff);background:#fff;color:var(--text);outline:none;cursor:pointer;}
+.operator-select:focus{border-color:var(--blue);}
+.submit-btn{width:100%;padding:14px;background:var(--gray-900);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;font-family:var(--ff);transition:background .15s;margin-top:4px;}
+.submit-btn:hover{background:#374151;}
+.submit-btn:active{transform:scale(.99);}
+.submit-btn:disabled{background:var(--gray-400);cursor:not-allowed;}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto;}
+.tbl-wrap table{width:100%;border-collapse:collapse;min-width:600px;}
+.tbl-wrap thead{background:var(--gray-50);}
+.tbl-wrap th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);border-bottom:1px solid var(--border);white-space:nowrap;}
+.tbl-wrap td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--gray-100);color:var(--gray-800);}
+.tbl-wrap tr:last-child td{border-bottom:none;}
+.tbl-wrap tr:hover td{background:var(--gray-50);}
+.nopol-cell{font-family:var(--fm);font-weight:500;letter-spacing:.06em;font-size:12px;}
+.produk-pill{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+.pill-Pertalite{background:#fef3c7;color:#92400e;}
+.pill-Pertamax{background:#dbeafe;color:#1e40af;}
+.pill-Pertamax-Turbo{background:#ede9fe;color:#5b21b6;}
+.pill-Pertadex{background:#d1fae5;color:#065f46;}
+.pill-Dex{background:#cffafe;color:#155e75;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px;}
+.loading-msg{text-align:center;padding:30px;color:var(--gray-400);font-size:13px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;}
+.kpi-label{font-size:11px;color:var(--text-muted);font-weight:500;letter-spacing:.04em;margin-bottom:6px;}
+.kpi-value{font-size:22px;font-weight:600;color:var(--text);line-height:1;font-family:var(--fm);}
+.kpi-sub{font-size:11px;color:var(--text-muted);margin-top:4px;}
+.kpi-up{color:var(--green);}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;}
+.section-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-600);margin-bottom:12px;}
+.loyal-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px;}
+.loyal-header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--gray-50);display:flex;align-items:center;justify-content:space-between;}
+.loyal-wrap table{width:100%;border-collapse:collapse;min-width:500px;}
+.loyal-wrap th{padding:9px 14px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);}
+.loyal-wrap td{padding:10px 14px;font-size:13px;border-top:1px solid var(--gray-100);color:var(--gray-800);}
+.rank-badge{width:22px;height:22px;border-radius:50%;background:var(--gray-900);color:#fff;font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;}
+.rank-1{background:#b45309;}.rank-2{background:#6b7280;}.rank-3{background:#92400e;}
+.vol-bar-wrap{display:flex;align-items:center;gap:8px;}
+.vol-bar{height:6px;border-radius:3px;background:var(--blue);min-width:4px;}
+.refresh-btn{padding:6px 12px;background:transparent;border:.5px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-muted);cursor:pointer;font-family:var(--ff);}
+.refresh-btn:hover{background:var(--gray-50);}
+.export-btn{padding:6px 14px;background:var(--gray-900);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--ff);}
+.export-btn:hover{background:#374151;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#fff;padding:12px 24px;border-radius:var(--radius);font-size:13px;font-weight:500;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:100;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+@media(max-width:640px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .charts-row{grid-template-columns:1fr;}
+  .produk-grid{grid-template-columns:repeat(2,1fr);}
+  .vol-row{grid-template-columns:1fr;}
+  .tab{padding:10px 12px;font-size:11px;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div>
+      <div class="topbar-brand">SPBU CRM System</div>
+      <div class="topbar-sub" id="spbu-label">Pertamina Patra Niaga — Sulawesi Tenggara</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span class="conn-dot" id="conn-dot"></span>
+      <span class="conn-label" id="conn-label">Connecting...</span>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('input')">Input Transaksi</div>
+    <div class="tab" onclick="switchTab('history')">Riwayat</div>
+    <div class="tab" onclick="switchTab('dashboard')">Dashboard</div>
+  </div>
+
+  <div class="view active" id="view-input">
+    <div class="form-card">
+      <div class="form-header">
+        <span class="form-title">Catat Transaksi BBM Non-Subsidi</span>
+        <span class="time-display" id="clock"></span>
+      </div>
+      <div class="form-body">
+        <div class="field-group">
+          <label class="field-label">Nomor Polisi Kendaraan</label>
+          <input class="field-input nopol" id="nopol-input" type="text" placeholder="DT 1234 AB" maxlength="12" autocomplete="off" oninput="onNopolInput(this.value)"/>
+          <div class="nopol-hint" id="nopol-hint"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Produk BBM</label>
+          <div class="produk-grid">
+            <div class="produk-btn" onclick="selectProduk(this,'Pertalite',10000)"><span class="produk-dot" style="background:#f59e0b"></span><span class="produk-name">Pertalite</span><span class="produk-price">Rp 10.000/L</span></div>
+            <div class="produk-btn" onclick="selectProduk(this,'Pertamax',13900)"><span class="produk-dot" style="background:#3b82f6"></span><span class="produk-name">Pertamax</span><span class="produk-price">Rp 13.900/L</span></div>
+            <div class="produk-btn" onclick="selectProduk(this,'Pertamax Turbo',14500)"><span class="produk-dot" style="background:#8b5cf6"></span><span class="produk-name">Pertamax Turbo</span><span class="produk-price">Rp 14.500/L</span></div>
+            <div class="produk-btn" onclick="selectProduk(this,'Pertadex',13700)"><span class="produk-dot" style="background:#10b981"></span><span class="produk-name">Pertadex</span><span class="produk-price">Rp 13.700/L</span></div>
+            <div class="produk-btn" onclick="selectProduk(this,'Dex',14200)"><span class="produk-dot" style="background:#06b6d4"></span><span class="produk-name">Dex</span><span class="produk-price">Rp 14.200/L</span></div>
+          </div>
+        </div>
+        <div class="vol-row">
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label">Volume (Liter)</label>
+            <input class="field-input" id="volume-input" type="number" placeholder="0.00" min="0" step="0.01" oninput="calcTotal()"/>
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label">Total (Rp)</label>
+            <input class="field-input" id="total-input" type="text" placeholder="Otomatis" readonly style="background:var(--gray-50);color:var(--gray-600);"/>
+          </div>
+        </div>
+        <div class="field-group" style="margin-top:18px">
+          <label class="field-label">Operator</label>
+          <select class="operator-select" id="operator-select">
+            <option value="">— Pilih Operator —</option>
+          </select>
+        </div>
+        <button class="submit-btn" id="submit-btn" onclick="submitTrx()">Simpan Transaksi</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="view" id="view-history">
+    <div class="toolbar">
+      <span style="font-size:13px;color:var(--text-muted)" id="history-count"></span>
+      <div style="display:flex;gap:8px;">
+        <button class="export-btn" onclick="exportCSV()">Export Excel</button>
+        <button class="refresh-btn" onclick="loadHistory()">Refresh</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Waktu</th><th>Nopol</th><th>Produk</th>
+          <th>Volume</th><th>Total (Rp)</th><th>Status</th><th>Operator</th>
+        </tr></thead>
+        <tbody id="history-body"><tr><td colspan="7" class="loading-msg">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="view" id="view-dashboard">
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Transaksi Hari Ini</div><div class="kpi-value" id="kpi-trx">—</div><div class="kpi-sub" id="kpi-trx-sub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Volume Total (L)</div><div class="kpi-value" id="kpi-vol">—</div><div class="kpi-sub" id="kpi-vol-sub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub" id="kpi-rev-sub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Pelanggan Repeat</div><div class="kpi-value" id="kpi-repeat">—</div><div class="kpi-sub kpi-up" id="kpi-repeat-sub"></div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><div class="section-title">Distribusi Produk (Hari Ini)</div><canvas id="chart-produk" height="180"></canvas></div>
+      <div class="chart-card"><div class="section-title">Transaksi per Jam</div><canvas id="chart-jam" height="180"></canvas></div>
+    </div>
+    <div class="loyal-wrap">
+      <div class="loyal-header">
+        <span class="section-title" style="margin:0">Top Pelanggan — by Volume (30 hari)</span>
+        <button class="refresh-btn" onclick="loadDashboard()">Refresh</button>
+      </div>
+      <div style="overflow:auto;">
+        <table>
+          <thead><tr><th>#</th><th>Nopol</th><th>Kunjungan</th><th>Vol. Total</th><th>Produk Favorit</th><th>Terakhir</th></tr></thead>
+          <tbody id="loyal-body"><tr><td colspan="6" class="loading-msg">Memuat...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+const SUPA_URL='https://vjmsqwdzprajgqrpohzl.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbXNxd2R6cHJhamdxcnBvaHpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTM2MTgsImV4cCI6MjA5MDUyOTYxOH0.dPMY_HEozO267sA4IvfwCcf9s0_z2pmk7zYE19T2sCU';
+const HDR={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
+const SPBU_KODE='76.981.01';
+
+let spbuId=null,selectedProduk=null,selectedHarga=0,historyData=[];
+let chartProduk=null,chartJam=null;
+
+async function sbGet(table,params=''){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`,{headers:{...HDR}});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+async function sbPost(table,body){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${table}`,{method:'POST',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+
+async function init(){
+  try{
+    const spbus=await sbGet('spbu',`kode=eq.${SPBU_KODE}&select=id,kode,nama`);
+    if(!spbus.length)throw new Error('SPBU tidak ditemukan');
+    spbuId=spbus[0].id;
+    document.getElementById('spbu-label').textContent=spbus[0].nama+' · '+spbus[0].kode;
+    const ops=await sbGet('operator',`spbu_id=eq.${spbuId}&aktif=eq.true&select=id,nama`);
+    const sel=document.getElementById('operator-select');
+    ops.forEach(o=>{const opt=document.createElement('option');opt.value=o.id;opt.textContent=o.nama;sel.appendChild(opt);});
+    setConn(true);
+  }catch(e){setConn(false);showToast('Koneksi gagal: '+e.message,true);}
+}
+
+function setConn(ok){
+  document.getElementById('conn-dot').className='conn-dot '+(ok?'ok':'err');
+  document.getElementById('conn-label').textContent=ok?'Connected':'Offline';
+}
+
+setInterval(()=>{
+  const el=document.getElementById('clock');
+  if(el)el.textContent=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+},1000);
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['input','history','dashboard'][i]===tab));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  if(tab==='history')loadHistory();
+  if(tab==='dashboard')loadDashboard();
+}
+
+let nopolTimer=null;
+function onNopolInput(val){
+  val=val.toUpperCase();
+  document.getElementById('nopol-input').value=val;
+  document.getElementById('nopol-hint').innerHTML='';
+  clearTimeout(nopolTimer);
+  if(val.replace(/\s/g,'').length<3)return;
+  nopolTimer=setTimeout(()=>checkRepeat(val),400);
+}
+
+async function checkRepeat(nopol){
+  if(!spbuId)return;
+  try{
+    const data=await sbGet('transaksi',`nopol=eq.${encodeURIComponent(nopol)}&spbu_id=eq.${spbuId}&select=produk,created_at&order=created_at.desc&limit=20`);
+    const hint=document.getElementById('nopol-hint');
+    if(data.length>0){
+      const last=new Date(data[0].created_at);
+      const lastStr=last.toLocaleDateString('id-ID',{day:'2-digit',month:'short'});
+      hint.innerHTML='<span class="repeat-badge">Pelanggan Repeat</span> Terakhir '+lastStr+' · '+data.length+'x kunjungan · Favorit: '+data[0].produk;
+    }else{
+      hint.innerHTML='<span style="color:var(--gray-400)">Kendaraan baru</span>';
+    }
+  }catch(e){}
+}
+
+function selectProduk(el,nama,harga){
+  document.querySelectorAll('.produk-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');selectedProduk=nama;selectedHarga=harga;calcTotal();
+}
+
+function calcTotal(){
+  const vol=parseFloat(document.getElementById('volume-input').value);
+  const ti=document.getElementById('total-input');
+  if(selectedProduk&&!isNaN(vol)&&vol>0)
+    ti.value='Rp '+Math.round(vol*selectedHarga).toLocaleString('id-ID');
+  else ti.value='';
+}
+
+async function submitTrx(){
+  const nopol=document.getElementById('nopol-input').value.trim().toUpperCase();
+  const vol=parseFloat(document.getElementById('volume-input').value);
+  const opId=document.getElementById('operator-select').value;
+  if(!nopol){showToast('Masukkan nomor polisi!',true);return;}
+  if(!selectedProduk){showToast('Pilih produk BBM!',true);return;}
+  if(!vol||vol<=0){showToast('Masukkan volume!',true);return;}
+  if(!opId){showToast('Pilih operator!',true);return;}
+  if(!spbuId){showToast('Koneksi belum siap',true);return;}
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true;btn.textContent='Menyimpan...';
+  try{
+    await sbPost('transaksi',{spbu_id:spbuId,operator_id:opId,nopol,produk:selectedProduk,volume:vol,harga_per_liter:selectedHarga,total:Math.round(vol*selectedHarga)});
+    showToast('Tersimpan — '+nopol);
+    document.getElementById('nopol-input').value='';
+    document.getElementById('volume-input').value='';
+    document.getElementById('total-input').value='';
+    document.getElementById('nopol-hint').innerHTML='';
+    document.getElementById('operator-select').value='';
+    document.querySelectorAll('.produk-btn').forEach(b=>b.classList.remove('selected'));
+    selectedProduk=null;selectedHarga=0;
+  }catch(e){showToast('Gagal: '+e.message,true);}
+  finally{btn.disabled=false;btn.textContent='Simpan Transaksi';}
+}
+
+async function loadHistory(){
+  const tbody=document.getElementById('history-body');
+  tbody.innerHTML='<tr><td colspan="7" class="loading-msg">Memuat...</td></tr>';
+  try{
+    const data=await sbGet('transaksi',`spbu_id=eq.${spbuId}&select=*,operator(nama)&order=created_at.desc&limit=200`);
+    historyData=data;
+    document.getElementById('history-count').textContent=data.length+' transaksi terbaru';
+    if(!data.length){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Belum ada transaksi</td></tr>';return;}
+    const nc={};data.forEach(t=>{nc[t.nopol]=(nc[t.nopol]||0)+1;});
+    tbody.innerHTML=data.map(t=>{
+      const dt=new Date(t.created_at);
+      const ts=dt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+      const ds=dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'});
+      const pk=(t.produk||'').replace(/\s/g,'-');
+      const isR=nc[t.nopol]>1;
+      return'<tr><td style="font-family:var(--fm);font-size:12px;color:var(--text-muted)">'+ds+' '+ts+'</td><td class="nopol-cell">'+t.nopol+'</td><td><span class="produk-pill pill-'+pk+'">'+t.produk+'</span></td><td style="font-family:var(--fm)">'+parseFloat(t.volume).toFixed(1)+' L</td><td style="font-family:var(--fm)">'+parseInt(t.total).toLocaleString('id-ID')+'</td><td style="font-size:12px">'+(isR?'<span style="color:var(--blue)">● Repeat</span>':'<span style="color:var(--gray-400)">○ Baru</span>')+'</td><td style="color:var(--text-muted)">'+(t.operator?t.operator.nama:'—')+'</td></tr>';
+    }).join('');
+  }catch(e){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Error: '+e.message+'</td></tr>';}
+}
+
+async function loadDashboard(){
+  if(!spbuId)return;
+  try{
+    const todayStr=new Date().toISOString().split('T')[0];
+    const d30=new Date(Date.now()-30*864e5).toISOString().split('T')[0];
+    const[todayTrx,allData]=await Promise.all([
+      sbGet('transaksi',`spbu_id=eq.${spbuId}&created_at=gte.${todayStr}T00:00:00&select=*`),
+      sbGet('transaksi',`spbu_id=eq.${spbuId}&created_at=gte.${d30}T00:00:00&select=nopol,produk,volume,total,created_at&order=created_at.desc&limit=2000`)
+    ]);
+    const vol=todayTrx.reduce((s,t)=>s+parseFloat(t.volume),0);
+    const rev=todayTrx.reduce((s,t)=>s+parseInt(t.total),0);
+    const ns=new Set(todayTrx.map(t=>t.nopol));
+    const today=new Date().toDateString();
+    const rc=[...ns].filter(n=>allData.some(t=>t.nopol===n&&new Date(t.created_at).toDateString()!==today)).length;
+    const rp=ns.size>0?Math.round(rc/ns.size*100):0;
+    document.getElementById('kpi-trx').textContent=todayTrx.length;
+    document.getElementById('kpi-trx-sub').textContent=ns.size+' kendaraan unik';
+    document.getElementById('kpi-vol').textContent=vol.toFixed(0);
+    document.getElementById('kpi-vol-sub').textContent=todayTrx.length?'avg '+(vol/todayTrx.length).toFixed(1)+' L/trx':'';
+    document.getElementById('kpi-rev').textContent=(rev/1e6).toFixed(1)+' Jt';
+    document.getElementById('kpi-rev-sub').textContent=todayTrx.length?'avg Rp '+Math.round(rev/todayTrx.length).toLocaleString('id-ID'):'';
+    document.getElementById('kpi-repeat').textContent=rp+'%';
+    document.getElementById('kpi-repeat-sub').textContent=rc+' dari '+ns.size+' kendaraan';
+    const pc={};todayTrx.forEach(t=>{pc[t.produk]=(pc[t.produk]||0)+1;});
+    const pL=Object.keys(pc),pV=pL.map(l=>pc[l]);
+    const pC=['#f59e0b','#3b82f6','#8b5cf6','#10b981','#06b6d4'];
+    if(chartProduk)chartProduk.destroy();
+    chartProduk=new Chart(document.getElementById('chart-produk').getContext('2d'),{type:'doughnut',data:{labels:pL,datasets:[{data:pV,backgroundColor:pC.slice(0,pL.length),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10,padding:10}}}}});
+    const jc=Array(24).fill(0);todayTrx.forEach(t=>{jc[new Date(t.created_at).getHours()]++;});
+    const hours=[...Array(24).keys()].filter(h=>h>=6&&h<=21||jc[h]>0);
+    if(chartJam)chartJam.destroy();
+    chartJam=new Chart(document.getElementById('chart-jam').getContext('2d'),{type:'bar',data:{labels:hours.map(h=>h+':00'),datasets:[{data:hours.map(h=>jc[h]),backgroundColor:'#1a56db22',borderColor:'#1a56db',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}}}});
+    const stats={};
+    allData.forEach(t=>{
+      if(!stats[t.nopol])stats[t.nopol]={visits:0,vol:0,pk:{},last:null};
+      stats[t.nopol].visits++;stats[t.nopol].vol+=parseFloat(t.volume);
+      stats[t.nopol].pk[t.produk]=(stats[t.nopol].pk[t.produk]||0)+1;
+      const dt=new Date(t.created_at);if(!stats[t.nopol].last||dt>stats[t.nopol].last)stats[t.nopol].last=dt;
+    });
+    const sorted=Object.entries(stats).sort((a,b)=>b[1].vol-a[1].vol).slice(0,8);
+    const maxV=sorted[0]?sorted[0][1].vol:1;
+    document.getElementById('loyal-body').innerHTML=sorted.length?sorted.map(([nopol,s],i)=>{
+      const fav=Object.entries(s.pk).sort((a,b)=>b[1]-a[1])[0][0];
+      const ls=s.last?s.last.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}):'-';
+      const bw=Math.round(s.vol/maxV*80);const pk=fav.replace(/\s/g,'-');
+      return'<tr><td><span class="rank-badge '+(i<3?'rank-'+(i+1):'')+'">'+(i+1)+'</span></td><td class="nopol-cell">'+nopol+'</td><td style="font-family:var(--fm)">'+s.visits+'x</td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:'+bw+'px"></div><span style="font-family:var(--fm);font-size:12px">'+s.vol.toFixed(0)+'L</span></div></td><td><span class="produk-pill pill-'+pk+'">'+fav+'</span></td><td style="color:var(--text-muted)">'+ls+'</td></tr>';
+    }).join(''):'<tr><td colspan="6" class="empty-state">Belum ada data</td></tr>';
+  }catch(e){showToast('Error dashboard: '+e.message,true);}
+}
+
+function exportCSV(){
+  if(!historyData.length){showToast('Load riwayat dulu',true);return;}
+  const rows=[['Waktu','Nopol','Produk','Volume (L)','Harga/L','Total (Rp)','Status','Operator']];
+  const nc={};historyData.forEach(t=>{nc[t.nopol]=(nc[t.nopol]||0)+1;});
+  historyData.forEach(t=>{rows.push([new Date(t.created_at).toLocaleString('id-ID'),t.nopol,t.produk,parseFloat(t.volume).toFixed(2),t.harga_per_liter,t.total,nc[t.nopol]>1?'Repeat':'Baru',t.operator?t.operator.nama:'—']);});
+  const csv=rows.map(r=>r.map(v=>'"'+v+'"').join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download='SPBU_Transaksi_'+new Date().toISOString().split('T')[0]+'.csv';
+  a.click();URL.revokeObjectURL(url);showToast('Export berhasil!');
+}
+
+function showToast(msg,isErr){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.style.background=isErr?'var(--red)':'var(--green)';
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+init();
+</script>
+</body>
+</html>

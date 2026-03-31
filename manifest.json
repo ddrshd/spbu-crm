@@ -1,0 +1,14 @@
+{
+  "name": "SPBU CRM System",
+  "short_name": "SPBU CRM",
+  "description": "Sistem pencatatan transaksi BBM non-subsidi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "orientation": "any",
+  "icons": [
+    {"src": "https://placehold.co/192x192/111827/ffffff?text=CRM", "sizes": "192x192", "type": "image/png"},
+    {"src": "https://placehold.co/512x512/111827/ffffff?text=CRM", "sizes": "512x512", "type": "image/png"}
+  ]
+}
