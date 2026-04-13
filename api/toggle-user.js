@@ -9,7 +9,7 @@ const SUPA_URL    = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ANON_KEY    = process.env.SUPABASE_ANON_KEY;
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const authHeader  = req.headers.authorization || '';
