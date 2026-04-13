@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#0f1117"/>
+<title>Login — SPBU CRM</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ff:'IBM Plex Sans',sans-serif;
+  --fm:'IBM Plex Mono',monospace;
+  --blue:#1a56db;--blue-d:#1240a8;--blue-light:#e8f0fe;
+  --red:#e02424;--green:#0e9f6e;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
+  --gray-400:#9ca3af;--gray-600:#4b5563;--gray-800:#1f2937;--gray-900:#111827;
+  --border:#e5e7eb;--radius:8px;--radius-lg:12px;
+}
+html,body{height:100%;}
+body{
+  font-family:var(--ff);
+  background:var(--gray-900);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  position:relative;
+  overflow:hidden;
+}
+
+/* Background grid pattern */
+body::before{
+  content:'';
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(26,86,219,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26,86,219,.06) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+}
+body::after{
+  content:'';
+  position:absolute;
+  top:-50%;left:-50%;
+  width:200%;height:200%;
+  background:radial-gradient(ellipse at 60% 40%, rgba(26,86,219,.12) 0%, transparent 60%);
+  pointer-events:none;
+}
+
+.login-wrap{
+  position:relative;z-index:1;
+  width:100%;max-width:400px;
+  padding:16px;
+}
+
+.brand{
+  text-align:center;
+  margin-bottom:32px;
+}
+.brand-logo{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:52px;height:52px;
+  background:var(--blue);
+  border-radius:14px;
+  margin-bottom:16px;
+  font-size:22px;
+  font-weight:600;
+  font-family:var(--fm);
+  letter-spacing:-.02em;
+  box-shadow:0 0 0 1px rgba(26,86,219,.4), 0 8px 32px rgba(26,86,219,.25);
+}
+.brand-name{
+  font-size:15px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:#fff;
+  display:block;
+}
+.brand-sub{
+  font-size:12px;color:var(--gray-400);
+  font-family:var(--fm);
+  margin-top:4px;display:block;
+}
+
+.card{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--radius-lg);
+  padding:28px;
+  backdrop-filter:blur(12px);
+}
+
+.card-title{
+  font-size:16px;font-weight:600;
+  color:#fff;
+  margin-bottom:4px;
+}
+.card-desc{
+  font-size:13px;color:var(--gray-400);
+  margin-bottom:24px;line-height:1.5;
+}
+
+.field-group{margin-bottom:16px;}
+.field-label{
+  display:block;
+  font-size:11px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;
+  color:var(--gray-400);
+  margin-bottom:7px;
+}
+.field-input{
+  width:100%;
+  padding:11px 14px;
+  background:rgba(255,255,255,.06);
+  border:1.5px solid rgba(255,255,255,.1);
+  border-radius:var(--radius);
+  font-size:14px;font-family:var(--ff);
+  color:#fff;
+  outline:none;
+  transition:border-color .15s,background .15s;
+  -webkit-text-fill-color:#fff;
+}
+.field-input::placeholder{color:var(--gray-400);}
+.field-input:focus{
+  border-color:var(--blue);
+  background:rgba(26,86,219,.1);
+}
+.field-input.error{border-color:var(--red);}
+
+.field-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:7px;
+}
+.forgot-link{
+  font-size:11px;color:var(--blue);
+  text-decoration:none;
+  letter-spacing:.02em;
+}
+.forgot-link:hover{text-decoration:underline;}
+
+.toggle-pw{
+  position:relative;
+}
+.toggle-pw .field-input{padding-right:44px;}
+.toggle-pw-btn{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;
+  color:var(--gray-400);font-size:16px;
+  padding:4px;display:flex;align-items:center;
+}
+.toggle-pw-btn:hover{color:#fff;}
+
+.login-btn{
+  width:100%;
+  padding:13px;
+  background:var(--blue);
+  color:#fff;
+  border:none;
+  border-radius:var(--radius);
+  font-size:14px;font-weight:600;
+  font-family:var(--ff);
+  letter-spacing:.04em;
+  cursor:pointer;
+  margin-top:4px;
+  transition:background .15s, transform .1s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.login-btn:hover:not(:disabled){background:var(--blue-d);}
+.login-btn:active:not(:disabled){transform:scale(.99);}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;}
+
+.spinner{
+  width:16px;height:16px;
+  border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  display:none;
+}
+.spinner.show{display:block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.error-msg{
+  font-size:12px;color:var(--red);
+  margin-top:12px;
+  padding:10px 12px;
+  background:rgba(224,36,36,.1);
+  border:1px solid rgba(224,36,36,.2);
+  border-radius:var(--radius);
+  display:none;
+  line-height:1.5;
+}
+.error-msg.show{display:block;}
+
+.divider{
+  display:flex;align-items:center;gap:10px;
+  margin:20px 0;
+}
+.divider-line{flex:1;height:1px;background:rgba(255,255,255,.08);}
+.divider-text{font-size:11px;color:var(--gray-400);}
+
+/* Role info pills */
+.role-pills{
+  display:flex;gap:6px;flex-wrap:wrap;
+  margin-top:16px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.role-pill{
+  font-size:10px;font-family:var(--fm);
+  padding:3px 8px;border-radius:4px;
+  display:flex;align-items:center;gap:5px;
+}
+.role-pill-dot{width:6px;height:6px;border-radius:50%;}
+.rp-op{background:rgba(26,86,219,.15);color:#93c5fd;}
+.rp-op .role-pill-dot{background:#3b82f6;}
+.rp-mgr{background:rgba(14,159,110,.15);color:#6ee7b7;}
+.rp-mgr .role-pill-dot{background:#10b981;}
+.rp-sa{background:rgba(139,92,246,.15);color:#c4b5fd;}
+.rp-sa .role-pill-dot{background:#8b5cf6;}
+
+.footer-info{
+  text-align:center;
+  margin-top:20px;
+  font-size:11px;color:rgba(255,255,255,.2);
+  font-family:var(--fm);
+  line-height:1.7;
+}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:24px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--green);color:#fff;
+  padding:11px 20px;border-radius:var(--radius);
+  font-size:13px;font-weight:500;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  z-index:100;white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+@media(max-width:440px){
+  .card{padding:20px;}
+}
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="brand">
+    <div class="brand-logo">⛽</div>
+    <span class="brand-name">SPBU CRM System</span>
+    <span class="brand-sub">Pertamina Patra Niaga · Sulawesi Tenggara</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Masuk ke akun</div>
+    <div class="card-desc">Masukkan email dan kata sandi yang diberikan oleh admin</div>
+
+    <div class="field-group">
+      <label class="field-label" for="email">Email</label>
+      <input
+        class="field-input" id="email" type="email"
+        placeholder="nama@pertamina.com"
+        autocomplete="email" autocapitalize="off"
+      />
+    </div>
+
+    <div class="field-group">
+      <div class="field-row">
+        <label class="field-label" for="password" style="margin:0">Password</label>
+        <a href="#" class="forgot-link" onclick="showForgot(event)">Lupa password?</a>
+      </div>
+      <div class="toggle-pw">
+        <input
+          class="field-input" id="password" type="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')doLogin()"
+        />
+        <button class="toggle-pw-btn" type="button" onclick="togglePassword()" title="Tampilkan/sembunyikan">
+          <span id="pw-eye">👁</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <button class="login-btn" id="login-btn" onclick="doLogin()">
+      <span class="spinner" id="spinner"></span>
+      <span id="login-label">Masuk</span>
+    </button>
+
+    <div class="role-pills">
+      <span class="role-pill rp-op"><span class="role-pill-dot"></span>Operator</span>
+      <span class="role-pill rp-mgr"><span class="role-pill-dot"></span>Manager</span>
+      <span class="role-pill rp-sa"><span class="role-pill-dot"></span>Super Admin</span>
+    </div>
+  </div>
+
+  <div class="footer-info">
+    SPBU CRM v2.0 · &copy; 2025 Pertamina Patra Niaga<br/>
+    Sulawesi Tenggara Region
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+const SUPA_URL = 'https://vjmsqwdzprajgqrpohzl.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbXNxd2R6cHJhamdxcnBvaHpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTM2MTgsImV4cCI6MjA5MDUyOTYxOH0.dPMY_HEozO267sA4IvfwCcf9s0_z2pmk7zYE19T2sCU';
+
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// Cek jika sudah login
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    window.location.href = 'index.html';
+  }
+})();
+
+function setLoading(on) {
+  const btn = document.getElementById('login-btn');
+  const spinner = document.getElementById('spinner');
+  const label = document.getElementById('login-label');
+  btn.disabled = on;
+  spinner.classList.toggle('show', on);
+  label.textContent = on ? 'Memverifikasi...' : 'Masuk';
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('show');
+  document.getElementById('email').classList.toggle('error', true);
+  document.getElementById('password').classList.toggle('error', true);
+}
+
+function clearError() {
+  document.getElementById('error-msg').classList.remove('show');
+  document.getElementById('email').classList.remove('error');
+  document.getElementById('password').classList.remove('error');
+}
+
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  clearError();
+
+  if (!email) { showError('Email tidak boleh kosong.'); return; }
+  if (!password) { showError('Password tidak boleh kosong.'); return; }
+
+  setLoading(true);
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      if (error.message.includes('Invalid login')) {
+        showError('Email atau password salah. Silakan coba lagi.');
+      } else if (error.message.includes('Email not confirmed')) {
+        showError('Email belum dikonfirmasi. Cek kotak masuk email kamu.');
+      } else {
+        showError('Login gagal: ' + error.message);
+      }
+      setLoading(false);
+      return;
+    }
+
+    // Cek profil & status aktif
+    const { data: profile, error: perr } = await sb
+      .from('profiles')
+      .select('id, nama, role, aktif, spbu_id')
+      .eq('id', data.user.id)
+      .single();
+
+    if (perr || !profile) {
+      showError('Profil tidak ditemukan. Hubungi administrator.');
+      await sb.auth.signOut();
+      setLoading(false);
+      return;
+    }
+
+    if (!profile.aktif) {
+      showError('Akun kamu telah dinonaktifkan. Hubungi administrator.');
+      await sb.auth.signOut();
+      setLoading(false);
+      return;
+    }
+
+    // Redirect berhasil
+    showToast('Selamat datang, ' + profile.nama + '!');
+    setTimeout(() => { window.location.href = 'index.html'; }, 800);
+
+  } catch (e) {
+    showError('Terjadi kesalahan: ' + e.message);
+    setLoading(false);
+  }
+}
+
+function togglePassword() {
+  const pw = document.getElementById('password');
+  const eye = document.getElementById('pw-eye');
+  if (pw.type === 'password') {
+    pw.type = 'text';
+    eye.textContent = '🙈';
+  } else {
+    pw.type = 'password';
+    eye.textContent = '👁';
+  }
+}
+
+async function showForgot(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  if (!email) {
+    showError('Masukkan email kamu dulu, lalu klik "Lupa password?"');
+    document.getElementById('email').focus();
+    return;
+  }
+  setLoading(true);
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/index.html'
+  });
+  setLoading(false);
+  if (error) {
+    showError('Gagal mengirim email reset: ' + error.message);
+  } else {
+    showToast('Link reset password dikirim ke ' + email);
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
