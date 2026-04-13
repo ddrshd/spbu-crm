@@ -333,7 +333,25 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 .add-btn{padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--ff);}
 .add-btn:hover{background:var(--blue-d);}
 
-/* ─── TOAST ─────────────────────────────────────── */
+/* ─── FILTER TABS ────────────────────────────────── */
+.filter-tab{
+  padding:5px 14px;font-size:12px;font-weight:500;
+  border:1px solid var(--border);border-radius:20px;
+  background:transparent;color:var(--text-muted);
+  cursor:pointer;font-family:var(--ff);transition:all .15s;
+}
+.filter-tab.active{background:var(--gray-900);color:#fff;border-color:var(--gray-900);}
+.filter-tab:hover:not(.active){background:var(--gray-50);}
+
+/* ─── ERROR MSG IN MODAL ─────────────────────────── */
+.error-msg{
+  font-size:12px;color:var(--red);
+  padding:10px 12px;
+  background:rgba(224,36,36,.06);
+  border:1px solid rgba(224,36,36,.2);
+  border-radius:var(--radius);
+  line-height:1.5;margin-bottom:0;
+}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#fff;padding:12px 24px;border-radius:var(--radius);font-size:13px;font-weight:500;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:100;white-space:nowrap;}
 .toast.show{transform:translateX(-50%) translateY(0);}
 
@@ -376,6 +394,8 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     <div class="tab" id="tab-history" onclick="switchTab('history')">Riwayat</div>
     <div class="tab" id="tab-dashboard" onclick="switchTab('dashboard')">Dashboard</div>
     <div class="tab hidden" id="tab-operator" onclick="switchTab('operator')">Operator</div>
+    <div class="tab hidden" id="tab-users" onclick="switchTab('users')">Manajemen User</div>
+    <div class="tab hidden" id="tab-spbu" onclick="switchTab('spbu')">Data SPBU</div>
     <div class="tab hidden" id="tab-harga" onclick="switchTab('harga')">Harga BBM</div>
   </div>
 
@@ -513,9 +533,164 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     </div>
   </div>
 
+  <!-- VIEW: MANAJEMEN USER (Manager & Super Admin) -->
+  <div class="view" id="view-users">
+    <div class="toolbar">
+      <div>
+        <div style="font-size:13px;font-weight:500" id="users-title">Manajemen User</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="users-desc"></div>
+      </div>
+      <button class="add-btn" id="btn-add-user" onclick="showAddUserModal()">+ Tambah User</button>
+    </div>
+
+    <!-- Filter tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;" id="user-filter-tabs">
+      <button class="filter-tab active" onclick="filterUsers('all',this)">Semua</button>
+      <button class="filter-tab" onclick="filterUsers('operator',this)">Operator</button>
+      <button class="filter-tab" id="filter-manager-btn" onclick="filterUsers('manager',this)">Manager</button>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Nama</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>SPBU</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr></thead>
+        <tbody id="users-body">
+          <tr><td colspan="6" class="loading-msg">Memuat data user...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VIEW: DATA SPBU (Super Admin only) -->
+  <div class="view" id="view-spbu">
+    <div class="toolbar">
+      <span style="font-size:13px;font-weight:500">Data SPBU</span>
+      <button class="add-btn" onclick="showAddSpbuModal()">+ Tambah SPBU</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Kode</th><th>Nama SPBU</th><th>Alamat</th><th>Kota</th>
+          <th>Operator</th><th>Status</th><th>Aksi</th>
+        </tr></thead>
+        <tbody id="spbu-body">
+          <tr><td colspan="7" class="loading-msg">Memuat data SPBU...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div><!-- .app -->
 
-<!-- MODAL KONFIRMASI TRANSAKSI -->
+<!-- MODAL TAMBAH USER -->
+<div class="modal-overlay" id="modal-user" onclick="if(event.target===this)closeUserModal()">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-title" id="modal-user-title">Tambah User Baru</div>
+    <div class="modal-body" id="modal-user-desc">Buat akun untuk operator atau manager SPBU.</div>
+
+    <div class="field-group">
+      <label class="field-label">Nama Lengkap</label>
+      <input class="field-input" id="u-nama" type="text" placeholder="Budi Santoso"/>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Email</label>
+      <input class="field-input" id="u-email" type="email" placeholder="budi@spbu.com"
+        autocapitalize="off" autocorrect="off"/>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Password</label>
+      <div style="position:relative;">
+        <input class="field-input" id="u-password" type="password" placeholder="Min. 8 karakter"
+          style="padding-right:44px;"/>
+        <button type="button" onclick="toggleUPw()"
+          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:15px;padding:4px;">
+          <span id="u-pw-eye">👁</span>
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Minimal 8 karakter. Sampaikan ke user untuk segera ganti password setelah login pertama.</div>
+    </div>
+
+    <div class="field-group" id="u-role-group">
+      <label class="field-label">Role</label>
+      <select class="field-select" id="u-role" onchange="onRoleChange()">
+        <option value="operator">Operator</option>
+        <option value="manager">Manager</option>
+      </select>
+    </div>
+
+    <div class="field-group" id="u-spbu-group">
+      <label class="field-label">SPBU <span style="color:var(--red)">*</span></label>
+      <select class="field-select" id="u-spbu">
+        <option value="">— Pilih SPBU —</option>
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="u-spbu-hint"></div>
+    </div>
+
+    <div class="error-msg" id="u-error" style="display:none;margin-bottom:12px;"></div>
+
+    <div class="modal-row">
+      <button class="modal-btn cancel" onclick="closeUserModal()">Batal</button>
+      <button class="modal-btn confirm" id="u-submit-btn" onclick="submitAddUser()">
+        <span id="u-submit-label">Buat Akun</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TAMBAH / EDIT SPBU -->
+<div class="modal-overlay" id="modal-spbu" onclick="if(event.target===this)closeSpbuModal()">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-title" id="modal-spbu-title">Tambah SPBU</div>
+    <div class="modal-body">Isi data SPBU baru untuk ditambahkan ke sistem.</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="field-group" style="margin-bottom:0">
+        <label class="field-label">Kode SPBU</label>
+        <input class="field-input" id="s-kode" type="text" placeholder="76.981.01"
+          style="font-family:var(--fm);"/>
+      </div>
+      <div class="field-group" style="margin-bottom:0">
+        <label class="field-label">Kota</label>
+        <input class="field-input" id="s-kota" type="text" placeholder="Kendari"/>
+      </div>
+    </div>
+
+    <div class="field-group" style="margin-top:12px;">
+      <label class="field-label">Nama SPBU</label>
+      <input class="field-input" id="s-nama" type="text" placeholder="SPBU 76.981.01 Kendari"/>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Alamat</label>
+      <input class="field-input" id="s-alamat" type="text" placeholder="Jl. Soekarno Hatta No. 1"/>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Status</label>
+      <select class="field-select" id="s-aktif">
+        <option value="true">Aktif</option>
+        <option value="false">Nonaktif</option>
+      </select>
+    </div>
+
+    <div class="error-msg" id="s-error" style="display:none;margin-bottom:12px;"></div>
+
+    <div class="modal-row">
+      <button class="modal-btn cancel" onclick="closeSpbuModal()">Batal</button>
+      <button class="modal-btn confirm" id="s-submit-btn" onclick="submitSpbu()">
+        <span id="s-submit-label">Simpan</span>
+      </button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-title">Konfirmasi Transaksi</div>
@@ -623,10 +798,31 @@ function applyRoleTabs() {
   const role = currentProfile.role;
   if (role === 'manager' || role === 'super_admin') {
     document.getElementById('tab-operator').classList.remove('hidden');
+    document.getElementById('tab-users').classList.remove('hidden');
     document.getElementById('th-aksi').style.display = '';
   }
   if (role === 'super_admin') {
+    document.getElementById('tab-spbu').classList.remove('hidden');
     document.getElementById('tab-harga').classList.remove('hidden');
+    // Super admin lihat filter manager juga
+    document.getElementById('filter-manager-btn')?.classList.remove('hidden');
+  } else {
+    // Manager tidak perlu filter manager
+    document.getElementById('filter-manager-btn')?.classList.add('hidden');
+  }
+  // Update deskripsi user management
+  const desc = document.getElementById('users-desc');
+  if (desc) {
+    desc.textContent = role === 'manager'
+      ? 'Kelola operator untuk SPBU ' + (currentSpbu?.nama || '')
+      : 'Kelola semua operator dan manager seluruh SPBU Sultra';
+  }
+  // Manager hanya bisa tambah operator, sembunyikan opsi manager di role select
+  if (role === 'manager') {
+    const roleSelect = document.getElementById('u-role');
+    if (roleSelect) {
+      roleSelect.innerHTML = '<option value="operator">Operator</option>';
+    }
   }
 }
 
@@ -1174,9 +1370,11 @@ function switchTab(tab) {
   document.getElementById('tab-' + tab).classList.add('active');
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + tab).classList.add('active');
-  if (tab === 'history') loadHistory();
+  if (tab === 'history')  loadHistory();
   if (tab === 'dashboard') loadDashboard();
   if (tab === 'operator') loadOperators();
+  if (tab === 'users')    loadUsers();
+  if (tab === 'spbu')     loadSpbu();
 }
 
 async function doLogout() {
@@ -1193,7 +1391,380 @@ function showToast(msg, isErr = false) {
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+// ─── MANAJEMEN USER ──────────────────────────────────────────
+let allUsers = [];
+let currentUserFilter = 'all';
+let editingSpbuId = null;
+let spbuList = [];
+
+async function loadUsers() {
+  const tbody = document.getElementById('users-body');
+  tbody.innerHTML = '<tr><td colspan="6" class="loading-msg">Memuat...</td></tr>';
+
+  try {
+    let q = sb.from('profiles')
+      .select('id, nama, role, aktif, spbu_id, spbu:spbu_id(nama, kode)')
+      .neq('role', 'super_admin')
+      .order('role').order('nama');
+
+    // Manager hanya lihat user SPBU-nya
+    if (currentProfile.role === 'manager' && currentSpbu) {
+      q = q.eq('spbu_id', currentSpbu.id);
+    }
+
+    const { data, error } = await q;
+    if (error) throw error;
+    allUsers = data || [];
+    renderUsersTable();
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function filterUsers(filter, btn) {
+  currentUserFilter = filter;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderUsersTable();
+}
+
+function renderUsersTable() {
+  const tbody = document.getElementById('users-body');
+  let data = allUsers;
+  if (currentUserFilter !== 'all') {
+    data = allUsers.filter(u => u.role === currentUserFilter);
+  }
+
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Tidak ada user ditemukan</td></tr>';
+    return;
+  }
+
+  const roleLabel = { operator: 'Operator', manager: 'Manager', super_admin: 'Super Admin' };
+  const roleBg    = { operator: '#dbeafe', manager: '#d1fae5', super_admin: '#ede9fe' };
+  const roleColor = { operator: '#1e40af', manager: '#065f46', super_admin: '#5b21b6' };
+  const canToggle = currentProfile.role === 'manager' || currentProfile.role === 'super_admin';
+
+  tbody.innerHTML = data.map(u => {
+    const inisial = (u.nama || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    const spbuNama = u.spbu ? u.spbu.nama.replace('SPBU ', '') : '—';
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:${roleBg[u.role]};
+            color:${roleColor[u.role]};display:flex;align-items:center;justify-content:center;
+            font-size:10px;font-weight:600;flex-shrink:0;">${inisial}</div>
+          <span style="font-weight:500;">${u.nama}</span>
+        </div>
+      </td>
+      <td style="font-size:12px;color:var(--text-muted);font-family:var(--fm);" id="email-${u.id}">—</td>
+      <td>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;
+          background:${roleBg[u.role]};color:${roleColor[u.role]};">
+          ${roleLabel[u.role]}
+        </span>
+      </td>
+      <td style="font-size:12px;color:var(--text-muted);">${spbuNama}</td>
+      <td>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;
+          background:${u.aktif ? '#d1fae5' : '#fee2e2'};color:${u.aktif ? '#065f46' : '#991b1b'};">
+          ${u.aktif ? 'Aktif' : 'Nonaktif'}
+        </span>
+      </td>
+      <td>
+        ${canToggle ? `
+          <button class="act-btn ${u.aktif ? 'del' : ''}"
+            onclick="toggleUser('${u.id}', ${u.aktif})">
+            ${u.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+          </button>
+        ` : '—'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Load email async (tidak ada di profiles, ambil dari auth via service — skip untuk now)
+  // Tampilkan placeholder email saja
+}
+
+// ─── ADD USER MODAL ───────────────────────────────────────────
+async function showAddUserModal() {
+  // Load daftar SPBU untuk dropdown
+  await loadSpbuList();
+
+  const spbuSel = document.getElementById('u-spbu');
+  spbuSel.innerHTML = '<option value="">— Pilih SPBU —</option>' +
+    spbuList.filter(s => s.aktif).map(s =>
+      `<option value="${s.id}">${s.nama} (${s.kode})</option>`
+    ).join('');
+
+  // Kalau manager, auto-select dan lock SPBU-nya
+  if (currentProfile.role === 'manager' && currentSpbu) {
+    spbuSel.value = currentSpbu.id;
+    spbuSel.disabled = true;
+    document.getElementById('u-spbu-hint').textContent = 'Operator akan ditambahkan ke SPBU Anda.';
+  } else {
+    spbuSel.disabled = false;
+    document.getElementById('u-spbu-hint').textContent = '';
+  }
+
+  // Reset form
+  ['u-nama','u-email','u-password'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('u-role').value = 'operator';
+  document.getElementById('u-error').style.display = 'none';
+  onRoleChange();
+
+  document.getElementById('modal-user').classList.add('show');
+  document.getElementById('u-nama').focus();
+}
+
+function closeUserModal() {
+  document.getElementById('modal-user').classList.remove('show');
+}
+
+function onRoleChange() {
+  const role = document.getElementById('u-role').value;
+  const spbuGroup = document.getElementById('u-spbu-group');
+  // Manager tidak perlu SPBU (super_admin assign ke semua), operator wajib SPBU
+  spbuGroup.style.display = role === 'super_admin' ? 'none' : 'block';
+}
+
+function toggleUPw() {
+  const pw = document.getElementById('u-password');
+  const eye = document.getElementById('u-pw-eye');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+  eye.textContent = pw.type === 'password' ? '👁' : '🙈';
+}
+
+async function submitAddUser() {
+  const nama     = document.getElementById('u-nama').value.trim();
+  const email    = document.getElementById('u-email').value.trim().toLowerCase();
+  const password = document.getElementById('u-password').value;
+  const role     = document.getElementById('u-role').value;
+  const spbu_id  = document.getElementById('u-spbu').value || null;
+  const errEl    = document.getElementById('u-error');
+
+  errEl.style.display = 'none';
+
+  // Validasi
+  if (!nama)     { showUError('Nama tidak boleh kosong'); return; }
+  if (!email || !email.includes('@')) { showUError('Email tidak valid'); return; }
+  if (password.length < 8) { showUError('Password minimal 8 karakter'); return; }
+  if (!spbu_id && role !== 'super_admin') { showUError('Pilih SPBU terlebih dahulu'); return; }
+
+  const btn = document.getElementById('u-submit-btn');
+  const label = document.getElementById('u-submit-label');
+  btn.disabled = true;
+  label.textContent = 'Membuat akun...';
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+
+    const res = await fetch('/api/create-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ nama, email, password, role, spbu_id })
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      showUError(result.error || 'Gagal membuat akun');
+      return;
+    }
+
+    closeUserModal();
+    showToast(`Akun ${nama} berhasil dibuat!`);
+    loadUsers();
+
+  } catch (e) {
+    showUError('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    label.textContent = 'Buat Akun';
+  }
+}
+
+function showUError(msg) {
+  const el = document.getElementById('u-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function toggleUser(userId, aktif) {
+  const action = aktif ? 'nonaktifkan' : 'aktifkan';
+  if (!confirm(`${action} user ini?`)) return;
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+
+    const res = await fetch('/api/toggle-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ target_user_id: userId, aktif: !aktif })
+    });
+
+    const result = await res.json();
+    if (!res.ok) { showToast(result.error || 'Gagal', true); return; }
+
+    showToast(`User berhasil di-${action}kan`);
+    loadUsers();
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
+// ─── DATA SPBU ───────────────────────────────────────────────
+async function loadSpbuList() {
+  const { data } = await sb.from('spbu').select('*').order('kode');
+  spbuList = data || [];
+}
+
+async function loadSpbu() {
+  const tbody = document.getElementById('spbu-body');
+  tbody.innerHTML = '<tr><td colspan="7" class="loading-msg">Memuat...</td></tr>';
+
+  await loadSpbuList();
+
+  if (!spbuList.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Belum ada data SPBU</td></tr>';
+    return;
+  }
+
+  // Hitung jumlah operator per SPBU
+  const { data: opCounts } = await sb
+    .from('profiles')
+    .select('spbu_id')
+    .eq('role', 'operator')
+    .eq('aktif', true);
+
+  const countMap = {};
+  (opCounts || []).forEach(p => {
+    countMap[p.spbu_id] = (countMap[p.spbu_id] || 0) + 1;
+  });
+
+  tbody.innerHTML = spbuList.map(s => `<tr>
+    <td style="font-family:var(--fm);font-weight:500;">${s.kode}</td>
+    <td style="font-weight:500;">${s.nama}</td>
+    <td style="font-size:12px;color:var(--text-muted);">${s.alamat || '—'}</td>
+    <td style="font-size:12px;">${s.kota || '—'}</td>
+    <td style="font-family:var(--fm);text-align:center;">${countMap[s.id] || 0}</td>
+    <td>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;
+        background:${s.aktif ? '#d1fae5' : '#fee2e2'};color:${s.aktif ? '#065f46' : '#991b1b'};">
+        ${s.aktif ? 'Aktif' : 'Nonaktif'}
+      </span>
+    </td>
+    <td style="display:flex;gap:6px;">
+      <button class="act-btn" onclick="showEditSpbu('${s.id}')">Edit</button>
+      <button class="act-btn ${s.aktif ? 'del' : ''}"
+        onclick="toggleSpbu('${s.id}',${s.aktif})">
+        ${s.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+      </button>
+    </td>
+  </tr>`).join('');
+}
+
+function showAddSpbuModal() {
+  editingSpbuId = null;
+  ['s-kode','s-nama','s-alamat','s-kota'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('s-kota').value = 'Kendari';
+  document.getElementById('s-aktif').value = 'true';
+  document.getElementById('s-error').style.display = 'none';
+  document.getElementById('modal-spbu-title').textContent = 'Tambah SPBU';
+  document.getElementById('s-submit-label').textContent = 'Simpan';
+  document.getElementById('modal-spbu').classList.add('show');
+  document.getElementById('s-kode').focus();
+}
+
+function showEditSpbu(id) {
+  const spbu = spbuList.find(s => s.id === id);
+  if (!spbu) return;
+  editingSpbuId = id;
+  document.getElementById('s-kode').value   = spbu.kode || '';
+  document.getElementById('s-nama').value   = spbu.nama || '';
+  document.getElementById('s-alamat').value = spbu.alamat || '';
+  document.getElementById('s-kota').value   = spbu.kota || '';
+  document.getElementById('s-aktif').value  = spbu.aktif ? 'true' : 'false';
+  document.getElementById('s-error').style.display = 'none';
+  document.getElementById('modal-spbu-title').textContent = 'Edit SPBU';
+  document.getElementById('s-submit-label').textContent = 'Update';
+  document.getElementById('modal-spbu').classList.add('show');
+}
+
+function closeSpbuModal() {
+  document.getElementById('modal-spbu').classList.remove('show');
+  editingSpbuId = null;
+}
+
+async function submitSpbu() {
+  const kode   = document.getElementById('s-kode').value.trim();
+  const nama   = document.getElementById('s-nama').value.trim();
+  const alamat = document.getElementById('s-alamat').value.trim();
+  const kota   = document.getElementById('s-kota').value.trim();
+  const aktif  = document.getElementById('s-aktif').value === 'true';
+  const errEl  = document.getElementById('s-error');
+
+  errEl.style.display = 'none';
+
+  if (!kode) { errEl.textContent = 'Kode SPBU wajib diisi'; errEl.style.display = 'block'; return; }
+  if (!nama) { errEl.textContent = 'Nama SPBU wajib diisi'; errEl.style.display = 'block'; return; }
+
+  const btn   = document.getElementById('s-submit-btn');
+  const label = document.getElementById('s-submit-label');
+  btn.disabled = true;
+  label.textContent = 'Menyimpan...';
+
+  try {
+    let error;
+    const payload = { kode, nama, alamat: alamat || null, kota: kota || 'Kendari', aktif };
+
+    if (editingSpbuId) {
+      ({ error } = await sb.from('spbu').update(payload).eq('id', editingSpbuId));
+    } else {
+      ({ error } = await sb.from('spbu').insert(payload));
+    }
+
+    if (error) {
+      if (error.message.includes('unique') || error.code === '23505') {
+        errEl.textContent = 'Kode SPBU sudah ada, gunakan kode lain';
+      } else {
+        errEl.textContent = error.message;
+      }
+      errEl.style.display = 'block';
+      return;
+    }
+
+    closeSpbuModal();
+    showToast(editingSpbuId ? 'SPBU diperbarui!' : 'SPBU baru ditambahkan!');
+    loadSpbu();
+
+  } catch (e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    label.textContent = editingSpbuId ? 'Update' : 'Simpan';
+  }
+}
+
+async function toggleSpbu(id, aktif) {
+  if (!confirm(`${aktif ? 'Nonaktifkan' : 'Aktifkan'} SPBU ini?`)) return;
+  const { error } = await sb.from('spbu').update({ aktif: !aktif }).eq('id', id);
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast('Status SPBU diperbarui');
+  loadSpbu();
+}
+
 // ─── START ───────────────────────────────────────────────────
+
 init();
 </script>
 </body>
