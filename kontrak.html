@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Generator Kontrak Mitra — SPBU CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ff:'IBM Plex Sans',sans-serif;--fm:'IBM Plex Mono',monospace;--fs:'Noto Serif',serif;
+  --blue:#1a56db;--blue-light:#e8f0fe;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
+  --gray-400:#9ca3af;--gray-600:#4b5563;--gray-800:#1f2937;--gray-900:#111827;
+  --surface:#fff;--bg:#f0f2f5;--border:#e5e7eb;--text:#111827;--text-muted:#6b7280;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px;}
+
+/* LAYOUT */
+.wrapper{display:grid;grid-template-columns:380px 1fr;min-height:100vh;}
+.sidebar{background:var(--gray-900);padding:24px;overflow-y:auto;position:sticky;top:0;height:100vh;}
+.preview-area{padding:24px;background:var(--bg);}
+
+/* SIDEBAR */
+.sidebar-title{font-size:13px;font-weight:600;color:#fff;letter-spacing:.08em;text-transform:uppercase;margin-bottom:20px;}
+.section-head{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-400);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #374151;}
+.field-group{margin-bottom:12px;}
+.field-label{font-size:11px;font-weight:500;color:var(--gray-400);margin-bottom:4px;display:block;letter-spacing:.04em;text-transform:uppercase;}
+.field-input{
+  width:100%;padding:8px 10px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--radius);font-size:13px;font-family:var(--ff);
+  color:#fff;outline:none;transition:border-color .15s;
+}
+.field-input::placeholder{color:var(--gray-400);}
+.field-input:focus{border-color:var(--blue);}
+.field-select{
+  width:100%;padding:8px 10px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--radius);font-size:13px;font-family:var(--ff);
+  color:#fff;outline:none;cursor:pointer;
+}
+.field-select option{background:#1f2937;color:#fff;}
+.field-textarea{
+  resize:vertical;min-height:70px;font-size:12px;
+  padding:8px 10px;line-height:1.5;
+}
+.vol-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.generate-btn{
+  width:100%;padding:12px;
+  background:var(--blue);color:#fff;border:none;
+  border-radius:var(--radius);font-size:13px;font-weight:600;
+  cursor:pointer;font-family:var(--ff);margin-top:20px;
+  letter-spacing:.04em;transition:background .15s;
+}
+.generate-btn:hover{background:#1240a8;}
+.print-btn{
+  width:100%;padding:10px;
+  background:transparent;color:#10b981;
+  border:1px solid rgba(16,185,129,.3);
+  border-radius:var(--radius);font-size:12px;font-weight:500;
+  cursor:pointer;font-family:var(--ff);margin-top:8px;
+  transition:all .15s;
+}
+.print-btn:hover{background:rgba(16,185,129,.1);}
+.save-btn{
+  width:100%;padding:10px;
+  background:transparent;color:var(--gray-400);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--radius);font-size:12px;font-weight:500;
+  cursor:pointer;font-family:var(--ff);margin-top:8px;
+  transition:all .15s;
+}
+.save-btn:hover{background:rgba(255,255,255,.06);color:#fff;}
+
+/* PREVIEW AREA */
+.preview-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;
+}
+.preview-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-400);}
+.preview-actions{display:flex;gap:8px;}
+
+/* KONTRAK DOCUMENT */
+.kontrak-doc{
+  background:#fff;
+  max-width:720px;margin:0 auto;
+  padding:60px 70px;
+  box-shadow:0 2px 20px rgba(0,0,0,.08);
+  min-height:1000px;
+  position:relative;
+}
+.doc-header{text-align:center;margin-bottom:36px;padding-bottom:24px;border-bottom:2px solid #111;}
+.doc-header-logo{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  margin-bottom:16px;
+}
+.doc-logo-box{
+  width:52px;height:52px;background:#c00;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:4px;
+}
+.doc-logo-box img{width:40px;height:40px;object-fit:contain;}
+.doc-company-name{font-size:18px;font-weight:700;color:#111;letter-spacing:.02em;}
+.doc-company-sub{font-size:11px;color:#555;margin-top:2px;}
+.doc-title{font-family:var(--fs);font-size:20px;font-weight:700;color:#111;letter-spacing:.06em;margin-top:16px;}
+.doc-subtitle{font-size:12px;color:#555;margin-top:6px;font-family:var(--fm);}
+
+.doc-body{font-family:var(--fs);font-size:13px;line-height:1.9;color:#1a1a1a;}
+.doc-body p{margin-bottom:12px;}
+.doc-body strong{font-weight:700;}
+
+.pihak-section{
+  background:#f8f9fa;border:1px solid #e5e7eb;
+  border-radius:8px;padding:16px 20px;margin:20px 0;
+}
+.pihak-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:10px;}
+.pihak-row{display:flex;margin-bottom:6px;font-size:13px;}
+.pihak-key{width:160px;color:#555;flex-shrink:0;}
+.pihak-val{font-weight:500;color:#111;}
+
+.pasal{margin:24px 0;}
+.pasal-title{font-size:14px;font-weight:700;text-align:center;margin-bottom:10px;letter-spacing:.04em;}
+.pasal-content{font-size:13px;line-height:1.85;}
+.pasal-content ol{padding-left:20px;}
+.pasal-content ol li{margin-bottom:6px;}
+
+.ttd-section{
+  display:grid;grid-template-columns:1fr 1fr;gap:40px;
+  margin-top:60px;padding-top:24px;border-top:1px solid #e5e7eb;
+}
+.ttd-box{text-align:center;}
+.ttd-label{font-size:12px;color:#555;margin-bottom:4px;}
+.ttd-role{font-size:11px;font-weight:600;color:#111;text-transform:uppercase;letter-spacing:.06em;}
+.ttd-space{height:72px;border-bottom:1px solid #555;margin:16px 0 8px;}
+.ttd-name{font-size:13px;font-weight:700;color:#111;}
+.ttd-jabatan{font-size:11px;color:#666;margin-top:2px;}
+
+.nomor-kontrak-badge{
+  display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;
+  border-radius:6px;padding:6px 14px;font-family:var(--fm);
+  font-size:13px;font-weight:600;color:#1e40af;margin-bottom:20px;
+}
+
+@media print {
+  body { background: white; }
+  .wrapper { display: block; }
+  .sidebar { display: none; }
+  .preview-area { padding: 0; }
+  .preview-toolbar { display: none; }
+  .kontrak-doc {
+    box-shadow: none;
+    padding: 40px 50px;
+    max-width: 100%;
+    margin: 0;
+  }
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- SIDEBAR FORM -->
+  <div class="sidebar">
+    <div class="sidebar-title">Generator Kontrak Mitra</div>
+
+    <div class="section-head">Data SPBU (Pihak Pertama)</div>
+    <div class="field-group">
+      <label class="field-label">Nama SPBU</label>
+      <input class="field-input" id="spbu-nama" value="SPBU 76.981.01" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Alamat SPBU</label>
+      <input class="field-input" id="spbu-alamat" placeholder="Jl. Soekarno Hatta, Kendari" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Nama Pimpinan / Pengelola</label>
+      <input class="field-input" id="spbu-pimpinan" placeholder="Nama pimpinan SPBU" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Jabatan</label>
+      <input class="field-input" id="spbu-jabatan" value="Pengelola SPBU" oninput="updatePreview()"/>
+    </div>
+
+    <div class="section-head">Data Mitra (Pihak Kedua)</div>
+    <div class="field-group">
+      <label class="field-label">Nama Perusahaan/Instansi</label>
+      <input class="field-input" id="mitra-nama" placeholder="PT. Contoh Perusahaan" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Alamat</label>
+      <input class="field-input" id="mitra-alamat" placeholder="Alamat perusahaan" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">NPWP</label>
+      <input class="field-input" id="mitra-npwp" placeholder="00.000.000.0-000.000" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Nama Penandatangan</label>
+      <input class="field-input" id="mitra-ttd-nama" placeholder="Nama direktur/pimpinan" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Jabatan Penandatangan</label>
+      <input class="field-input" id="mitra-ttd-jabatan" placeholder="Direktur Utama" oninput="updatePreview()"/>
+    </div>
+
+    <div class="section-head">Ketentuan Kontrak</div>
+    <div class="vol-row">
+      <div class="field-group">
+        <label class="field-label">Tanggal Mulai</label>
+        <input class="field-input" id="tgl-mulai" type="date" oninput="updatePreview()"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Tanggal Selesai</label>
+        <input class="field-input" id="tgl-selesai" type="date" oninput="updatePreview()"/>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Mekanisme Pembayaran</label>
+      <select class="field-select" id="mekanisme-bayar" onchange="updatePreview()">
+        <option value="tunai">Tunai saat transaksi</option>
+        <option value="invoice">Invoice bulanan (kredit)</option>
+      </select>
+    </div>
+    <div class="field-group" id="invoice-detail" style="display:none">
+      <label class="field-label">Batas Pembayaran Invoice</label>
+      <input class="field-input" id="batas-invoice" placeholder="Tanggal 10 setiap bulan" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Estimasi Volume per Bulan (Liter)</label>
+      <input class="field-input" id="vol-estimasi" type="number" placeholder="1000" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Produk BBM yang Disepakati</label>
+      <input class="field-input" id="produk-list" placeholder="Pertalite, Pertamax, Biosolar" oninput="updatePreview()"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Ketentuan Khusus (opsional)</label>
+      <textarea class="field-input field-textarea" id="ketentuan-khusus"
+        placeholder="Misal: Pembelian minimal 50L per transaksi, kendaraan wajib menunjukkan identitas mitra, dll."
+        oninput="updatePreview()"></textarea>
+    </div>
+
+    <div class="section-head">Tempat & Tanggal Penandatanganan</div>
+    <div class="vol-row">
+      <div class="field-group">
+        <label class="field-label">Kota</label>
+        <input class="field-input" id="ttd-kota" value="Kendari" oninput="updatePreview()"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Tanggal TTD</label>
+        <input class="field-input" id="ttd-tanggal" type="date" oninput="updatePreview()"/>
+      </div>
+    </div>
+
+    <button class="generate-btn" onclick="updatePreview()">Perbarui Preview</button>
+    <button class="print-btn" onclick="window.print()">Cetak / Simpan PDF</button>
+    <button class="save-btn" onclick="saveToDb()">Simpan ke Sistem</button>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-area">
+    <div class="preview-toolbar">
+      <span class="preview-label">Preview Kontrak</span>
+      <div class="preview-actions">
+        <span style="font-size:12px;color:var(--gray-400);">Gunakan Ctrl+P atau tombol Cetak untuk export PDF</span>
+      </div>
+    </div>
+
+    <div class="kontrak-doc" id="kontrak-doc">
+      <!-- Akan diisi oleh updatePreview() -->
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+const SUPA_URL = 'https://vjmsqwdzprajgqrpohzl.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbXNxd2R6cHJhamdxcnBvaHpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTM2MTgsImV4cCI6MjA5MDUyOTYxOH0.dPMY_HEozO267sA4IvfwCcf9s0_z2pmk7zYE19T2sCU';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// Set default dates
+const today = new Date();
+const todayStr = today.toISOString().split('T')[0];
+const nextYear = new Date(today.getFullYear()+1, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+document.getElementById('tgl-mulai').value = todayStr;
+document.getElementById('tgl-selesai').value = nextYear;
+document.getElementById('ttd-tanggal').value = todayStr;
+
+document.getElementById('mekanisme-bayar').addEventListener('change', function() {
+  document.getElementById('invoice-detail').style.display =
+    this.value === 'invoice' ? 'block' : 'none';
+});
+
+function fmtDate(str) {
+  if (!str) return '_______________';
+  return new Date(str).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+}
+
+function fmtDateShort(str) {
+  if (!str) return '—';
+  return new Date(str).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function generateNomorKontrak() {
+  const yr = today.getFullYear();
+  const mo = String(today.getMonth()+1).padStart(2,'0');
+  return `KTR/${yr}/${mo}/001`;
+}
+
+function updatePreview() {
+  const data = {
+    nomorKontrak: generateNomorKontrak(),
+    spbuNama: document.getElementById('spbu-nama').value || '[Nama SPBU]',
+    spbuAlamat: document.getElementById('spbu-alamat').value || '[Alamat SPBU]',
+    spbuPimpinan: document.getElementById('spbu-pimpinan').value || '[Nama Pimpinan]',
+    spbuJabatan: document.getElementById('spbu-jabatan').value || 'Pengelola SPBU',
+    mitraNama: document.getElementById('mitra-nama').value || '[Nama Mitra]',
+    mitraAlamat: document.getElementById('mitra-alamat').value || '[Alamat Mitra]',
+    mitraNpwp: document.getElementById('mitra-npwp').value || '-',
+    mitraTtdNama: document.getElementById('mitra-ttd-nama').value || '[Nama Penandatangan]',
+    mitraTtdJabatan: document.getElementById('mitra-ttd-jabatan').value || '[Jabatan]',
+    tglMulai: document.getElementById('tgl-mulai').value,
+    tglSelesai: document.getElementById('tgl-selesai').value,
+    mekanisme: document.getElementById('mekanisme-bayar').value,
+    batasInvoice: document.getElementById('batas-invoice').value || 'tanggal 10 setiap bulan',
+    volEstimasi: document.getElementById('vol-estimasi').value,
+    produkList: document.getElementById('produk-list').value || 'sesuai ketersediaan SPBU',
+    ketentuanKhusus: document.getElementById('ketentuan-khusus').value,
+    ttdKota: document.getElementById('ttd-kota').value || 'Kendari',
+    ttdTanggal: document.getElementById('ttd-tanggal').value,
+  };
+
+  const mekanismeTeks = data.mekanisme === 'tunai'
+    ? 'tunai pada setiap transaksi pengisian bahan bakar'
+    : `kredit dengan sistem invoice bulanan, dibayarkan paling lambat ${data.batasInvoice}`;
+
+  const volTeks = data.volEstimasi
+    ? `Estimasi kebutuhan bahan bakar Pihak Kedua adalah <strong>${parseInt(data.volEstimasi).toLocaleString('id-ID')} (${numberToWords(parseInt(data.volEstimasi))} liter)</strong> per bulan.`
+    : '';
+
+  const ketentuanTambahan = data.ketentuanKhusus
+    ? `<div class="pasal">
+        <div class="pasal-title">PASAL 6<br>KETENTUAN KHUSUS</div>
+        <div class="pasal-content"><p>${data.ketentuanKhusus.replace(/\n/g, '<br>')}</p></div>
+       </div>` : '';
+
+  document.getElementById('kontrak-doc').innerHTML = `
+    <div class="doc-header">
+      <div class="doc-header-logo">
+        <div class="doc-logo-box">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <text x="18" y="26" text-anchor="middle" font-size="22" font-weight="900" fill="white" font-family="Arial">⛽</text>
+          </svg>
+        </div>
+        <div>
+          <div class="doc-company-name">PERTAMINA PATRA NIAGA</div>
+          <div class="doc-company-sub">${data.spbuNama} · Sulawesi Tenggara</div>
+        </div>
+      </div>
+      <div class="doc-title">PERJANJIAN KERJASAMA</div>
+      <div class="doc-title" style="font-size:16px;margin-top:4px;">PENGADAAN BAHAN BAKAR MINYAK (BBM)</div>
+      <div style="margin-top:12px;">
+        <span class="nomor-kontrak-badge">${data.nomorKontrak}</span>
+      </div>
+    </div>
+
+    <div class="doc-body">
+      <p>Perjanjian Kerjasama ini dibuat dan ditandatangani pada hari <strong>${fmtDate(data.ttdTanggal)}</strong>, di <strong>${data.ttdKota}</strong>, oleh dan antara pihak-pihak sebagai berikut:</p>
+
+      <div class="pihak-section">
+        <div class="pihak-title">Pihak Pertama</div>
+        <div class="pihak-row"><span class="pihak-key">Nama SPBU</span><span class="pihak-val">: ${data.spbuNama}</span></div>
+        <div class="pihak-row"><span class="pihak-key">Alamat</span><span class="pihak-val">: ${data.spbuAlamat}</span></div>
+        <div class="pihak-row"><span class="pihak-key">Diwakili oleh</span><span class="pihak-val">: ${data.spbuPimpinan}</span></div>
+        <div class="pihak-row"><span class="pihak-key">Jabatan</span><span class="pihak-val">: ${data.spbuJabatan}</span></div>
+      </div>
+
+      <div class="pihak-section">
+        <div class="pihak-title">Pihak Kedua</div>
+        <div class="pihak-row"><span class="pihak-key">Nama Perusahaan</span><span class="pihak-val">: ${data.mitraNama}</span></div>
+        <div class="pihak-row"><span class="pihak-key">Alamat</span><span class="pihak-val">: ${data.mitraAlamat}</span></div>
+        <div class="pihak-row"><span class="pihak-key">NPWP</span><span class="pihak-val">: ${data.mitraNpwp}</span></div>
+        <div class="pihak-row"><span class="pihak-key">Diwakili oleh</span><span class="pihak-val">: ${data.mitraTtdNama}</span></div>
+        <div class="pihak-row"><span class="pihak-key">Jabatan</span><span class="pihak-val">: ${data.mitraTtdJabatan}</span></div>
+      </div>
+
+      <p>Pihak Pertama dan Pihak Kedua selanjutnya secara bersama-sama disebut <strong>"Para Pihak"</strong>, sepakat untuk mengadakan Perjanjian Kerjasama Pengadaan Bahan Bakar Minyak (BBM) dengan ketentuan-ketentuan sebagai berikut:</p>
+
+      <div class="pasal">
+        <div class="pasal-title">PASAL 1<br>MAKSUD DAN TUJUAN</div>
+        <div class="pasal-content">
+          <p>Perjanjian ini dimaksudkan untuk mengatur kerjasama pengadaan Bahan Bakar Minyak (BBM) antara Pihak Pertama selaku pengelola SPBU dengan Pihak Kedua selaku instansi/perusahaan pengguna BBM, guna memenuhi kebutuhan operasional kendaraan milik Pihak Kedua secara tertib, transparan, dan dapat dipertanggungjawabkan.</p>
+        </div>
+      </div>
+
+      <div class="pasal">
+        <div class="pasal-title">PASAL 2<br>RUANG LINGKUP KERJASAMA</div>
+        <div class="pasal-content">
+          <ol>
+            <li>Pihak Pertama menyediakan layanan pengisian BBM jenis <strong>${data.produkList}</strong> untuk kendaraan-kendaraan operasional milik Pihak Kedua.</li>
+            <li>Pihak Kedua mendaftarkan daftar nomor polisi kendaraan yang berhak menggunakan fasilitas kerjasama ini kepada Pihak Pertama.</li>
+            <li>${volTeks || 'Volume pengisian bahan bakar disesuaikan dengan kebutuhan operasional Pihak Kedua.'}</li>
+            <li>Pengisian BBM dilayani selama jam operasional SPBU, sesuai ketentuan yang berlaku.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="pasal">
+        <div class="pasal-title">PASAL 3<br>JANGKA WAKTU PERJANJIAN</div>
+        <div class="pasal-content">
+          <ol>
+            <li>Perjanjian kerjasama ini berlaku selama <strong>${getDurationText(data.tglMulai, data.tglSelesai)}</strong>, terhitung sejak tanggal <strong>${fmtDate(data.tglMulai)}</strong> sampai dengan tanggal <strong>${fmtDate(data.tglSelesai)}</strong>.</li>
+            <li>Perjanjian ini dapat diperpanjang atas kesepakatan Para Pihak, yang dinyatakan secara tertulis selambat-lambatnya 30 (tiga puluh) hari sebelum masa berlaku perjanjian berakhir.</li>
+            <li>Perjanjian ini dapat diakhiri sebelum jangka waktunya berakhir apabila salah satu pihak tidak memenuhi kewajibannya setelah diberikan peringatan tertulis.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="pasal">
+        <div class="pasal-title">PASAL 4<br>HARGA DAN MEKANISME PEMBAYARAN</div>
+        <div class="pasal-content">
+          <ol>
+            <li>Harga BBM yang berlaku adalah harga resmi yang ditetapkan oleh Pemerintah Republik Indonesia melalui PT Pertamina (Persero) dan berlaku pada saat transaksi.</li>
+            <li>Apabila terjadi perubahan harga BBM oleh pemerintah, harga yang baru berlaku secara otomatis sejak tanggal penetapan, tanpa perlu dilakukan addendum pada perjanjian ini.</li>
+            <li>Mekanisme pembayaran yang disepakati adalah: <strong>${mekanismeTeks}</strong>.</li>
+            ${data.mekanisme === 'invoice' ? `<li>Pihak Pertama menyampaikan tagihan/invoice kepada Pihak Kedua paling lambat tanggal 5 setiap bulan berikutnya, disertai dengan rincian transaksi selama periode berjalan.</li>
+            <li>Keterlambatan pembayaran lebih dari 14 (empat belas) hari dari batas waktu yang disepakati dapat mengakibatkan penghentian sementara layanan kerjasama.</li>` : ''}
+          </ol>
+        </div>
+      </div>
+
+      <div class="pasal">
+        <div class="pasal-title">PASAL 5<br>HAK DAN KEWAJIBAN PARA PIHAK</div>
+        <div class="pasal-content">
+          <ol>
+            <li><strong>Kewajiban Pihak Pertama:</strong>
+              <ul style="padding-left:16px;margin-top:6px;">
+                <li style="margin-bottom:4px;">Menyediakan BBM sesuai spesifikasi yang telah disepakati.</li>
+                <li style="margin-bottom:4px;">Melayani kendaraan terdaftar dengan standar pelayanan yang berlaku.</li>
+                <li style="margin-bottom:4px;">Menyampaikan laporan transaksi secara berkala kepada Pihak Kedua.</li>
+                <li style="margin-bottom:4px;">Menjaga kerahasiaan data dan informasi Pihak Kedua.</li>
+              </ul>
+            </li>
+            <li><strong>Kewajiban Pihak Kedua:</strong>
+              <ul style="padding-left:16px;margin-top:6px;">
+                <li style="margin-bottom:4px;">Mendaftarkan dan memutakhirkan daftar nomor polisi kendaraan secara tertulis.</li>
+                <li style="margin-bottom:4px;">Memenuhi kewajiban pembayaran sesuai mekanisme yang telah disepakati.</li>
+                <li style="margin-bottom:4px;">Memastikan pengemudi kendaraan menunjukkan identitas yang berlaku saat pengisian.</li>
+                <li style="margin-bottom:4px;">Segera melaporkan apabila terdapat kendaraan yang sudah tidak aktif dalam program kerjasama.</li>
+              </ul>
+            </li>
+          </ol>
+        </div>
+      </div>
+
+      ${ketentuanTambahan}
+
+      <div class="pasal">
+        <div class="pasal-title">PASAL ${data.ketentuanKhusus ? '7' : '6'}<br>PENYELESAIAN PERSELISIHAN</div>
+        <div class="pasal-content">
+          <p>Apabila terjadi perselisihan dalam pelaksanaan perjanjian ini, Para Pihak sepakat untuk menyelesaikannya secara musyawarah mufakat. Apabila musyawarah tidak mencapai kesepakatan, penyelesaian akan dilakukan melalui jalur hukum yang berlaku di wilayah hukum Pengadilan Negeri Kendari.</p>
+        </div>
+      </div>
+
+      <div class="pasal">
+        <div class="pasal-title">PASAL ${data.ketentuanKhusus ? '8' : '7'}<br>KETENTUAN PENUTUP</div>
+        <div class="pasal-content">
+          <p>Perjanjian ini dibuat dalam rangkap 2 (dua) eksemplar, masing-masing bermaterai cukup dan mempunyai kekuatan hukum yang sama, satu eksemplar untuk Pihak Pertama dan satu eksemplar untuk Pihak Kedua.</p>
+        </div>
+      </div>
+
+      <div class="ttd-section">
+        <div class="ttd-box">
+          <div class="ttd-label">Pihak Pertama,</div>
+          <div class="ttd-role">${data.spbuNama}</div>
+          <div class="ttd-space"></div>
+          <div class="ttd-name">${data.spbuPimpinan}</div>
+          <div class="ttd-jabatan">${data.spbuJabatan}</div>
+        </div>
+        <div class="ttd-box">
+          <div class="ttd-label">Pihak Kedua,</div>
+          <div class="ttd-role">${data.mitraNama}</div>
+          <div class="ttd-space"></div>
+          <div class="ttd-name">${data.mitraTtdNama}</div>
+          <div class="ttd-jabatan">${data.mitraTtdJabatan}</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:30px;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:14px;">
+        Dokumen ini digenerate secara otomatis oleh Sistem SPBU CRM — Pertamina Patra Niaga Sulawesi Tenggara<br>
+        ${data.nomorKontrak} · Dicetak pada ${fmtDate(todayStr)}
+      </div>
+    </div>
+  `;
+}
+
+function getDurationText(start, end) {
+  if (!start || !end) return '_____ bulan';
+  const ms = new Date(end) - new Date(start);
+  const months = Math.round(ms / (30 * 864e5));
+  if (months >= 12) return `${Math.round(months/12)} (${numberToWords(Math.round(months/12))} tahun)`;
+  return `${months} (${numberToWords(months)} bulan)`;
+}
+
+function numberToWords(n) {
+  const w = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan',
+    'sepuluh', 'sebelas', 'dua belas', 'tiga belas', 'empat belas', 'lima belas',
+    'enam belas', 'tujuh belas', 'delapan belas', 'sembilan belas', 'dua puluh',
+    'dua puluh satu', 'dua puluh empat', 'tiga puluh', 'tiga puluh enam'];
+  const map = {1:'satu',2:'dua',3:'tiga',4:'empat',5:'lima',6:'enam',7:'tujuh',8:'delapan',
+    9:'sembilan',10:'sepuluh',11:'sebelas',12:'dua belas',24:'dua puluh empat',36:'tiga puluh enam',
+    48:'empat puluh delapan',500:'lima ratus',1000:'seribu'};
+  return map[n] || n.toLocaleString('id-ID');
+}
+
+async function saveToDb() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { alert('Silakan login terlebih dahulu'); return; }
+
+  const mitraId = prompt('Masukkan ID mitra (dari tab Data Mitra):');
+  if (!mitraId) return;
+
+  const spbuId = prompt('Masukkan ID SPBU:');
+  if (!spbuId) return;
+
+  const { error } = await sb.from('kontrak_mitra').insert({
+    mitra_id: mitraId,
+    spbu_id: spbuId,
+    nomor_kontrak: '',  // akan di-generate otomatis oleh trigger
+    tanggal_mulai: document.getElementById('tgl-mulai').value,
+    tanggal_selesai: document.getElementById('tgl-selesai').value,
+    volume_estimasi: document.getElementById('vol-estimasi').value || null,
+    syarat_pembayaran: document.getElementById('mekanisme-bayar').value === 'invoice'
+      ? `Invoice bulanan, batas pembayaran ${document.getElementById('batas-invoice').value}`
+      : 'Tunai saat transaksi',
+    ketentuan_khusus: document.getElementById('ketentuan-khusus').value || null,
+    disetujui_oleh: document.getElementById('mitra-ttd-nama').value,
+    jabatan_penanda: document.getElementById('mitra-ttd-jabatan').value,
+    status: 'aktif',
+    dibuat_oleh: session.user.id,
+  });
+
+  if (error) { alert('Gagal simpan: ' + error.message); return; }
+  alert('Kontrak berhasil disimpan ke sistem!');
+}
+
+// Initial render
+updatePreview();
+</script>
+</body>
+</html>
