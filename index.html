@@ -139,13 +139,16 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 .repeat-badge{background:var(--blue-light);color:var(--blue);font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;}
 .produk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 .produk-btn{
-  padding:12px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:10px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
   background:#fff;cursor:pointer;text-align:center;
   transition:all .15s;font-family:var(--ff);
+  display:flex;flex-direction:column;align-items:center;gap:2px;
 }
 .produk-btn:hover{border-color:var(--blue);background:var(--blue-light);}
 .produk-btn.selected{border-color:var(--blue);background:var(--blue-light);}
 .produk-btn:disabled{opacity:.5;cursor:not-allowed;}
+.produk-btn svg{transition:opacity .15s;}
+.produk-btn.selected svg rect:first-child{opacity:.7;}
 .produk-name{font-size:13px;font-weight:600;color:var(--gray-800);display:block;}
 .produk-price{font-size:11px;color:var(--gray-400);font-family:var(--fm);display:block;margin-top:2px;}
 .produk-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
@@ -994,6 +997,61 @@ async function loadProdukHarga() {
   renderHargaList();
 }
 
+// Logo SVG inline per produk — berdasarkan branding Pertamina
+const PRODUK_LOGO = {
+  pertalite: `<svg width="56" height="22" viewBox="0 0 56 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="22" rx="3" fill="#E8F5E9"/>
+    <text x="28" y="15" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="9" font-weight="900" fill="#1B5E20" letter-spacing="0.5">PERTALITE</text>
+    <rect x="0" y="18" width="56" height="4" rx="0" fill="#4CAF50" opacity="0.4"/>
+  </svg>`,
+
+  pertamax: `<svg width="56" height="22" viewBox="0 0 56 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="22" rx="3" fill="#E3F2FD"/>
+    <text x="28" y="15" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="9" font-weight="900" fill="#0D47A1" letter-spacing="0.3">PERTAMAX</text>
+    <rect x="0" y="18" width="56" height="4" rx="0" fill="#1565C0" opacity="0.4"/>
+  </svg>`,
+
+  pertamax_turbo: `<svg width="56" height="22" viewBox="0 0 56 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="22" rx="3" fill="#FBE9E7"/>
+    <text x="28" y="10" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="7" font-weight="900" fill="#BF360C" letter-spacing="0.2">PERTAMAX</text>
+    <text x="28" y="19" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="8" font-weight="900" fill="#E64A19" letter-spacing="1">TURBO</text>
+  </svg>`,
+
+  pertadex: `<svg width="56" height="22" viewBox="0 0 56 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="22" rx="3" fill="#E8F5E9"/>
+    <text x="28" y="15" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="9" font-weight="900" fill="#1B5E20" letter-spacing="0.3">PERTADEX</text>
+    <rect x="0" y="18" width="56" height="4" rx="0" fill="#2E7D32" opacity="0.4"/>
+  </svg>`,
+
+  dexlite: `<svg width="56" height="22" viewBox="0 0 56 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="22" rx="3" fill="#F3E5F5"/>
+    <text x="28" y="10" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="6.5" font-weight="900" fill="#4A148C" letter-spacing="0.5">⚙⚙</text>
+    <text x="28" y="19" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="9" font-weight="900" fill="#6A1B9A" letter-spacing="1">DEXLITE</text>
+  </svg>`,
+
+  dex: `<svg width="56" height="22" viewBox="0 0 56 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="22" rx="3" fill="#E8F5E9"/>
+    <text x="28" y="16" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="13" font-weight="900" fill="#1B5E20" letter-spacing="2">DEX</text>
+  </svg>`,
+
+  biosolar: `<svg width="56" height="22" viewBox="0 0 56 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="22" rx="3" fill="#E8F5E9"/>
+    <text x="28" y="10" text-anchor="middle" font-family="Arial,sans-serif" font-size="6" font-weight="700" fill="#2E7D32" letter-spacing="0.3">PERTAMINA</text>
+    <text x="28" y="19" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="8" font-weight="900" fill="#1B5E20" letter-spacing="0.5">BIOSOLAR</text>
+  </svg>`,
+};
+
+// Fallback logo generik jika kode tidak dikenali
+function getProdukLogo(kode, nama, warna) {
+  if (PRODUK_LOGO[kode]) return PRODUK_LOGO[kode];
+  // Generik: kotak berwarna dengan nama singkat
+  const short = nama.length > 8 ? nama.slice(0,8) : nama;
+  return `<svg width="56" height="22" viewBox="0 0 56 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="22" rx="3" fill="${warna}22"/>
+    <text x="28" y="15" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="8" font-weight="900" fill="${warna}">${short.toUpperCase()}</text>
+  </svg>`;
+}
+
 function renderProdukGrid() {
   const grid = document.getElementById('produk-grid');
   if (!produkList.length) {
@@ -1002,7 +1060,9 @@ function renderProdukGrid() {
   }
   grid.innerHTML = produkList.map(p => `
     <div class="produk-btn" onclick="selectProduk(this,'${p.nama}',${p.harga},'${p.kode}')">
-      <span class="produk-dot" style="background:${p.warna}"></span>
+      <div style="display:flex;justify-content:center;margin-bottom:6px;">
+        ${getProdukLogo(p.kode, p.nama, p.warna)}
+      </div>
       <span class="produk-name">${p.nama}</span>
       <span class="produk-price">Rp ${p.harga.toLocaleString('id-ID')}/L</span>
     </div>
