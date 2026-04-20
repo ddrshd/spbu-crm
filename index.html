@@ -1322,8 +1322,9 @@ async function loadHistory() {
   tbody.innerHTML = '<tr><td colspan="8" class="loading-msg">Memuat...</td></tr>';
 
   try {
+    // Query transaksi tanpa join operator (hindari schema cache error)
     let q = sb.from('transaksi')
-      .select('*, operator:operator_id(nama)')
+      .select('id, spbu_id, operator_id, nopol, produk, volume, total, created_at, deleted_at, catatan')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(200);
@@ -1332,10 +1333,27 @@ async function loadHistory() {
 
     const { data, error } = await q;
     if (error) throw error;
-    historyData = data;
 
-    document.getElementById('history-count').textContent = data.length + ' transaksi terbaru';
-    if (!data.length) {
+    // Load nama operator dari profiles secara terpisah
+    let operatorMap = {};
+    if (data && data.length) {
+      const opIds = [...new Set(data.map(t => t.operator_id).filter(Boolean))];
+      if (opIds.length) {
+        const { data: ops } = await sb
+          .from('profiles')
+          .select('id, nama')
+          .in('id', opIds);
+        (ops || []).forEach(o => { operatorMap[o.id] = o.nama; });
+      }
+    }
+
+    historyData = data.map(t => ({
+      ...t,
+      operator_nama: operatorMap[t.operator_id] || '—'
+    }));
+    document.getElementById('history-count').textContent = (data?.length || 0) + ' transaksi terbaru';
+
+    if (!data || !data.length) {
       tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Belum ada transaksi</td></tr>';
       return;
     }
@@ -1350,6 +1368,7 @@ async function loadHistory() {
       const ds = dt.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
       const pk = (t.produk || '').replace(/\s/g, '-');
       const isR = nc[t.nopol] > 1;
+      const opNama = t.operator_nama || operatorMap[t.operator_id] || '—';
       const aksi = canEdit
         ? `<td><button class="act-btn del" onclick="hapusTrx('${t.id}')">Hapus</button></td>`
         : '<td style="display:none"></td>';
@@ -1360,7 +1379,7 @@ async function loadHistory() {
         <td style="font-family:var(--fm)">${parseFloat(t.volume).toFixed(1)} L</td>
         <td style="font-family:var(--fm)">${parseInt(t.total).toLocaleString('id-ID')}</td>
         <td style="font-size:12px">${isR ? '<span style="color:var(--blue)">● Repeat</span>' : '<span style="color:var(--gray-400)">○ Baru</span>'}</td>
-        <td style="color:var(--text-muted)">${t.operator ? t.operator.nama : '—'}</td>
+        <td style="color:var(--text-muted)">${opNama}</td>
         ${aksi}
       </tr>`;
     }).join('');
@@ -1389,9 +1408,9 @@ function exportCSV() {
       new Date(t.created_at).toLocaleString('id-ID'),
       t.nopol, t.produk,
       parseFloat(t.volume).toFixed(2),
-      t.harga_per_liter, t.total,
+      t.harga_per_liter || '', t.total,
       nc[t.nopol] > 1 ? 'Repeat' : 'Baru',
-      t.operator ? t.operator.nama : '—'
+      t.operator_nama || '—'
     ]);
   });
   const csv = rows.map(r => r.map(v => '"' + v + '"').join(',')).join('\n');
