@@ -333,6 +333,15 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 .add-btn{padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--ff);}
 .add-btn:hover{background:var(--blue-d);}
 
+/* ─── MODE BTN ───────────────────────────────────── */
+.mode-btn{
+  padding:4px 12px;font-size:11px;font-weight:500;
+  border:none;border-radius:4px;cursor:pointer;
+  font-family:var(--ff);background:transparent;
+  color:var(--text-muted);transition:all .15s;
+}
+.mode-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+
 /* ─── FILTER TABS ────────────────────────────────── */
 .filter-tab{
   padding:5px 14px;font-size:12px;font-weight:500;
@@ -432,18 +441,75 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
           </div>
         </div>
 
-        <div class="vol-row">
-          <div class="field-group" style="margin-bottom:0">
-            <label class="field-label">Volume (Liter)</label>
-            <input class="field-input" id="volume-input" type="number"
-              placeholder="0.00" min="0.5" max="500" step="0.01"
-              oninput="calcTotal()"/>
+        <!-- Toggle mode input -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;" id="input-mode-wrap">
+          <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-600);">Mode input:</span>
+          <div style="display:flex;gap:4px;background:var(--gray-100);border-radius:6px;padding:3px;">
+            <button class="mode-btn active" id="mode-vol" onclick="setInputMode('volume')">Volume → Total</button>
+            <button class="mode-btn" id="mode-harga" onclick="setInputMode('harga')">Total → Volume</button>
           </div>
-          <div class="field-group" style="margin-bottom:0">
-            <label class="field-label">Total (Rp)</label>
-            <input class="field-input" id="total-input" type="text"
-              placeholder="Otomatis" readonly
-              style="background:var(--gray-50);color:var(--gray-600);"/>
+        </div>
+
+        <!-- Mode A: input volume → hitung total -->
+        <div id="input-vol-mode">
+          <div class="vol-row">
+            <div class="field-group" style="margin-bottom:0">
+              <label class="field-label">Volume (Liter)</label>
+              <input class="field-input" id="volume-input" type="number"
+                placeholder="0.00" min="0.5" max="500" step="0.01"
+                oninput="calcFromVolume()"/>
+            </div>
+            <div class="field-group" style="margin-bottom:0">
+              <label class="field-label">Total (Rp)</label>
+              <input class="field-input" id="total-display" type="text"
+                placeholder="Otomatis"
+                style="background:var(--gray-50);color:var(--gray-600);"
+                readonly/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode B: input total/harga bayar → hitung volume -->
+        <div id="input-harga-mode" style="display:none;">
+          <div class="vol-row">
+            <div class="field-group" style="margin-bottom:0">
+              <label class="field-label">Harga Bayar (Rp)</label>
+              <div style="position:relative;">
+                <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--gray-400);">Rp</span>
+                <input class="field-input" id="harga-input" type="number"
+                  placeholder="50000" min="1000" step="500"
+                  style="padding-left:36px;"
+                  oninput="calcFromHarga()"/>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="harga-hint">
+                Masukkan nominal yang dibayar pelanggan
+              </div>
+            </div>
+            <div class="field-group" style="margin-bottom:0">
+              <label class="field-label">Volume (Liter)</label>
+              <input class="field-input" id="volume-result" type="text"
+                placeholder="Otomatis"
+                style="background:var(--gray-50);color:var(--gray-600);font-family:var(--fm);font-size:18px;font-weight:500;"
+                readonly/>
+            </div>
+          </div>
+          <!-- Preview total aktual vs harga bayar -->
+          <div id="harga-preview" style="display:none;margin-top:10px;padding:10px 12px;background:var(--blue-light);border-radius:var(--radius);font-size:12px;color:var(--blue);">
+          </div>
+        </div>
+
+        <!-- Hidden input untuk submit — selalu berisi nilai final -->
+        <input type="hidden" id="volume-input-final"/>
+        <input type="hidden" id="total-input-final"/>
+
+        <!-- Pilih SPBU — hanya muncul untuk Super Admin -->
+        <div class="field-group" style="margin-top:18px;display:none;" id="sa-spbu-group">
+          <label class="field-label">SPBU <span style="color:var(--red)">*</span></label>
+          <select class="field-select" id="sa-spbu-select">
+            <option value="">— Pilih SPBU —</option>
+          </select>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+            Sebagai Super Admin, pilih SPBU tempat transaksi ini dicatat.
           </div>
         </div>
 
@@ -804,10 +870,21 @@ function applyRoleTabs() {
   if (role === 'super_admin') {
     document.getElementById('tab-spbu').classList.remove('hidden');
     document.getElementById('tab-harga').classList.remove('hidden');
-    // Super admin lihat filter manager juga
     document.getElementById('filter-manager-btn')?.classList.remove('hidden');
+
+    // Tampilkan dropdown pilih SPBU di form input transaksi
+    const saSpbuGroup = document.getElementById('sa-spbu-group');
+    if (saSpbuGroup) saSpbuGroup.style.display = 'block';
+
+    // Populate dropdown SPBU untuk super admin
+    loadSpbuList().then(() => {
+      const sel = document.getElementById('sa-spbu-select');
+      sel.innerHTML = '<option value="">— Pilih SPBU —</option>' +
+        spbuList.filter(s => s.aktif).map(s =>
+          `<option value="${s.id}">${s.nama} (${s.kode})</option>`
+        ).join('');
+    });
   } else {
-    // Manager tidak perlu filter manager
     document.getElementById('filter-manager-btn')?.classList.add('hidden');
   }
   // Update deskripsi user management
@@ -817,7 +894,7 @@ function applyRoleTabs() {
       ? 'Kelola operator untuk SPBU ' + (currentSpbu?.nama || '')
       : 'Kelola semua operator dan manager seluruh SPBU Sultra';
   }
-  // Manager hanya bisa tambah operator, sembunyikan opsi manager di role select
+  // Manager hanya bisa tambah operator
   if (role === 'manager') {
     const roleSelect = document.getElementById('u-role');
     if (roleSelect) {
@@ -965,28 +1042,113 @@ async function checkRepeat(nopol) {
   } catch (e) {}
 }
 
+let currentInputMode = 'volume'; // 'volume' | 'harga'
+
+function setInputMode(mode) {
+  currentInputMode = mode;
+  document.getElementById('mode-vol').classList.toggle('active', mode === 'volume');
+  document.getElementById('mode-harga').classList.toggle('active', mode === 'harga');
+  document.getElementById('input-vol-mode').style.display = mode === 'volume' ? '' : 'none';
+  document.getElementById('input-harga-mode').style.display = mode === 'harga' ? '' : 'none';
+  // Reset semua nilai saat ganti mode
+  document.getElementById('volume-input').value = '';
+  document.getElementById('total-display').value = '';
+  document.getElementById('harga-input').value = '';
+  document.getElementById('volume-result').value = '';
+  document.getElementById('harga-preview').style.display = 'none';
+  document.getElementById('volume-input-final').value = '';
+  document.getElementById('total-input-final').value = '';
+}
+
 function selectProduk(el, nama, harga, kode) {
   document.querySelectorAll('.produk-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   selectedProduk = { nama, harga, kode };
   selectedHarga = harga;
-  calcTotal();
+  // Recalculate berdasarkan mode aktif
+  if (currentInputMode === 'volume') calcFromVolume();
+  else calcFromHarga();
 }
 
-function calcTotal() {
+function calcFromVolume() {
   const vol = parseFloat(document.getElementById('volume-input').value);
-  const ti = document.getElementById('total-input');
+  const dispEl = document.getElementById('total-display');
   if (selectedProduk && !isNaN(vol) && vol > 0) {
-    ti.value = 'Rp ' + Math.round(vol * selectedHarga).toLocaleString('id-ID');
+    const total = Math.round(vol * selectedHarga);
+    dispEl.value = 'Rp ' + total.toLocaleString('id-ID');
+    document.getElementById('volume-input-final').value = vol;
+    document.getElementById('total-input-final').value = total;
   } else {
-    ti.value = '';
+    dispEl.value = '';
+    document.getElementById('volume-input-final').value = '';
+    document.getElementById('total-input-final').value = '';
   }
 }
 
+function calcFromHarga() {
+  const hargaBayar = parseFloat(document.getElementById('harga-input').value);
+  const volEl   = document.getElementById('volume-result');
+  const preview = document.getElementById('harga-preview');
+
+  if (!selectedProduk || isNaN(hargaBayar) || hargaBayar <= 0) {
+    volEl.value = '';
+    preview.style.display = 'none';
+    document.getElementById('volume-input-final').value = '';
+    document.getElementById('total-input-final').value = '';
+    return;
+  }
+
+  // Hitung volume = harga bayar / harga per liter (bulatkan ke 2 desimal)
+  const volRaw  = hargaBayar / selectedHarga;
+  const vol     = Math.floor(volRaw * 100) / 100; // floor ke 0.01 L
+  const totalAktual = Math.round(vol * selectedHarga);
+  const sisa    = hargaBayar - totalAktual;
+
+  volEl.value = vol.toFixed(2) + ' L';
+  document.getElementById('volume-input-final').value = vol;
+  document.getElementById('total-input-final').value = totalAktual;
+
+  // Preview: tampilkan breakdown
+  preview.style.display = 'block';
+  preview.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">
+      <div>
+        <div style="font-weight:600;font-size:14px;">${vol.toFixed(2)} L</div>
+        <div style="font-size:10px;opacity:.7;margin-top:2px;">Volume</div>
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:14px;">Rp ${totalAktual.toLocaleString('id-ID')}</div>
+        <div style="font-size:10px;opacity:.7;margin-top:2px;">Total BBM</div>
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:14px;color:${sisa > 0 ? 'var(--green)' : 'inherit'}">
+          ${sisa > 0 ? 'Rp ' + sisa.toLocaleString('id-ID') : '—'}
+        </div>
+        <div style="font-size:10px;opacity:.7;margin-top:2px;">Kembalian</div>
+      </div>
+    </div>
+  `;
+
+  // Update hint
+  document.getElementById('harga-hint').textContent =
+    `@ Rp ${selectedHarga.toLocaleString('id-ID')}/L · ${vol.toFixed(2)} L`;
+}
+
+// Fungsi lama tetap ada untuk kompatibilitas (dipanggil di beberapa tempat)
+function calcTotal() { calcFromVolume(); }
+
 function confirmTrx() {
   const nopol = document.getElementById('nopol-input').value.trim().toUpperCase();
-  const vol = parseFloat(document.getElementById('volume-input').value);
   const catatan = document.getElementById('catatan-input').value.trim();
+
+  // Ambil volume & total dari hidden input (sudah dihitung oleh calcFromVolume/calcFromHarga)
+  const vol   = parseFloat(document.getElementById('volume-input-final').value);
+  const total = parseInt(document.getElementById('total-input-final').value);
+
+  // Untuk super admin, ambil spbu dari dropdown
+  const isSuperAdmin = currentProfile.role === 'super_admin';
+  const saSpbuId = isSuperAdmin ? document.getElementById('sa-spbu-select').value : null;
+  const saSpbu   = isSuperAdmin ? spbuList.find(s => s.id === saSpbuId) : null;
 
   // Validasi
   if (!nopol || nopol.replace(/\s/g,'').length < 4) {
@@ -995,21 +1157,39 @@ function confirmTrx() {
     return;
   }
   if (!selectedProduk) { showToast('Pilih produk BBM!', true); return; }
-  if (!vol || vol <= 0 || vol > 500) { showToast('Volume tidak valid (0.5 – 500 L)!', true); return; }
-  if (currentSpbu && !currentShift) {
+  if (!vol || vol <= 0 || vol > 500) {
+    showToast(currentInputMode === 'harga'
+      ? 'Masukkan harga bayar terlebih dahulu!'
+      : 'Volume tidak valid (0.5 – 500 L)!', true);
+    return;
+  }
+  if (isSuperAdmin && !saSpbuId) {
+    showToast('Pilih SPBU terlebih dahulu!', true);
+    document.getElementById('sa-spbu-select').focus();
+    return;
+  }
+  if (!isSuperAdmin && currentSpbu && !currentShift) {
     showToast('Buka shift terlebih dahulu!', true); return;
   }
 
   document.getElementById('nopol-input').classList.remove('error');
 
-  // Tampilkan modal konfirmasi
-  const total = Math.round(vol * selectedHarga);
+  // Label mode di modal
+  const modeLabel = currentInputMode === 'harga'
+    ? `<div><div class="label">Harga bayar</div><div class="val">Rp ${parseInt(document.getElementById('harga-input').value).toLocaleString('id-ID')}</div></div>`
+    : '';
+  const spbuInfo = isSuperAdmin
+    ? `<div><div class="label">SPBU</div><div class="val">${saSpbu?.nama || '—'}</div></div>`
+    : '';
+
   document.getElementById('modal-data').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       <div><div class="label">Nopol</div><div class="val">${nopol}</div></div>
       <div><div class="label">Produk</div><div class="val">${selectedProduk.nama}</div></div>
       <div><div class="label">Volume</div><div class="val">${vol.toFixed(2)} L</div></div>
       <div><div class="label">Total</div><div class="val" style="color:var(--blue)">Rp ${total.toLocaleString('id-ID')}</div></div>
+      ${modeLabel}
+      ${spbuInfo}
       ${catatan ? `<div style="grid-column:1/-1"><div class="label">Catatan</div><div>${catatan}</div></div>` : ''}
     </div>
   `;
@@ -1022,17 +1202,22 @@ function closeModal() {
 
 async function submitTrx() {
   closeModal();
-  const nopol = document.getElementById('nopol-input').value.trim().toUpperCase();
-  const vol = parseFloat(document.getElementById('volume-input').value);
+  const nopol   = document.getElementById('nopol-input').value.trim().toUpperCase();
+  const vol     = parseFloat(document.getElementById('volume-input-final').value);
+  const total   = parseInt(document.getElementById('total-input-final').value);
   const catatan = document.getElementById('catatan-input').value.trim();
-  const total = Math.round(vol * selectedHarga);
+
+  const isSuperAdmin = currentProfile.role === 'super_admin';
+  const spbuId = isSuperAdmin
+    ? document.getElementById('sa-spbu-select').value
+    : currentSpbu?.id || null;
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
   try {
-    const payload = {
-      spbu_id: currentSpbu?.id || null,
+    const { error } = await sb.from('transaksi').insert({
+      spbu_id: spbuId,
       operator_id: currentUser.id,
       shift_id: currentShift?.id || null,
       nopol,
@@ -1042,19 +1227,24 @@ async function submitTrx() {
       harga_per_liter: selectedHarga,
       total,
       catatan: catatan || null
-    };
-
-    const { error } = await sb.from('transaksi').insert(payload);
+    });
     if (error) throw error;
 
     showToast('Tersimpan — ' + nopol);
 
-    // Reset form
+    // Reset form lengkap
     document.getElementById('nopol-input').value = '';
     document.getElementById('volume-input').value = '';
-    document.getElementById('total-input').value = '';
+    document.getElementById('total-display').value = '';
+    document.getElementById('harga-input').value = '';
+    document.getElementById('volume-result').value = '';
     document.getElementById('catatan-input').value = '';
     document.getElementById('nopol-hint').innerHTML = '';
+    document.getElementById('volume-input-final').value = '';
+    document.getElementById('total-input-final').value = '';
+    document.getElementById('harga-preview').style.display = 'none';
+    document.getElementById('harga-hint').textContent = 'Masukkan nominal yang dibayar pelanggan';
+    if (isSuperAdmin) document.getElementById('sa-spbu-select').value = '';
     document.querySelectorAll('.produk-btn').forEach(b => b.classList.remove('selected'));
     selectedProduk = null; selectedHarga = 0;
 
