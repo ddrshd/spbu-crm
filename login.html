@@ -397,9 +397,15 @@ async function doLogin() {
       return;
     }
 
-    // Redirect berhasil
+    // Redirect berhasil — sesuaikan berdasarkan role
     showToast('Selamat datang, ' + profile.nama + '!');
-    setTimeout(() => { window.location.href = 'index.html'; }, 800);
+    setTimeout(() => {
+      if (profile.role === 'mitra') {
+        window.location.href = 'mitra.html';
+      } else {
+        window.location.href = 'index.html';
+      }
+    }, 800);
 
   } catch (e) {
     showError('Terjadi kesalahan: ' + e.message);

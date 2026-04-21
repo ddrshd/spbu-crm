@@ -363,7 +363,16 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {
   auth: { persistSession: true, autoRefreshToken: true }
 });
 
-let currentUser = null, currentProfile = null, currentMitra = null;
+// Cek jika sudah login sebagai non-mitra, redirect ke index
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    const { data: p } = await sb.from('profiles').select('role').eq('id', session.user.id).single();
+    if (p && p.role !== 'mitra') {
+      window.location.href = 'index.html';
+    }
+  }
+})();
 let currentPeriod = 'bulan_ini';
 let trxData = [];
 
