@@ -405,10 +405,9 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     <div class="tab active" id="tab-input" onclick="switchTab('input')">Input Transaksi</div>
     <div class="tab" id="tab-history" onclick="switchTab('history')">Riwayat</div>
     <div class="tab" id="tab-dashboard" onclick="switchTab('dashboard')">Dashboard</div>
-    <div class="tab hidden" id="tab-operator" onclick="switchTab('operator')">Operator</div>
     <div class="tab hidden" id="tab-users" onclick="switchTab('users')">Manajemen User</div>
     <div class="tab hidden" id="tab-spbu" onclick="switchTab('spbu')">Data SPBU</div>
-    <div class="tab hidden" id="tab-harga" onclick="switchTab('harga')">Harga BBM</div>
+    <div class="tab hidden" id="tab-harga" onclick="switchTab('harga')">Produk & Harga</div>
   </div>
 
   <!-- VIEW: INPUT TRANSAKSI -->
@@ -578,26 +577,15 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     </div>
   </div>
 
-  <!-- VIEW: OPERATOR (Manager & Super Admin) -->
-  <div class="view" id="view-operator">
-    <div class="toolbar">
-      <span style="font-size:13px;font-weight:500">Daftar Operator</span>
-      <button class="add-btn" onclick="showAddOperator()">+ Tambah Operator</button>
-    </div>
-    <div class="operator-grid" id="operator-grid">
-      <div class="loading-msg">Memuat...</div>
-    </div>
-  </div>
-
-  <!-- VIEW: HARGA BBM (Super Admin only) -->
+  <!-- VIEW: PRODUK & HARGA (Super Admin + Manager bisa lihat aktif/nonaktif) -->
   <div class="view" id="view-harga">
     <div class="harga-card">
       <div class="harga-header">
-        Konfigurasi Harga BBM
-        <span style="font-size:11px;color:var(--text-muted);font-weight:400">Perubahan langsung berlaku untuk semua SPBU</span>
+        <span>Produk BBM &amp; Harga</span>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:400" id="harga-subtitle">Perubahan langsung berlaku untuk semua SPBU</span>
       </div>
       <div id="harga-list">
-        <div class="loading-msg">Memuat harga...</div>
+        <div class="loading-msg">Memuat...</div>
       </div>
     </div>
   </div>
@@ -714,7 +702,46 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
   </div>
 </div>
 
-<!-- MODAL TAMBAH / EDIT SPBU -->
+<!-- MODAL EDIT USER -->
+<div class="modal-overlay" id="modal-edit-user" onclick="if(event.target===this)closeEditUserModal()">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">Edit User</div>
+    <div class="modal-body" id="edit-user-desc">Perbarui nama atau password user.</div>
+
+    <input type="hidden" id="edit-user-id"/>
+
+    <div class="field-group">
+      <label class="field-label">Nama Lengkap</label>
+      <input class="field-input" id="edit-nama" type="text" placeholder="Nama baru (kosongkan jika tidak diubah)"/>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Password Baru</label>
+      <div style="position:relative;">
+        <input class="field-input" id="edit-password" type="password"
+          placeholder="Kosongkan jika tidak ingin ganti password"
+          style="padding-right:44px;"/>
+        <button type="button" onclick="toggleEditPw()"
+          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+          background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:15px;padding:4px;">
+          <span id="edit-pw-eye">👁</span>
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+        Minimal 8 karakter. Sampaikan password baru ke user setelah disimpan.
+      </div>
+    </div>
+
+    <div class="error-msg" id="edit-error" style="display:none;margin-bottom:12px;"></div>
+
+    <div class="modal-row">
+      <button class="modal-btn cancel" onclick="closeEditUserModal()">Batal</button>
+      <button class="modal-btn confirm" id="edit-submit-btn" onclick="submitEditUser()">
+        <span id="edit-submit-label">Simpan Perubahan</span>
+      </button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-spbu" onclick="if(event.target===this)closeSpbuModal()">
   <div class="modal" style="max-width:440px;">
     <div class="modal-title" id="modal-spbu-title">Tambah SPBU</div>
@@ -865,44 +892,54 @@ function renderUserTopbar() {
 
 function applyRoleTabs() {
   const role = currentProfile.role;
+
+  // Manajemen User — manager & super_admin
   if (role === 'manager' || role === 'super_admin') {
-    document.getElementById('tab-operator').classList.remove('hidden');
     document.getElementById('tab-users').classList.remove('hidden');
     document.getElementById('th-aksi').style.display = '';
   }
+
+  // Produk & Harga — manager bisa lihat (view only), super_admin bisa edit
+  if (role === 'manager' || role === 'super_admin') {
+    document.getElementById('tab-harga').classList.remove('hidden');
+    if (role === 'manager') {
+      document.getElementById('harga-subtitle').textContent = 'Produk aktif yang tersedia di SPBU Anda';
+    }
+  }
+
+  // Data SPBU — super_admin only
   if (role === 'super_admin') {
     document.getElementById('tab-spbu').classList.remove('hidden');
-    document.getElementById('tab-harga').classList.remove('hidden');
     document.getElementById('filter-manager-btn')?.classList.remove('hidden');
-
-    // Tampilkan dropdown pilih SPBU di form input transaksi
-    const saSpbuGroup = document.getElementById('sa-spbu-group');
-    if (saSpbuGroup) saSpbuGroup.style.display = 'block';
-
-    // Populate dropdown SPBU untuk super admin
-    loadSpbuList().then(() => {
-      const sel = document.getElementById('sa-spbu-select');
-      sel.innerHTML = '<option value="">— Pilih SPBU —</option>' +
-        spbuList.filter(s => s.aktif).map(s =>
-          `<option value="${s.id}">${s.nama} (${s.kode})</option>`
-        ).join('');
-    });
   } else {
     document.getElementById('filter-manager-btn')?.classList.add('hidden');
   }
-  // Update deskripsi user management
+
+  // Update deskripsi manajemen user
   const desc = document.getElementById('users-desc');
   if (desc) {
     desc.textContent = role === 'manager'
       ? 'Kelola operator untuk SPBU ' + (currentSpbu?.nama || '')
       : 'Kelola semua operator dan manager seluruh SPBU Sultra';
   }
+
   // Manager hanya bisa tambah operator
   if (role === 'manager') {
     const roleSelect = document.getElementById('u-role');
-    if (roleSelect) {
-      roleSelect.innerHTML = '<option value="operator">Operator</option>';
-    }
+    if (roleSelect) roleSelect.innerHTML = '<option value="operator">Operator</option>';
+  }
+
+  // Super admin — dropdown SPBU di form input transaksi
+  if (role === 'super_admin') {
+    const saSpbuGroup = document.getElementById('sa-spbu-group');
+    if (saSpbuGroup) saSpbuGroup.style.display = 'block';
+    loadSpbuList().then(() => {
+      const sel = document.getElementById('sa-spbu-select');
+      if (sel) sel.innerHTML = '<option value="">— Pilih SPBU —</option>' +
+        spbuList.filter(s => s.aktif).map(s =>
+          `<option value="${s.id}">${s.nama} (${s.kode})</option>`
+        ).join('');
+    });
   }
 }
 
@@ -985,16 +1022,39 @@ async function tutupShift() {
 
 // ─── PRODUK HARGA ────────────────────────────────────────────
 async function loadProdukHarga() {
-  const { data, error } = await sb
-    .from('produk_harga')
-    .select('*')
-    .eq('aktif', true)
-    .order('urutan');
+  const isAdmin = currentProfile?.role === 'super_admin';
+  const isMgr   = currentProfile?.role === 'manager';
 
+  // Admin & manager load semua produk (termasuk nonaktif) untuk tab Produk & Harga
+  // Form input transaksi tetap hanya pakai yang aktif
+  let q = sb.from('produk_harga').select('*');
+  if (isAdmin || isMgr) {
+    q = q.order('urutan');  // semua, termasuk nonaktif
+  } else {
+    q = q.eq('aktif', true).order('urutan'); // operator: aktif saja
+  }
+
+  const { data, error } = await q;
   if (error || !data) return;
+
   produkList = data;
+  // Untuk form input transaksi, filter hanya yang aktif dan bukan pertadex
   renderProdukGrid();
   renderHargaList();
+}
+
+async function toggleProdukAktif(kode, nama, aktifSaat) {
+  const action = aktifSaat ? 'nonaktifkan' : 'aktifkan';
+  if (!confirm(`${action} produk ${nama}?\n\n${aktifSaat ? 'Produk tidak akan muncul di form input transaksi operator.' : 'Produk akan kembali muncul di form input transaksi.'}`)) return;
+
+  const { error } = await sb.from('produk_harga')
+    .update({ aktif: !aktifSaat })
+    .eq('kode', kode);
+
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+
+  showToast(`${nama} di${action}kan`);
+  await loadProdukHarga(); // reload semua
 }
 
 // Logo SVG inline per produk — berdasarkan branding Pertamina
@@ -1020,11 +1080,13 @@ function getProdukLogo(kode, nama, warna) {
 
 function renderProdukGrid() {
   const grid = document.getElementById('produk-grid');
-  if (!produkList.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--gray-400);font-size:13px;">Tidak ada produk aktif</div>';
+  // Form input: hanya produk aktif, skip pertadex
+  const aktifList = produkList.filter(p => p.aktif !== false && p.kode !== 'pertadex');
+  if (!aktifList.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--gray-400);font-size:13px;padding:12px 0;">Tidak ada produk aktif</div>';
     return;
   }
-  grid.innerHTML = produkList.map(p => `
+  grid.innerHTML = aktifList.map(p => `
     <div class="produk-btn" onclick="selectProduk(this,'${p.nama}',${p.harga},'${p.kode}')">
       <div style="display:flex;justify-content:center;margin-bottom:6px;">
         ${getProdukLogo(p.kode, p.nama, p.warna)}
@@ -1486,82 +1548,78 @@ async function loadDashboard() {
   }
 }
 
-// ─── OPERATOR MANAGEMENT ─────────────────────────────────────
-async function loadOperators() {
-  const grid = document.getElementById('operator-grid');
-  grid.innerHTML = '<div class="loading-msg">Memuat...</div>';
-
-  let q = sb.from('profiles')
-    .select('*, spbu:spbu_id(nama,kode)')
-    .eq('role', 'operator')
-    .order('nama');
-
-  // Manager hanya lihat operator SPBU-nya
-  if (currentProfile.role === 'manager' && currentSpbu) {
-    q = q.eq('spbu_id', currentSpbu.id);
-  }
-
-  const { data, error } = await q;
-  if (error) { grid.innerHTML = '<div class="empty-state">Error: ' + error.message + '</div>'; return; }
-  if (!data || !data.length) { grid.innerHTML = '<div class="empty-state">Belum ada operator</div>'; return; }
-
-  grid.innerHTML = data.map(op => {
-    const inisial = op.nama.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    return `<div class="op-card">
-      <div class="op-card-head">
-        <div class="op-avatar">${inisial}</div>
-        <div>
-          <div class="op-name">${op.nama}</div>
-          <div class="op-email">${op.spbu ? op.spbu.nama : '—'}</div>
-        </div>
-      </div>
-      <span class="op-status ${op.aktif ? 'active' : 'inactive'}">${op.aktif ? 'Aktif' : 'Nonaktif'}</span>
-      <div class="op-actions">
-        <button class="op-btn ${op.aktif ? 'danger' : ''}" onclick="toggleOperator('${op.id}',${op.aktif})">
-          ${op.aktif ? 'Nonaktifkan' : 'Aktifkan'}
-        </button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function toggleOperator(id, aktif) {
-  const label = aktif ? 'nonaktifkan' : 'aktifkan';
-  if (!confirm(`${label} operator ini?`)) return;
-  const { error } = await sb.from('profiles').update({ aktif: !aktif }).eq('id', id);
-  if (error) { showToast('Gagal: ' + error.message, true); return; }
-  showToast('Operator di-' + label + '.');
-  loadOperators();
-}
-
-function showAddOperator() {
-  showToast('Fitur tambah operator — gunakan Supabase Auth Dashboard untuk membuat user baru, lalu set role via SQL.', false);
-}
-
 // ─── HARGA BBM CONFIG (Super Admin) ──────────────────────────
 function renderHargaList() {
   const list = document.getElementById('harga-list');
-  if (!produkList.length) {
+  const role = currentProfile?.role;
+  const isAdmin = role === 'super_admin';
+
+  // Untuk manager: tampilkan semua produk (aktif & nonaktif) tapi view-only
+  // Untuk super_admin: full control
+  const displayList = isAdmin
+    ? produkList  // sudah load semua dari loadProdukHarga
+    : produkList;
+
+  if (!displayList.length) {
     list.innerHTML = '<div class="empty-state">Tidak ada produk</div>';
     return;
   }
-  list.innerHTML = produkList.map(p => `
-    <div class="harga-row">
-      <div class="harga-produk-info">
-        <div class="harga-dot" style="background:${p.warna}"></div>
-        <div>
-          <div class="harga-nama">${p.nama}</div>
-          <div class="harga-kode">${p.kode}</div>
+
+  list.innerHTML = displayList.map(p => {
+    const logoHtml = getProdukLogo(p.kode, p.nama, p.warna);
+    const isAktif = p.aktif !== false;
+
+    if (isAdmin) {
+      // Super admin: edit harga + toggle aktif
+      return `<div class="harga-row" style="${!isAktif ? 'opacity:.5;' : ''}">
+        <div class="harga-produk-info">
+          <div style="width:60px;height:28px;display:flex;align-items:center;">${logoHtml}</div>
+          <div>
+            <div class="harga-nama">${p.nama}</div>
+            <div class="harga-kode">${p.kode}</div>
+          </div>
         </div>
-      </div>
-      <div class="harga-input-wrap">
-        <span class="harga-prefix">Rp</span>
-        <input class="harga-input" id="harga-${p.kode}" type="number"
-          value="${p.harga}" min="1000" max="99999" step="100"/>
-        <button class="harga-save-btn" onclick="saveHarga('${p.kode}','${p.nama}')">Simpan</button>
-      </div>
-    </div>
-  `).join('');
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+          <div class="harga-input-wrap">
+            <span class="harga-prefix">Rp</span>
+            <input class="harga-input" id="harga-${p.kode}" type="number"
+              value="${p.harga}" min="1000" max="99999" step="100"
+              ${!isAktif ? 'disabled' : ''}/>
+            <button class="harga-save-btn" onclick="saveHarga('${p.kode}','${p.nama}')"
+              ${!isAktif ? 'disabled' : ''}>Simpan</button>
+          </div>
+          <button onclick="toggleProdukAktif('${p.kode}','${p.nama}',${isAktif})"
+            style="padding:6px 12px;font-size:11px;font-weight:500;border-radius:6px;cursor:pointer;
+            font-family:var(--ff);border:1px solid ${isAktif ? 'rgba(224,36,36,.3)' : 'rgba(14,159,110,.3)'};
+            background:transparent;color:${isAktif ? 'var(--red)' : 'var(--green)'};
+            transition:all .15s;white-space:nowrap;">
+            ${isAktif ? 'Nonaktifkan' : 'Aktifkan'}
+          </button>
+        </div>
+      </div>`;
+    } else {
+      // Manager: view only — lihat produk + status aktif/nonaktif
+      return `<div class="harga-row" style="${!isAktif ? 'opacity:.45;' : ''}">
+        <div class="harga-produk-info">
+          <div style="width:60px;height:28px;display:flex;align-items:center;">${logoHtml}</div>
+          <div>
+            <div class="harga-nama">${p.nama}</div>
+            <div class="harga-kode">${p.kode}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="font-family:var(--fm);font-size:16px;font-weight:600;color:var(--text);">
+            Rp ${p.harga.toLocaleString('id-ID')}<span style="font-size:11px;font-weight:400;color:var(--text-muted)">/L</span>
+          </div>
+          <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;
+            background:${isAktif ? '#d1fae5' : '#fee2e2'};
+            color:${isAktif ? '#065f46' : '#991b1b'};">
+            ${isAktif ? 'Aktif' : 'Nonaktif'}
+          </span>
+        </div>
+      </div>`;
+    }
+  }).join('');
 }
 
 async function saveHarga(kode, nama) {
@@ -1605,11 +1663,11 @@ function switchTab(tab) {
   document.getElementById('tab-' + tab).classList.add('active');
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + tab).classList.add('active');
-  if (tab === 'history')  loadHistory();
+  if (tab === 'history')   loadHistory();
   if (tab === 'dashboard') loadDashboard();
-  if (tab === 'operator') loadOperators();
-  if (tab === 'users')    loadUsers();
-  if (tab === 'spbu')     loadSpbu();
+  if (tab === 'users')     loadUsers();
+  if (tab === 'spbu')      loadSpbu();
+  if (tab === 'harga')     loadProdukHarga();
 }
 
 async function doLogout() {
@@ -1708,10 +1766,13 @@ function renderUsersTable() {
       </td>
       <td>
         ${canToggle ? `
-          <button class="act-btn ${u.aktif ? 'del' : ''}"
-            onclick="toggleUser('${u.id}', ${u.aktif})">
-            ${u.aktif ? 'Nonaktifkan' : 'Aktifkan'}
-          </button>
+          <div style="display:flex;gap:4px;">
+            <button class="act-btn" onclick="showEditUser('${u.id}','${u.nama.replace(/'/g,"\\'")}')">Edit</button>
+            <button class="act-btn ${u.aktif ? 'del' : ''}"
+              onclick="toggleUser('${u.id}', ${u.aktif})">
+              ${u.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+            </button>
+          </div>
         ` : '—'}
       </td>
     </tr>`;
@@ -1829,7 +1890,92 @@ function showUError(msg) {
   el.style.display = 'block';
 }
 
-async function toggleUser(userId, aktif) {
+// ─── EDIT USER ───────────────────────────────────────────────
+function showEditUser(userId, namaSaat) {
+  document.getElementById('edit-user-id').value = userId;
+  document.getElementById('edit-nama').value = namaSaat || '';
+  document.getElementById('edit-password').value = '';
+  document.getElementById('edit-error').style.display = 'none';
+  document.getElementById('edit-user-desc').textContent =
+    `Edit nama atau reset password untuk: ${namaSaat}`;
+  document.getElementById('modal-edit-user').classList.add('show');
+  document.getElementById('edit-nama').focus();
+}
+
+function closeEditUserModal() {
+  document.getElementById('modal-edit-user').classList.remove('show');
+}
+
+function toggleEditPw() {
+  const pw = document.getElementById('edit-password');
+  const eye = document.getElementById('edit-pw-eye');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+  eye.textContent = pw.type === 'password' ? '👁' : '🙈';
+}
+
+async function submitEditUser() {
+  const userId   = document.getElementById('edit-user-id').value;
+  const nama     = document.getElementById('edit-nama').value.trim();
+  const password = document.getElementById('edit-password').value;
+  const errEl    = document.getElementById('edit-error');
+
+  errEl.style.display = 'none';
+
+  if (!nama && !password) {
+    errEl.textContent = 'Isi minimal nama baru atau password baru';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (password && password.length < 8) {
+    errEl.textContent = 'Password minimal 8 karakter';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn   = document.getElementById('edit-submit-btn');
+  const label = document.getElementById('edit-submit-label');
+  btn.disabled = true;
+  label.textContent = 'Menyimpan...';
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch('/api/update-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        target_user_id: userId,
+        nama:     nama     || undefined,
+        password: password || undefined,
+      })
+    });
+
+    const result = await res.json();
+    if (!res.ok) {
+      errEl.textContent = result.error || 'Gagal menyimpan';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    closeEditUserModal();
+    const msg = [];
+    if (result.updated?.nama)     msg.push('nama diperbarui');
+    if (result.updated?.password) msg.push('password direset');
+    showToast('Berhasil: ' + msg.join(' & '));
+    loadUsers();
+
+  } catch (e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    label.textContent = 'Simpan Perubahan';
+  }
+}
+
+
   const action = aktif ? 'nonaktifkan' : 'aktifkan';
   if (!confirm(`${action} user ini?`)) return;
 
