@@ -10,282 +10,339 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --ff:'IBM Plex Sans',sans-serif;--fm:'IBM Plex Mono',monospace;--fs:'Noto Serif',serif;
-  --blue:#1a56db;--blue-light:#e8f0fe;
+  --blue:#1a56db;--blue-d:#1240a8;--blue-light:#e8f0fe;
+  --green:#0e9f6e;--red:#e02424;
   --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
   --gray-400:#9ca3af;--gray-600:#4b5563;--gray-800:#1f2937;--gray-900:#111827;
   --surface:#fff;--bg:#f0f2f5;--border:#e5e7eb;--text:#111827;--text-muted:#6b7280;
   --radius:8px;--radius-lg:12px;
 }
-body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px;}
+body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
 
-/* LAYOUT */
-.wrapper{display:grid;grid-template-columns:380px 1fr;min-height:100vh;}
-.sidebar{background:var(--gray-900);padding:24px;overflow-y:auto;position:sticky;top:0;height:100vh;}
-.preview-area{padding:24px;background:var(--bg);}
-
-/* SIDEBAR */
-.sidebar-title{font-size:13px;font-weight:600;color:#fff;letter-spacing:.08em;text-transform:uppercase;margin-bottom:20px;}
-.section-head{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-400);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #374151;}
-.field-group{margin-bottom:12px;}
-.field-label{font-size:11px;font-weight:500;color:var(--gray-400);margin-bottom:4px;display:block;letter-spacing:.04em;text-transform:uppercase;}
-.field-input{
-  width:100%;padding:8px 10px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
-  border-radius:var(--radius);font-size:13px;font-family:var(--ff);
-  color:#fff;outline:none;transition:border-color .15s;
+/* ─── TOPBAR ─────────────────────────── */
+.topbar{
+  background:var(--gray-900);color:#fff;
+  padding:12px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:20;
 }
-.field-input::placeholder{color:var(--gray-400);}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.back-btn{
+  padding:5px 10px;background:transparent;
+  border:1px solid rgba(255,255,255,.12);border-radius:6px;
+  font-size:11px;color:var(--gray-400);cursor:pointer;font-family:var(--ff);
+  text-decoration:none;transition:all .15s;
+}
+.back-btn:hover{color:#fff;border-color:rgba(255,255,255,.3);}
+.topbar-title{font-size:13px;font-weight:600;color:#fff;letter-spacing:.06em;}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.session-chip{
+  font-size:11px;color:var(--gray-400);font-family:var(--fm);
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;padding:4px 12px;
+}
+.session-chip.ok{color:#10b981;}
+
+/* ─── MAIN FORM ──────────────────────── */
+.page{max-width:760px;margin:0 auto;padding:28px 20px 60px;}
+.page-title{font-size:20px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--text-muted);margin-bottom:28px;}
+
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden;
+}
+.card-head{
+  background:var(--gray-50);border-bottom:1px solid var(--border);
+  padding:13px 20px;display:flex;align-items:center;gap:10px;
+}
+.card-head-icon{
+  width:28px;height:28px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;flex-shrink:0;
+}
+.card-head-title{font-size:13px;font-weight:600;color:var(--gray-800);}
+.card-body{padding:20px;}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.field-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.field-full{grid-column:1/-1;}
+.field-group{display:flex;flex-direction:column;gap:5px;}
+.field-label{
+  font-size:11px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--gray-600);
+}
+.field-input{
+  width:100%;padding:9px 12px;
+  border:1.5px solid var(--border);border-radius:var(--radius);
+  font-size:14px;font-family:var(--ff);color:var(--text);
+  background:#fff;outline:none;transition:border-color .15s;
+}
 .field-input:focus{border-color:var(--blue);}
 .field-select{
-  width:100%;padding:8px 10px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
-  border-radius:var(--radius);font-size:13px;font-family:var(--ff);
-  color:#fff;outline:none;cursor:pointer;
+  width:100%;padding:9px 12px;
+  border:1.5px solid var(--border);border-radius:var(--radius);
+  font-size:14px;font-family:var(--ff);color:var(--text);
+  background:#fff;outline:none;cursor:pointer;
 }
-.field-select option{background:#1f2937;color:#fff;}
-.field-textarea{
-  resize:vertical;min-height:70px;font-size:12px;
-  padding:8px 10px;line-height:1.5;
-}
-.vol-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.generate-btn{
-  width:100%;padding:12px;
-  background:var(--blue);color:#fff;border:none;
-  border-radius:var(--radius);font-size:13px;font-weight:600;
-  cursor:pointer;font-family:var(--ff);margin-top:20px;
-  letter-spacing:.04em;transition:background .15s;
-}
-.generate-btn:hover{background:#1240a8;}
-.print-btn{
-  width:100%;padding:10px;
-  background:transparent;color:#10b981;
-  border:1px solid rgba(16,185,129,.3);
-  border-radius:var(--radius);font-size:12px;font-weight:500;
-  cursor:pointer;font-family:var(--ff);margin-top:8px;
-  transition:all .15s;
-}
-.print-btn:hover{background:rgba(16,185,129,.1);}
-.save-btn{
-  width:100%;padding:10px;
-  background:transparent;color:var(--gray-400);
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:var(--radius);font-size:12px;font-weight:500;
-  cursor:pointer;font-family:var(--ff);margin-top:8px;
-  transition:all .15s;
-}
-.save-btn:hover{background:rgba(255,255,255,.06);color:#fff;}
+.field-select:focus{border-color:var(--blue);}
+.field-textarea{resize:vertical;min-height:80px;font-size:13px;line-height:1.6;}
 
-/* PREVIEW AREA */
-.preview-toolbar{
+/* ─── BOTTOM ACTION BAR ──────────────── */
+.action-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--surface);border-top:1px solid var(--border);
+  padding:14px 24px;
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;
+  z-index:20;
+}
+.btn-save{
+  padding:10px 20px;background:transparent;
+  border:1px solid var(--border);border-radius:var(--radius);
+  font-size:13px;font-weight:500;cursor:pointer;font-family:var(--ff);
+  color:var(--text-muted);transition:all .15s;
+}
+.btn-save:hover{background:var(--gray-50);color:var(--text);}
+.btn-save:disabled{opacity:.5;cursor:not-allowed;}
+.btn-preview{
+  padding:10px 24px;background:var(--gray-900);color:#fff;
+  border:none;border-radius:var(--radius);
+  font-size:13px;font-weight:600;cursor:pointer;font-family:var(--ff);
+  letter-spacing:.04em;transition:background .15s;display:flex;align-items:center;gap:8px;
+}
+.btn-preview:hover{background:#374151;}
+
+/* ─── PREVIEW OVERLAY ────────────────── */
+.preview-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.6);
+  z-index:50;
+  display:none;
+  flex-direction:column;
+}
+.preview-overlay.show{display:flex;}
+.preview-topbar{
+  background:var(--gray-900);color:#fff;
+  padding:12px 20px;
   display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:16px;
+  flex-shrink:0;
 }
-.preview-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-400);}
-.preview-actions{display:flex;gap:8px;}
+.preview-topbar-left{display:flex;align-items:center;gap:10px;}
+.preview-topbar-title{font-size:13px;font-weight:600;}
+.preview-topbar-actions{display:flex;gap:8px;}
+.btn-print{
+  padding:7px 16px;background:var(--green);color:#fff;
+  border:none;border-radius:6px;font-size:12px;font-weight:500;
+  cursor:pointer;font-family:var(--ff);transition:background .15s;
+}
+.btn-print:hover{background:#0a7a5a;}
+.btn-close-preview{
+  padding:7px 14px;background:rgba(255,255,255,.08);color:#fff;
+  border:1px solid rgba(255,255,255,.12);border-radius:6px;
+  font-size:12px;cursor:pointer;font-family:var(--ff);transition:all .15s;
+}
+.btn-close-preview:hover{background:rgba(255,255,255,.15);}
+.preview-scroll{flex:1;overflow-y:auto;padding:24px;background:#e5e7eb;}
 
-/* KONTRAK DOCUMENT */
+/* ─── KONTRAK DOKUMEN ────────────────── */
 .kontrak-doc{
-  background:#fff;
-  max-width:720px;margin:0 auto;
+  background:#fff;max-width:720px;margin:0 auto;
   padding:60px 70px;
-  box-shadow:0 2px 20px rgba(0,0,0,.08);
-  min-height:1000px;
-  position:relative;
+  box-shadow:0 4px 24px rgba(0,0,0,.12);
 }
 .doc-header{text-align:center;margin-bottom:36px;padding-bottom:24px;border-bottom:2px solid #111;}
-.doc-header-logo{
-  display:flex;align-items:center;justify-content:center;gap:14px;
-  margin-bottom:16px;
-}
-.doc-logo-box{
-  width:52px;height:52px;background:#c00;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:4px;
-}
-.doc-logo-box img{width:40px;height:40px;object-fit:contain;}
+.doc-header-logo{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px;}
+.doc-logo-box{width:52px;height:52px;background:#c00;display:flex;align-items:center;justify-content:center;border-radius:4px;}
 .doc-company-name{font-size:18px;font-weight:700;color:#111;letter-spacing:.02em;}
 .doc-company-sub{font-size:11px;color:#555;margin-top:2px;}
 .doc-title{font-family:var(--fs);font-size:20px;font-weight:700;color:#111;letter-spacing:.06em;margin-top:16px;}
-.doc-subtitle{font-size:12px;color:#555;margin-top:6px;font-family:var(--fm);}
-
 .doc-body{font-family:var(--fs);font-size:13px;line-height:1.9;color:#1a1a1a;}
 .doc-body p{margin-bottom:12px;}
 .doc-body strong{font-weight:700;}
-
-.pihak-section{
-  background:#f8f9fa;border:1px solid #e5e7eb;
-  border-radius:8px;padding:16px 20px;margin:20px 0;
-}
+.pihak-section{background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin:20px 0;}
 .pihak-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:10px;}
 .pihak-row{display:flex;margin-bottom:6px;font-size:13px;}
 .pihak-key{width:160px;color:#555;flex-shrink:0;}
 .pihak-val{font-weight:500;color:#111;}
-
 .pasal{margin:24px 0;}
 .pasal-title{font-size:14px;font-weight:700;text-align:center;margin-bottom:10px;letter-spacing:.04em;}
 .pasal-content{font-size:13px;line-height:1.85;}
 .pasal-content ol{padding-left:20px;}
 .pasal-content ol li{margin-bottom:6px;}
-
-.ttd-section{
-  display:grid;grid-template-columns:1fr 1fr;gap:40px;
-  margin-top:60px;padding-top:24px;border-top:1px solid #e5e7eb;
-}
+.ttd-section{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:60px;padding-top:24px;border-top:1px solid #e5e7eb;}
 .ttd-box{text-align:center;}
 .ttd-label{font-size:12px;color:#555;margin-bottom:4px;}
 .ttd-role{font-size:11px;font-weight:600;color:#111;text-transform:uppercase;letter-spacing:.06em;}
 .ttd-space{height:72px;border-bottom:1px solid #555;margin:16px 0 8px;}
 .ttd-name{font-size:13px;font-weight:700;color:#111;}
 .ttd-jabatan{font-size:11px;color:#666;margin-top:2px;}
+.nomor-kontrak-badge{display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:6px 14px;font-family:var(--fm);font-size:13px;font-weight:600;color:#1e40af;margin-bottom:20px;}
 
-.nomor-kontrak-badge{
-  display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;
-  border-radius:6px;padding:6px 14px;font-family:var(--fm);
-  font-size:13px;font-weight:600;color:#1e40af;margin-bottom:20px;
+@media print{
+  .preview-topbar,.action-bar,.topbar{display:none!important;}
+  .preview-overlay{position:static;display:block;background:none;}
+  .preview-scroll{overflow:visible;padding:0;}
+  .kontrak-doc{box-shadow:none;padding:40px 50px;max-width:100%;}
 }
-
-@media print {
-  body { background: white; }
-  .wrapper { display: block; }
-  .sidebar { display: none; }
-  .preview-area { padding: 0; }
-  .preview-toolbar { display: none; }
-  .kontrak-doc {
-    box-shadow: none;
-    padding: 40px 50px;
-    max-width: 100%;
-    margin: 0;
-  }
+@media(max-width:600px){
+  .field-grid,.field-grid-3{grid-template-columns:1fr;}
+  .kontrak-doc{padding:32px 24px;}
+  .page{padding:20px 14px 80px;}
 }
 </style>
 </head>
 <body>
-<div class="wrapper">
 
-  <!-- SIDEBAR FORM -->
-  <div class="sidebar">
-    <div class="sidebar-title">Generator Kontrak Mitra</div>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="index.html" class="back-btn">← Kembali</a>
+    <span class="topbar-title">Generator Kontrak Mitra B2B</span>
+  </div>
+  <div class="topbar-right">
+    <span class="session-chip" id="session-chip">Memeriksa login...</span>
+  </div>
+</div>
 
-    <div class="section-head">Data SPBU (Pihak Pertama)</div>
-    <div class="field-group">
-      <label class="field-label">Nama SPBU</label>
-      <input class="field-input" id="spbu-nama" value="SPBU 76.981.01" oninput="updatePreview()"/>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Alamat SPBU</label>
-      <input class="field-input" id="spbu-alamat" placeholder="Jl. Soekarno Hatta, Kendari" oninput="updatePreview()"/>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Nama Pimpinan / Pengelola</label>
-      <input class="field-input" id="spbu-pimpinan" placeholder="Nama pimpinan SPBU" oninput="updatePreview()"/>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Jabatan</label>
-      <input class="field-input" id="spbu-jabatan" value="Pengelola SPBU" oninput="updatePreview()"/>
-    </div>
+<!-- MAIN FORM -->
+<div class="page">
+  <div class="page-title">Buat Kontrak Kerjasama BBM</div>
+  <div class="page-sub">Isi seluruh data di bawah, lalu klik "Lihat Preview Kontrak" untuk melihat dan mencetak dokumen.</div>
 
-    <div class="section-head">Data Mitra (Pihak Kedua)</div>
-    <div class="field-group">
-      <label class="field-label">Nama Perusahaan/Instansi</label>
-      <input class="field-input" id="mitra-nama" placeholder="PT. Contoh Perusahaan" oninput="updatePreview()"/>
+  <!-- Card 1: Data SPBU -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-icon" style="background:#e8f0fe;">🏪</div>
+      <div class="card-head-title">Data SPBU — Pihak Pertama</div>
     </div>
-    <div class="field-group">
-      <label class="field-label">Alamat</label>
-      <input class="field-input" id="mitra-alamat" placeholder="Alamat perusahaan" oninput="updatePreview()"/>
-    </div>
-    <div class="field-group">
-      <label class="field-label">NPWP</label>
-      <input class="field-input" id="mitra-npwp" placeholder="00.000.000.0-000.000" oninput="updatePreview()"/>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Nama Penandatangan</label>
-      <input class="field-input" id="mitra-ttd-nama" placeholder="Nama direktur/pimpinan" oninput="updatePreview()"/>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Jabatan Penandatangan</label>
-      <input class="field-input" id="mitra-ttd-jabatan" placeholder="Direktur Utama" oninput="updatePreview()"/>
-    </div>
-
-    <div class="section-head">Ketentuan Kontrak</div>
-    <div class="vol-row">
-      <div class="field-group">
-        <label class="field-label">Tanggal Mulai</label>
-        <input class="field-input" id="tgl-mulai" type="date" oninput="updatePreview()"/>
-      </div>
-      <div class="field-group">
-        <label class="field-label">Tanggal Selesai</label>
-        <input class="field-input" id="tgl-selesai" type="date" oninput="updatePreview()"/>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field-group">
+          <label class="field-label">Nama SPBU</label>
+          <input class="field-input" id="spbu-nama" value="SPBU 76.981.01"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Kota</label>
+          <input class="field-input" id="ttd-kota" value="Kendari"/>
+        </div>
+        <div class="field-group field-full">
+          <label class="field-label">Alamat SPBU</label>
+          <input class="field-input" id="spbu-alamat" placeholder="Jl. Soekarno Hatta, Kendari"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Nama Pimpinan</label>
+          <input class="field-input" id="spbu-pimpinan" placeholder="Nama pengelola SPBU"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Jabatan</label>
+          <input class="field-input" id="spbu-jabatan" value="Pengelola SPBU"/>
+        </div>
       </div>
     </div>
-    <div class="field-group">
-      <label class="field-label">Mekanisme Pembayaran</label>
-      <select class="field-select" id="mekanisme-bayar" onchange="updatePreview()">
-        <option value="tunai">Tunai saat transaksi</option>
-        <option value="invoice">Invoice bulanan (kredit)</option>
-      </select>
-    </div>
-    <div class="field-group" id="invoice-detail" style="display:none">
-      <label class="field-label">Batas Pembayaran Invoice</label>
-      <input class="field-input" id="batas-invoice" placeholder="Tanggal 10 setiap bulan" oninput="updatePreview()"/>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Estimasi Volume per Bulan (Liter)</label>
-      <input class="field-input" id="vol-estimasi" type="number" placeholder="1000" oninput="updatePreview()"/>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Produk BBM yang Disepakati</label>
-      <input class="field-input" id="produk-list" placeholder="Pertalite, Pertamax, Biosolar" oninput="updatePreview()"/>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Ketentuan Khusus (opsional)</label>
-      <textarea class="field-input field-textarea" id="ketentuan-khusus"
-        placeholder="Misal: Pembelian minimal 50L per transaksi, kendaraan wajib menunjukkan identitas mitra, dll."
-        oninput="updatePreview()"></textarea>
-    </div>
-
-    <div class="section-head">Tempat & Tanggal Penandatanganan</div>
-    <div class="vol-row">
-      <div class="field-group">
-        <label class="field-label">Kota</label>
-        <input class="field-input" id="ttd-kota" value="Kendari" oninput="updatePreview()"/>
-      </div>
-      <div class="field-group">
-        <label class="field-label">Tanggal TTD</label>
-        <input class="field-input" id="ttd-tanggal" type="date" oninput="updatePreview()"/>
-      </div>
-    </div>
-
-    <div class="section-head">Link ke Sistem (untuk Simpan ke DB)</div>
-    <div class="field-group">
-      <label class="field-label">Pilih Mitra</label>
-      <select class="field-select" id="sel-mitra">
-        <option value="">— Memuat daftar mitra... —</option>
-      </select>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Pilih SPBU</label>
-      <select class="field-select" id="sel-spbu">
-        <option value="">— Memuat daftar SPBU... —</option>
-      </select>
-    </div>
-
-    <button class="generate-btn" onclick="updatePreview()">Perbarui Preview</button>
-    <button class="print-btn" onclick="window.print()">Cetak / Simpan PDF</button>
-    <button class="save-btn" onclick="saveToDb()">Simpan ke Sistem</button>
   </div>
 
-  <!-- PREVIEW -->
-  <div class="preview-area">
-    <div class="preview-toolbar">
-      <span class="preview-label">Preview Kontrak</span>
-      <div class="preview-actions">
-        <span style="font-size:12px;color:var(--gray-400);">Gunakan Ctrl+P atau tombol Cetak untuk export PDF</span>
+  <!-- Card 2: Data Mitra -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-icon" style="background:#d1fae5;">🏢</div>
+      <div class="card-head-title">Data Mitra — Pihak Kedua</div>
+    </div>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field-group field-full">
+          <label class="field-label">Nama Perusahaan / Instansi</label>
+          <input class="field-input" id="mitra-nama" placeholder="PT. Contoh Perusahaan"/>
+        </div>
+        <div class="field-group field-full">
+          <label class="field-label">Alamat</label>
+          <input class="field-input" id="mitra-alamat" placeholder="Alamat perusahaan"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">NPWP</label>
+          <input class="field-input" id="mitra-npwp" placeholder="00.000.000.0-000.000"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Nama Penandatangan</label>
+          <input class="field-input" id="mitra-ttd-nama" placeholder="Nama direktur / pimpinan"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Jabatan Penandatangan</label>
+          <input class="field-input" id="mitra-ttd-jabatan" placeholder="Direktur Utama"/>
+        </div>
       </div>
     </div>
+  </div>
 
-    <div class="kontrak-doc" id="kontrak-doc">
-      <!-- Akan diisi oleh updatePreview() -->
+  <!-- Card 3: Ketentuan Kontrak -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-icon" style="background:#fef3c7;">📋</div>
+      <div class="card-head-title">Ketentuan Kontrak</div>
     </div>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field-group">
+          <label class="field-label">Tanggal Mulai</label>
+          <input class="field-input" id="tgl-mulai" type="date"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Tanggal Selesai</label>
+          <input class="field-input" id="tgl-selesai" type="date"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Mekanisme Pembayaran</label>
+          <select class="field-select" id="mekanisme-bayar" onchange="toggleInvoice()">
+            <option value="tunai">Tunai saat transaksi</option>
+            <option value="invoice">Invoice bulanan (kredit)</option>
+          </select>
+        </div>
+        <div class="field-group" id="invoice-detail" style="display:none">
+          <label class="field-label">Batas Pembayaran Invoice</label>
+          <input class="field-input" id="batas-invoice" placeholder="Tanggal 10 setiap bulan"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Estimasi Volume / Bulan (Liter)</label>
+          <input class="field-input" id="vol-estimasi" type="number" placeholder="1000"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Produk BBM Disepakati</label>
+          <input class="field-input" id="produk-list" placeholder="Pertalite, Pertamax, Biosolar"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Tanggal Penandatanganan</label>
+          <input class="field-input" id="ttd-tanggal" type="date"/>
+        </div>
+        <div class="field-group field-full">
+          <label class="field-label">Ketentuan Khusus (opsional)</label>
+          <textarea class="field-input field-textarea" id="ketentuan-khusus"
+            placeholder="Misal: Pembelian minimal 50L per transaksi, kendaraan wajib menunjukkan identitas mitra, dll."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .page -->
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+  <button class="btn-save" onclick="saveToDb()" id="save-btn">Simpan ke Database</button>
+  <button class="btn-preview" onclick="showPreview()">
+    <span>👁</span> Lihat Preview Kontrak
+  </button>
+</div>
+
+<!-- PREVIEW OVERLAY -->
+<div class="preview-overlay" id="preview-overlay">
+  <div class="preview-topbar">
+    <div class="preview-topbar-left">
+      <span class="preview-topbar-title">Preview Kontrak</span>
+    </div>
+    <div class="preview-topbar-actions">
+      <button class="btn-print" onclick="window.print()">🖨 Cetak / Simpan PDF</button>
+      <button class="btn-close-preview" onclick="closePreview()">✕ Tutup</button>
+    </div>
+  </div>
+  <div class="preview-scroll">
+    <div class="kontrak-doc" id="kontrak-doc"></div>
   </div>
 </div>
 
@@ -303,9 +360,25 @@ document.getElementById('tgl-mulai').value = todayStr;
 document.getElementById('tgl-selesai').value = nextYear;
 document.getElementById('ttd-tanggal').value = todayStr;
 
-document.getElementById('mekanisme-bayar').addEventListener('change', function() {
-  document.getElementById('invoice-detail').style.display =
-    this.value === 'invoice' ? 'block' : 'none';
+function toggleInvoice() {
+  const v = document.getElementById('mekanisme-bayar').value;
+  document.getElementById('invoice-detail').style.display = v === 'invoice' ? 'block' : 'none';
+}
+
+function showPreview() {
+  updatePreview();
+  document.getElementById('preview-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePreview() {
+  document.getElementById('preview-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// Tutup preview dengan Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePreview();
 });
 
 function fmtDate(str) {
@@ -530,40 +603,104 @@ function numberToWords(n) {
   return map[n] || n.toLocaleString('id-ID');
 }
 
-// Load daftar mitra dan SPBU untuk dropdown
-async function loadDropdowns() {
+// State session
+let sessionUser = null, sessionProfile = null, mitraList = [], spbuList = [];
+
+async function initSession() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) return;
+  const chip = document.getElementById('session-chip');
 
-  const headers = {
-    'apikey': SUPA_KEY,
-    'Authorization': `Bearer ${session.access_token}`
-  };
+  if (!session) {
+    chip.textContent = '⚠ Belum login';
+    chip.style.color = '#f59e0b';
+    return;
+  }
+  sessionUser = session.user;
 
-  // Load mitra
-  const mitraRes = await fetch(`${SUPA_URL}/rest/v1/mitra?select=id,nama_perusahaan&status=eq.aktif&order=nama_perusahaan`, { headers });
-  const mitras = await mitraRes.json();
-  const selMitra = document.getElementById('sel-mitra');
-  selMitra.innerHTML = '<option value="">— Pilih Mitra —</option>' +
-    (mitras || []).map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+  const res = await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${sessionUser.id}&select=id,nama,role,spbu_id,mitra_id,spbu:spbu_id(id,nama,kode)&limit=1`, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${session.access_token}` }
+  });
+  const profiles = await res.json();
+  sessionProfile = profiles?.[0];
 
-  // Load SPBU
-  const spbuRes = await fetch(`${SUPA_URL}/rest/v1/spbu?select=id,kode,nama&aktif=eq.true&order=kode`, { headers });
-  const spbus = await spbuRes.json();
-  const selSpbu = document.getElementById('sel-spbu');
-  selSpbu.innerHTML = '<option value="">— Pilih SPBU —</option>' +
-    (spbus || []).map(s => `<option value="${s.id}">${s.nama} (${s.kode})</option>`).join('');
+  if (!sessionProfile) {
+    chip.textContent = '⚠ Profil tidak ditemukan';
+    chip.style.color = '#ef4444';
+    return;
+  }
+
+  const roleLabel = { super_admin: 'Super Admin', manager: 'Manager', operator: 'Operator', mitra: 'Mitra' };
+  chip.textContent = `✓ ${sessionProfile.nama} · ${roleLabel[sessionProfile.role] || sessionProfile.role}`;
+  chip.classList.add('ok');
+
+  // Load daftar mitra untuk referensi
+  const mitraRes = await fetch(`${SUPA_URL}/rest/v1/mitra?select=id,nama_perusahaan,spbu_id&status=eq.aktif&order=nama_perusahaan`, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${session.access_token}` }
+  });
+  mitraList = await mitraRes.json() || [];
+
+  // Load daftar SPBU
+  const spbuRes = await fetch(`${SUPA_URL}/rest/v1/spbu?select=id,kode,nama&aktif=eq.true&order=kode`, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${session.access_token}` }
+  });
+  spbuList = await spbuRes.json() || [];
 }
 
 async function saveToDb() {
-  const mitraId = document.getElementById('sel-mitra').value;
-  const spbuId  = document.getElementById('sel-spbu').value;
-
-  if (!mitraId) { alert('Pilih mitra terlebih dahulu dari dropdown "Link ke Sistem"'); return; }
-  if (!spbuId)  { alert('Pilih SPBU terlebih dahulu dari dropdown "Link ke Sistem"'); return; }
-
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { alert('Silakan login terlebih dahulu'); return; }
+  if (!session) {
+    alert('Anda belum login. Buka login.html terlebih dahulu.');
+    return;
+  }
+  if (!sessionProfile) {
+    alert('Profil tidak ditemukan. Coba refresh halaman.');
+    return;
+  }
+
+  // Tentukan mitra_id dan spbu_id otomatis
+  let mitraId = null, spbuId = null;
+
+  const mitraNama = document.getElementById('mitra-nama').value.trim();
+
+  if (sessionProfile.role === 'super_admin') {
+    // Super admin: cari mitra berdasarkan nama yang diisi di form
+    const found = mitraList.find(m =>
+      m.nama_perusahaan.toLowerCase() === mitraNama.toLowerCase()
+    );
+    if (found) {
+      mitraId = found.id;
+      spbuId  = found.spbu_id;
+    } else if (mitraList.length === 1) {
+      // Hanya ada 1 mitra, pakai langsung
+      mitraId = mitraList[0].id;
+      spbuId  = mitraList[0].spbu_id || spbuList[0]?.id;
+    } else {
+      // Minta konfirmasi pilih dari list yang ada
+      const names = mitraList.map((m, i) => `${i+1}. ${m.nama_perusahaan}`).join('\n');
+      const pick = prompt(`Pilih nomor mitra yang sesuai dengan kontrak ini:\n\n${names}`);
+      const idx = parseInt(pick) - 1;
+      if (isNaN(idx) || !mitraList[idx]) { alert('Pilihan tidak valid'); return; }
+      mitraId = mitraList[idx].id;
+      spbuId  = mitraList[idx].spbu_id || spbuList[0]?.id;
+    }
+  } else if (sessionProfile.role === 'manager') {
+    // Manager: auto pakai SPBU dan mitra yang terhubung ke SPBU-nya
+    spbuId = sessionProfile.spbu_id;
+    const found = mitraList.find(m =>
+      m.spbu_id === spbuId &&
+      m.nama_perusahaan.toLowerCase() === mitraNama.toLowerCase()
+    );
+    mitraId = found?.id || mitraList.find(m => m.spbu_id === spbuId)?.id;
+  }
+
+  if (!mitraId) {
+    alert(`Mitra "${mitraNama}" tidak ditemukan di database.\n\nPastikan mitra sudah didaftarkan terlebih dahulu melalui tab Mitra di halaman utama.`);
+    return;
+  }
+  if (!spbuId) {
+    alert('SPBU tidak terdeteksi. Pastikan profil kamu sudah terhubung ke SPBU.');
+    return;
+  }
 
   const btn = document.querySelector('.save-btn');
   btn.textContent = 'Menyimpan...';
@@ -579,15 +716,15 @@ async function saveToDb() {
       body: JSON.stringify({
         mitra_id: mitraId,
         spbu_id: spbuId,
-        tanggal_mulai: document.getElementById('tgl-mulai').value,
-        tanggal_selesai: document.getElementById('tgl-selesai').value,
-        volume_estimasi: document.getElementById('vol-estimasi').value || null,
+        tanggal_mulai:    document.getElementById('tgl-mulai').value,
+        tanggal_selesai:  document.getElementById('tgl-selesai').value,
+        volume_estimasi:  document.getElementById('vol-estimasi').value || null,
         syarat_pembayaran: document.getElementById('mekanisme-bayar').value === 'invoice'
           ? `Invoice bulanan, batas pembayaran ${document.getElementById('batas-invoice').value || 'tanggal 10'}`
           : 'Tunai saat transaksi',
-        ketentuan_khusus: document.getElementById('ketentuan-khusus').value || null,
-        disetujui_oleh: document.getElementById('mitra-ttd-nama').value || null,
-        jabatan_penanda: document.getElementById('mitra-ttd-jabatan').value || null,
+        ketentuan_khusus:  document.getElementById('ketentuan-khusus').value || null,
+        disetujui_oleh:    document.getElementById('mitra-ttd-nama').value || null,
+        jabatan_penanda:   document.getElementById('mitra-ttd-jabatan').value || null,
         status: 'aktif',
       })
     });
@@ -597,7 +734,6 @@ async function saveToDb() {
       alert('Gagal simpan: ' + (result.error || 'Unknown error'));
       return;
     }
-
     alert(`✅ Kontrak berhasil disimpan!\nNomor: ${result.kontrak?.nomor_kontrak || '—'}`);
   } catch (e) {
     alert('Error: ' + e.message);
@@ -609,7 +745,7 @@ async function saveToDb() {
 
 // Initial render
 updatePreview();
-loadDropdowns();
+initSession();
 </script>
 </body>
 </html>
