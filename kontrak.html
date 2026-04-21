@@ -255,6 +255,20 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
       </div>
     </div>
 
+    <div class="section-head">Link ke Sistem (untuk Simpan ke DB)</div>
+    <div class="field-group">
+      <label class="field-label">Pilih Mitra</label>
+      <select class="field-select" id="sel-mitra">
+        <option value="">— Memuat daftar mitra... —</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Pilih SPBU</label>
+      <select class="field-select" id="sel-spbu">
+        <option value="">— Memuat daftar SPBU... —</option>
+      </select>
+    </div>
+
     <button class="generate-btn" onclick="updatePreview()">Perbarui Preview</button>
     <button class="print-btn" onclick="window.print()">Cetak / Simpan PDF</button>
     <button class="save-btn" onclick="saveToDb()">Simpan ke Sistem</button>
@@ -516,39 +530,86 @@ function numberToWords(n) {
   return map[n] || n.toLocaleString('id-ID');
 }
 
+// Load daftar mitra dan SPBU untuk dropdown
+async function loadDropdowns() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
+  const headers = {
+    'apikey': SUPA_KEY,
+    'Authorization': `Bearer ${session.access_token}`
+  };
+
+  // Load mitra
+  const mitraRes = await fetch(`${SUPA_URL}/rest/v1/mitra?select=id,nama_perusahaan&status=eq.aktif&order=nama_perusahaan`, { headers });
+  const mitras = await mitraRes.json();
+  const selMitra = document.getElementById('sel-mitra');
+  selMitra.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+    (mitras || []).map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+
+  // Load SPBU
+  const spbuRes = await fetch(`${SUPA_URL}/rest/v1/spbu?select=id,kode,nama&aktif=eq.true&order=kode`, { headers });
+  const spbus = await spbuRes.json();
+  const selSpbu = document.getElementById('sel-spbu');
+  selSpbu.innerHTML = '<option value="">— Pilih SPBU —</option>' +
+    (spbus || []).map(s => `<option value="${s.id}">${s.nama} (${s.kode})</option>`).join('');
+}
+
 async function saveToDb() {
+  const mitraId = document.getElementById('sel-mitra').value;
+  const spbuId  = document.getElementById('sel-spbu').value;
+
+  if (!mitraId) { alert('Pilih mitra terlebih dahulu dari dropdown "Link ke Sistem"'); return; }
+  if (!spbuId)  { alert('Pilih SPBU terlebih dahulu dari dropdown "Link ke Sistem"'); return; }
+
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { alert('Silakan login terlebih dahulu'); return; }
 
-  const mitraId = prompt('Masukkan ID mitra (dari tab Data Mitra):');
-  if (!mitraId) return;
+  const btn = document.querySelector('.save-btn');
+  btn.textContent = 'Menyimpan...';
+  btn.disabled = true;
 
-  const spbuId = prompt('Masukkan ID SPBU:');
-  if (!spbuId) return;
+  try {
+    const res = await fetch('/api/save-kontrak', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        mitra_id: mitraId,
+        spbu_id: spbuId,
+        tanggal_mulai: document.getElementById('tgl-mulai').value,
+        tanggal_selesai: document.getElementById('tgl-selesai').value,
+        volume_estimasi: document.getElementById('vol-estimasi').value || null,
+        syarat_pembayaran: document.getElementById('mekanisme-bayar').value === 'invoice'
+          ? `Invoice bulanan, batas pembayaran ${document.getElementById('batas-invoice').value || 'tanggal 10'}`
+          : 'Tunai saat transaksi',
+        ketentuan_khusus: document.getElementById('ketentuan-khusus').value || null,
+        disetujui_oleh: document.getElementById('mitra-ttd-nama').value || null,
+        jabatan_penanda: document.getElementById('mitra-ttd-jabatan').value || null,
+        status: 'aktif',
+      })
+    });
 
-  const { error } = await sb.from('kontrak_mitra').insert({
-    mitra_id: mitraId,
-    spbu_id: spbuId,
-    nomor_kontrak: '',  // akan di-generate otomatis oleh trigger
-    tanggal_mulai: document.getElementById('tgl-mulai').value,
-    tanggal_selesai: document.getElementById('tgl-selesai').value,
-    volume_estimasi: document.getElementById('vol-estimasi').value || null,
-    syarat_pembayaran: document.getElementById('mekanisme-bayar').value === 'invoice'
-      ? `Invoice bulanan, batas pembayaran ${document.getElementById('batas-invoice').value}`
-      : 'Tunai saat transaksi',
-    ketentuan_khusus: document.getElementById('ketentuan-khusus').value || null,
-    disetujui_oleh: document.getElementById('mitra-ttd-nama').value,
-    jabatan_penanda: document.getElementById('mitra-ttd-jabatan').value,
-    status: 'aktif',
-    dibuat_oleh: session.user.id,
-  });
+    const result = await res.json();
+    if (!res.ok) {
+      alert('Gagal simpan: ' + (result.error || 'Unknown error'));
+      return;
+    }
 
-  if (error) { alert('Gagal simpan: ' + error.message); return; }
-  alert('Kontrak berhasil disimpan ke sistem!');
+    alert(`✅ Kontrak berhasil disimpan!\nNomor: ${result.kontrak?.nomor_kontrak || '—'}`);
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.textContent = 'Simpan ke Sistem';
+    btn.disabled = false;
+  }
 }
 
 // Initial render
 updatePreview();
+loadDropdowns();
 </script>
 </body>
 </html>
