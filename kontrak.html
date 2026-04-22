@@ -324,6 +324,11 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 
 <!-- ACTION BAR -->
 <div class="action-bar">
+  <div style="display:flex;align-items:center;gap:8px;flex:1;">
+    <select id="sel-mitra-save" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--ff);color:var(--text);background:#fff;outline:none;max-width:220px;display:none;">
+      <option value="">— Pilih Mitra —</option>
+    </select>
+  </div>
   <button class="btn-save" onclick="saveToDb()" id="save-btn">Simpan ke Database</button>
   <button class="btn-preview" onclick="showPreview()">
     <span>👁</span> Lihat Preview Kontrak
@@ -617,9 +622,10 @@ async function initSession() {
   }
   sessionUser = session.user;
 
-  const res = await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${sessionUser.id}&select=id,nama,role,spbu_id,mitra_id,spbu:spbu_id(id,nama,kode)&limit=1`, {
-    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${session.access_token}` }
-  });
+  const res = await fetch(
+    `${SUPA_URL}/rest/v1/profiles?id=eq.${sessionUser.id}&select=id,nama,role,spbu_id&limit=1`,
+    { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${session.access_token}` } }
+  );
   const profiles = await res.json();
   sessionProfile = profiles?.[0];
 
@@ -633,76 +639,66 @@ async function initSession() {
   chip.textContent = `✓ ${sessionProfile.nama} · ${roleLabel[sessionProfile.role] || sessionProfile.role}`;
   chip.classList.add('ok');
 
-  // Load daftar mitra untuk referensi
-  const mitraRes = await fetch(`${SUPA_URL}/rest/v1/mitra?select=id,nama_perusahaan,spbu_id&status=eq.aktif&order=nama_perusahaan`, {
-    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${session.access_token}` }
-  });
+  // Load SPBU list
+  const spbuRes = await fetch(
+    `${SUPA_URL}/rest/v1/spbu?select=id,kode,nama&aktif=eq.true&order=kode`,
+    { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${session.access_token}` } }
+  );
+  spbuList = await spbuRes.json() || [];
+
+  // Load mitra list — manager filter by spbu_id
+  let mitraUrl = `${SUPA_URL}/rest/v1/mitra?select=id,nama_perusahaan,spbu_id&status=eq.aktif&order=nama_perusahaan`;
+  if (sessionProfile.role === 'manager' && sessionProfile.spbu_id) {
+    mitraUrl += `&spbu_id=eq.${sessionProfile.spbu_id}`;
+  }
+  const mitraRes = await fetch(mitraUrl,
+    { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${session.access_token}` } }
+  );
   mitraList = await mitraRes.json() || [];
 
-  // Load daftar SPBU
-  const spbuRes = await fetch(`${SUPA_URL}/rest/v1/spbu?select=id,kode,nama&aktif=eq.true&order=kode`, {
-    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${session.access_token}` }
-  });
-  spbuList = await spbuRes.json() || [];
+  // Tampilkan dropdown pilih mitra di action bar
+  const sel = document.getElementById('sel-mitra-save');
+  if (mitraList.length > 0) {
+    sel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+      mitraList.map(m => `<option value="${m.id}" data-spbu="${m.spbu_id}">${m.nama_perusahaan}</option>`).join('');
+    sel.style.display = 'block';
+
+    // Jika hanya ada 1 mitra, auto-select
+    if (mitraList.length === 1) {
+      sel.value = mitraList[0].id;
+      // Auto-fill nama mitra di form jika kosong
+      const namaEl = document.getElementById('mitra-nama');
+      if (!namaEl.value) namaEl.value = mitraList[0].nama_perusahaan;
+    }
+  }
 }
 
 async function saveToDb() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    alert('Anda belum login. Buka login.html terlebih dahulu.');
-    return;
-  }
-  if (!sessionProfile) {
-    alert('Profil tidak ditemukan. Coba refresh halaman.');
-    return;
-  }
+  if (!session) { alert('Anda belum login.'); return; }
+  if (!sessionProfile) { alert('Profil tidak ditemukan. Refresh halaman.'); return; }
 
-  // Tentukan mitra_id dan spbu_id otomatis
-  let mitraId = null, spbuId = null;
-
-  const mitraNama = document.getElementById('mitra-nama').value.trim();
-
-  if (sessionProfile.role === 'super_admin') {
-    // Super admin: cari mitra berdasarkan nama yang diisi di form
-    const found = mitraList.find(m =>
-      m.nama_perusahaan.toLowerCase() === mitraNama.toLowerCase()
-    );
-    if (found) {
-      mitraId = found.id;
-      spbuId  = found.spbu_id;
-    } else if (mitraList.length === 1) {
-      // Hanya ada 1 mitra, pakai langsung
-      mitraId = mitraList[0].id;
-      spbuId  = mitraList[0].spbu_id || spbuList[0]?.id;
-    } else {
-      // Minta konfirmasi pilih dari list yang ada
-      const names = mitraList.map((m, i) => `${i+1}. ${m.nama_perusahaan}`).join('\n');
-      const pick = prompt(`Pilih nomor mitra yang sesuai dengan kontrak ini:\n\n${names}`);
-      const idx = parseInt(pick) - 1;
-      if (isNaN(idx) || !mitraList[idx]) { alert('Pilihan tidak valid'); return; }
-      mitraId = mitraList[idx].id;
-      spbuId  = mitraList[idx].spbu_id || spbuList[0]?.id;
-    }
-  } else if (sessionProfile.role === 'manager') {
-    // Manager: auto pakai SPBU dan mitra yang terhubung ke SPBU-nya
-    spbuId = sessionProfile.spbu_id;
-    const found = mitraList.find(m =>
-      m.spbu_id === spbuId &&
-      m.nama_perusahaan.toLowerCase() === mitraNama.toLowerCase()
-    );
-    mitraId = found?.id || mitraList.find(m => m.spbu_id === spbuId)?.id;
-  }
-
+  // Ambil mitra dari dropdown
+  const sel = document.getElementById('sel-mitra-save');
+  const mitraId = sel.value;
   if (!mitraId) {
-    alert(`Mitra "${mitraNama}" tidak ditemukan di database.\n\nPastikan mitra sudah didaftarkan terlebih dahulu melalui tab Mitra di halaman utama.`);
+    sel.style.border = '2px solid red';
+    alert('Pilih Mitra terlebih dahulu dari dropdown di bawah kiri.');
     return;
   }
+  sel.style.border = '';
+
+  // Ambil spbu_id dari mitra yang dipilih atau dari profil manager
+  const selectedMitra = mitraList.find(m => m.id === mitraId);
+  const spbuId = selectedMitra?.spbu_id || sessionProfile.spbu_id || spbuList[0]?.id;
+
   if (!spbuId) {
-    alert('SPBU tidak terdeteksi. Pastikan profil kamu sudah terhubung ke SPBU.');
+    alert('SPBU tidak terdeteksi. Pastikan mitra sudah terhubung ke SPBU.');
     return;
   }
 
-  const btn = document.querySelector('.save-btn');
+  const btn = document.getElementById('save-btn');
+  const origText = btn.textContent;
   btn.textContent = 'Menyimpan...';
   btn.disabled = true;
 
@@ -714,13 +710,13 @@ async function saveToDb() {
         'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
-        mitra_id: mitraId,
-        spbu_id: spbuId,
-        tanggal_mulai:    document.getElementById('tgl-mulai').value,
-        tanggal_selesai:  document.getElementById('tgl-selesai').value,
-        volume_estimasi:  document.getElementById('vol-estimasi').value || null,
+        mitra_id:          mitraId,
+        spbu_id:           spbuId,
+        tanggal_mulai:     document.getElementById('tgl-mulai').value,
+        tanggal_selesai:   document.getElementById('tgl-selesai').value,
+        volume_estimasi:   document.getElementById('vol-estimasi').value || null,
         syarat_pembayaran: document.getElementById('mekanisme-bayar').value === 'invoice'
-          ? `Invoice bulanan, batas pembayaran ${document.getElementById('batas-invoice').value || 'tanggal 10'}`
+          ? `Invoice bulanan, batas pembayaran tanggal ${document.getElementById('batas-invoice').value || '10'} setiap bulan`
           : 'Tunai saat transaksi',
         ketentuan_khusus:  document.getElementById('ketentuan-khusus').value || null,
         disetujui_oleh:    document.getElementById('mitra-ttd-nama').value || null,
@@ -730,15 +726,19 @@ async function saveToDb() {
     });
 
     const result = await res.json();
-    if (!res.ok) {
-      alert('Gagal simpan: ' + (result.error || 'Unknown error'));
-      return;
-    }
-    alert(`✅ Kontrak berhasil disimpan!\nNomor: ${result.kontrak?.nomor_kontrak || '—'}`);
+    if (!res.ok) { alert('Gagal: ' + (result.error || 'Unknown error')); return; }
+
+    // Tampilkan nomor kontrak yang terbuat
+    const nomor = result.kontrak?.nomor_kontrak || '—';
+    alert(`✅ Kontrak berhasil disimpan!\nNomor: ${nomor}\n\nKontrak akan muncul di tab Kontrak portal mitra.`);
+
+    // Update nomor di preview
+    document.querySelectorAll('.nomor-kontrak-badge').forEach(el => el.textContent = nomor);
+
   } catch (e) {
     alert('Error: ' + e.message);
   } finally {
-    btn.textContent = 'Simpan ke Sistem';
+    btn.textContent = origText;
     btn.disabled = false;
   }
 }

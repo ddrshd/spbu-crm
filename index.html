@@ -328,7 +328,34 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 .harga-save-btn:hover{background:var(--blue-d);}
 .harga-save-btn:disabled{background:var(--gray-400);cursor:not-allowed;}
 
-/* ─── BUTTON STYLES ─────────────────────────────── */
+/* ─── KONTRAK MITRA ────────────────────────── */
+.kontrak-item{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:12px;
+}
+.kontrak-item-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:12px;}
+.kontrak-nomor{font-family:var(--fm);font-size:13px;font-weight:500;color:var(--blue);}
+.kontrak-mitra-name{font-size:15px;font-weight:600;color:var(--text);margin-top:2px;}
+.kontrak-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.kontrak-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.kontrak-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.st-aktif{background:#d1fae5;color:#065f46;}
+.st-expired{background:#fee2e2;color:#991b1b;}
+.st-draft{background:#dbeafe;color:#1e40af;}
+.st-suspended{background:#fef3c7;color:#92400e;}
+.kontrak-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0;padding:14px 0;border-top:1px solid var(--gray-100);border-bottom:1px solid var(--gray-100);}
+.kstat-box{text-align:center;}
+.kstat-val{font-size:16px;font-weight:600;font-family:var(--fm);color:var(--text);}
+.kstat-label{font-size:10px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
+.kontrak-progress-wrap{margin-top:12px;}
+.kontrak-progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+.kontrak-progress-bar{height:5px;background:var(--gray-100);border-radius:3px;overflow:hidden;}
+.kontrak-progress-fill{height:100%;border-radius:3px;transition:width .5s;}
+.kontrak-actions{display:flex;gap:8px;margin-top:14px;}
+.kontrak-btn{padding:6px 14px;font-size:12px;font-weight:500;border-radius:6px;cursor:pointer;font-family:var(--ff);border:1px solid var(--border);background:transparent;color:var(--text);transition:all .12s;}
+.kontrak-btn:hover{background:var(--gray-50);}
+.kontrak-btn.primary{background:var(--gray-900);color:#fff;border-color:var(--gray-900);}
+.kontrak-btn.primary:hover{background:#374151;}
 .refresh-btn{padding:6px 12px;background:transparent;border:.5px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-muted);cursor:pointer;font-family:var(--ff);}
 .refresh-btn:hover{background:var(--gray-50);}
 .export-btn{padding:6px 14px;background:var(--gray-900);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--ff);}
@@ -406,6 +433,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     <div class="tab" id="tab-history" onclick="switchTab('history')">Riwayat</div>
     <div class="tab" id="tab-dashboard" onclick="switchTab('dashboard')">Dashboard</div>
     <div class="tab hidden" id="tab-users" onclick="switchTab('users')">Manajemen User</div>
+    <div class="tab hidden" id="tab-kontrak" onclick="switchTab('kontrak')">Kontrak Mitra</div>
     <div class="tab hidden" id="tab-spbu" onclick="switchTab('spbu')">Data SPBU</div>
     <div class="tab hidden" id="tab-harga" onclick="switchTab('harga')">Produk & Harga</div>
   </div>
@@ -621,6 +649,41 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
           <tr><td colspan="6" class="loading-msg">Memuat data user...</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- VIEW: KONTRAK MITRA (Manager & Super Admin) -->
+  <div class="view" id="view-kontrak">
+    <div class="toolbar">
+      <div>
+        <div style="font-size:13px;font-weight:500">Kontrak Kerjasama Mitra</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="kontrak-desc"></div>
+      </div>
+      <a href="kontrak.html" style="text-decoration:none;">
+        <button class="add-btn">+ Buat Kontrak Baru</button>
+      </a>
+    </div>
+
+    <!-- Summary bar -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;" id="kontrak-summary"></div>
+
+    <!-- Daftar kontrak -->
+    <div id="kontrak-list-wrap">
+      <div class="loading-msg">Memuat kontrak...</div>
+    </div>
+
+    <!-- Modal Preview Kontrak (mini) -->
+    <div id="modal-preview-kontrak" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;overflow-y:auto;padding:20px;">
+      <div style="background:#fff;max-width:720px;margin:0 auto;border-radius:12px;overflow:hidden;">
+        <div style="background:var(--gray-900);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="color:#fff;font-size:13px;font-weight:600;" id="modal-kontrak-judul">Preview Kontrak</span>
+          <div style="display:flex;gap:8px;">
+            <button onclick="window.print()" style="padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--ff);">Cetak PDF</button>
+            <button onclick="closePreviewKontrak()" style="padding:6px 12px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--ff);">✕ Tutup</button>
+          </div>
+        </div>
+        <div id="modal-kontrak-body" style="padding:50px 60px;font-family:'Noto Serif',serif;font-size:13px;line-height:1.9;color:#1a1a1a;"></div>
+      </div>
     </div>
   </div>
 
@@ -899,7 +962,10 @@ function applyRoleTabs() {
     document.getElementById('th-aksi').style.display = '';
   }
 
-  // Produk & Harga — manager bisa lihat (view only), super_admin bisa edit
+  // Kontrak Mitra — manager & super_admin
+  if (role === 'manager' || role === 'super_admin') {
+    document.getElementById('tab-kontrak').classList.remove('hidden');
+  }
   if (role === 'manager' || role === 'super_admin') {
     document.getElementById('tab-harga').classList.remove('hidden');
     if (role === 'manager') {
@@ -1694,6 +1760,7 @@ function switchTab(tab) {
   if (tab === 'history')   loadHistory();
   if (tab === 'dashboard') loadDashboard();
   if (tab === 'users')     loadUsers();
+  if (tab === 'kontrak')   loadKontrakList();
   if (tab === 'spbu')      loadSpbu();
   if (tab === 'harga')     loadProdukHarga();
 }
@@ -2004,27 +2071,199 @@ async function submitEditUser() {
 }
 
 
+// ─── KONTRAK MITRA ───────────────────────────────────────────
+async function loadKontrakList() {
+  const wrap = document.getElementById('kontrak-list-wrap');
+  wrap.innerHTML = '<div class="loading-msg">Memuat kontrak...</div>';
+
+  let q = sb.from('kontrak_mitra')
+    .select('*, mitra:mitra_id(nama_perusahaan,mekanisme_bayar,pic_nama), spbu:spbu_id(nama,kode)')
+    .order('created_at', { ascending: false });
+
+  if (currentProfile.role === 'manager' && currentSpbu) {
+    q = q.eq('spbu_id', currentSpbu.id);
+  }
+
+  const { data: kontraks, error } = await q;
+  if (error) { wrap.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`; return; }
+  if (!kontraks?.length) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:12px;">📄</div>
+      <div style="font-weight:500;margin-bottom:6px;">Belum ada kontrak</div>
+      <div style="font-size:12px;color:var(--text-muted);">Buat kontrak baru lewat tombol di atas</div>
+    </div>`;
+    document.getElementById('kontrak-summary').innerHTML = '';
+    return;
+  }
+
+  // Hitung tagihan bulan ini per mitra
+  const now = new Date();
+  const bulanStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const bulanEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString();
+
+  const mitraIds = [...new Set(kontraks.map(k => k.mitra_id))];
+  const { data: trxBulan } = await sb.from('transaksi')
+    .select('mitra_id, total, volume')
+    .in('mitra_id', mitraIds)
+    .is('deleted_at', null)
+    .gte('created_at', bulanStart)
+    .lte('created_at', bulanEnd);
+
+  // Agregasi per mitra
+  const tagihan = {};
+  (trxBulan || []).forEach(t => {
+    if (!tagihan[t.mitra_id]) tagihan[t.mitra_id] = { total: 0, vol: 0, trx: 0 };
+    tagihan[t.mitra_id].total += parseInt(t.total);
+    tagihan[t.mitra_id].vol   += parseFloat(t.volume);
+    tagihan[t.mitra_id].trx++;
+  });
+
+  // Summary bar
+  const totalAktif  = kontraks.filter(k => k.status === 'aktif').length;
+  const totalTagihan = Object.values(tagihan).reduce((s, t) => s + t.total, 0);
+  const totalVol     = Object.values(tagihan).reduce((s, t) => s + t.vol, 0);
+  document.getElementById('kontrak-summary').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;border-top:3px solid var(--blue);">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">KONTRAK AKTIF</div>
+      <div style="font-size:22px;font-weight:600;font-family:var(--fm);">${totalAktif}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">dari ${kontraks.length} total</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;border-top:3px solid var(--green);">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">TAGIHAN BULAN INI</div>
+      <div style="font-size:18px;font-weight:600;font-family:var(--fm);">Rp ${(totalTagihan/1e6).toFixed(2)}Jt</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${totalVol.toFixed(0)} liter</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;border-top:3px solid #f59e0b;">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">MITRA AKTIF</div>
+      <div style="font-size:22px;font-weight:600;font-family:var(--fm);">${mitraIds.length}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">perusahaan/instansi</div>
+    </div>`;
+
+  // Render daftar kontrak
+  wrap.innerHTML = kontraks.map(k => {
+    const t = tagihan[k.mitra_id] || { total: 0, vol: 0, trx: 0 };
+    const mulai   = new Date(k.tanggal_mulai);
+    const selesai = new Date(k.tanggal_selesai);
+    const totalDays  = (selesai - mulai) / 864e5;
+    const usedDays   = Math.max(0, (now - mulai) / 864e5);
+    const progress   = Math.min(100, Math.round(usedDays / totalDays * 100));
+    const sisaHari   = Math.max(0, Math.ceil((selesai - now) / 864e5));
+
+    const fmtTgl = d => new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+    const stClass = { aktif:'st-aktif', expired:'st-expired', draft:'st-draft', suspended:'st-suspended' };
+    const stLabel = { aktif:'Aktif', expired:'Expired', draft:'Draft', suspended:'Suspended' };
+
+    const progressColor = progress > 80 ? '#e02424' : progress > 60 ? '#d97706' : 'var(--blue)';
+
+    return `<div class="kontrak-item">
+      <div class="kontrak-item-head">
+        <div>
+          <div class="kontrak-nomor">${k.nomor_kontrak}</div>
+          <div class="kontrak-mitra-name">${k.mitra?.nama_perusahaan || '—'}</div>
+          <div class="kontrak-meta">${k.spbu?.nama || '—'} · PIC: ${k.mitra?.pic_nama || '—'}</div>
+        </div>
+        <div class="kontrak-badges">
+          <span class="kontrak-status ${stClass[k.status] || 'st-draft'}">${stLabel[k.status] || k.status}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${fmtTgl(k.tanggal_mulai)} – ${fmtTgl(k.tanggal_selesai)}</span>
+        </div>
+      </div>
+
+      <div class="kontrak-stats">
+        <div class="kstat-box">
+          <div class="kstat-val">Rp ${(t.total/1e6).toFixed(1)}Jt</div>
+          <div class="kstat-label">Tagihan bulan ini</div>
+        </div>
+        <div class="kstat-box">
+          <div class="kstat-val">${t.vol.toFixed(0)} L</div>
+          <div class="kstat-label">Volume bulan ini</div>
+        </div>
+        <div class="kstat-box">
+          <div class="kstat-val">${t.trx}</div>
+          <div class="kstat-label">Transaksi</div>
+        </div>
+        <div class="kstat-box">
+          <div class="kstat-val" style="color:${sisaHari < 30 ? 'var(--red)' : 'var(--text)'}">${sisaHari}</div>
+          <div class="kstat-label">Hari tersisa</div>
+        </div>
+      </div>
+
+      ${k.status === 'aktif' ? `
+      <div class="kontrak-progress-wrap">
+        <div class="kontrak-progress-label">
+          <span>Progress kontrak</span><span>${progress}%</span>
+        </div>
+        <div class="kontrak-progress-bar">
+          <div class="kontrak-progress-fill" style="width:${progress}%;background:${progressColor};"></div>
+        </div>
+      </div>` : ''}
+
+      <div class="kontrak-actions">
+        <button class="kontrak-btn primary" onclick="previewKontrak(${JSON.stringify(k).replace(/"/g,'&quot;')})">Preview Kontrak</button>
+        ${k.mitra?.mekanisme_bayar === 'invoice_bulanan'
+          ? `<button class="kontrak-btn" onclick="showToast('Total tagihan ${new Date().toLocaleDateString(\"id-ID\",{month:\"long\"})} : Rp ${t.total.toLocaleString(\"id-ID\")}')">Lihat Tagihan</button>`
+          : ''}
+        <a href="kontrak.html" style="text-decoration:none;"><button class="kontrak-btn">Buat Kontrak Baru</button></a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function previewKontrak(k) {
+  document.getElementById('modal-kontrak-judul').textContent = k.nomor_kontrak;
+  const fmtTgl = d => new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('modal-kontrak-body').innerHTML = `
+    <div style="text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #111;">
+      <div style="font-size:20px;font-weight:700;letter-spacing:.06em;">PERJANJIAN KERJASAMA</div>
+      <div style="font-size:16px;font-weight:700;margin-top:4px;">PENGADAAN BAHAN BAKAR MINYAK (BBM)</div>
+      <div style="margin-top:10px;display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:5px 14px;font-family:monospace;font-size:13px;font-weight:600;color:#1e40af;">${k.nomor_kontrak}</div>
+    </div>
+    <p>Perjanjian ini dibuat pada <strong>${fmtTgl(k.created_at)}</strong> antara:</p>
+    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin:16px 0;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:8px;">Pihak Pertama (SPBU)</div>
+      ${k.spbu ? `<strong>${k.spbu.nama}</strong> (${k.spbu.kode})` : '—'}
+    </div>
+    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin:16px 0;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:8px;">Pihak Kedua (Mitra)</div>
+      <strong>${k.mitra?.nama_perusahaan || '—'}</strong><br/>
+      PIC: ${k.mitra?.pic_nama || '—'}
+    </div>
+    <div style="margin:20px 0;">
+      <div style="font-weight:700;margin-bottom:8px;font-size:14px;">KETENTUAN KONTRAK</div>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;">
+        <tr><td style="padding:6px 0;color:#555;width:180px;">Periode</td><td><strong>${fmtTgl(k.tanggal_mulai)}</strong> s/d <strong>${fmtTgl(k.tanggal_selesai)}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#555;">Mekanisme Bayar</td><td>${k.syarat_pembayaran || '—'}</td></tr>
+        ${k.volume_estimasi ? `<tr><td style="padding:6px 0;color:#555;">Est. Volume/Bulan</td><td>${parseFloat(k.volume_estimasi).toLocaleString('id-ID')} Liter</td></tr>` : ''}
+        ${k.ketentuan_khusus ? `<tr><td style="padding:6px 0;color:#555;vertical-align:top;">Ketentuan Khusus</td><td>${k.ketentuan_khusus}</td></tr>` : ''}
+        ${k.disetujui_oleh ? `<tr><td style="padding:6px 0;color:#555;">Penandatangan Mitra</td><td>${k.disetujui_oleh} (${k.jabatan_penanda || '—'})</td></tr>` : ''}
+      </table>
+    </div>
+    <div style="text-align:center;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px;margin-top:30px;">
+      Preview ringkas — gunakan Generator Kontrak untuk dokumen lengkap dengan pasal-pasal
+    </div>`;
+  document.getElementById('modal-preview-kontrak').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closePreviewKontrak() {
+  document.getElementById('modal-preview-kontrak').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
 async function toggleUser(userId, aktif) {
   const action = aktif ? 'nonaktifkan' : 'aktifkan';
   if (!confirm(`${action} user ini?`)) return;
-
   try {
     const { data: { session } } = await sb.auth.getSession();
     const res = await fetch('/api/toggle-user', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
       body: JSON.stringify({ target_user_id: userId, aktif: !aktif })
     });
     const result = await res.json();
     if (!res.ok) { showToast(result.error || 'Gagal', true); return; }
     showToast(`User berhasil di-${action}kan`);
     loadUsers();
-  } catch (e) {
-    showToast('Error: ' + e.message, true);
-  }
+  } catch (e) { showToast('Error: ' + e.message, true); }
 }
 
 
