@@ -2200,7 +2200,7 @@ async function loadKontrakList() {
       <div class="kontrak-actions">
         <button class="kontrak-btn primary" onclick="previewKontrak(${JSON.stringify(k).replace(/"/g,'&quot;')})">Preview Kontrak</button>
         ${k.mitra?.mekanisme_bayar === 'invoice_bulanan'
-          ? `<button class="kontrak-btn" onclick="showToast('Total tagihan ${new Date().toLocaleDateString(\"id-ID\",{month:\"long\"})} : Rp ${t.total.toLocaleString(\"id-ID\")}')">Lihat Tagihan</button>`
+          ? `<button class="kontrak-btn" onclick="showToast('Tagihan bulan ini: Rp ${t.total.toLocaleString('id-ID')}')">Lihat Tagihan</button>`
           : ''}
         <a href="kontrak.html" style="text-decoration:none;"><button class="kontrak-btn">Buat Kontrak Baru</button></a>
       </div>
