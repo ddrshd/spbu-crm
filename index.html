@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"/>
+<meta charset="UTF-8"/><!-- deploy: 2026-04-22 14:11:43 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#111827"/>
 <title>SPBU CRM — Pertamina Patra Niaga</title>
@@ -328,7 +328,34 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 .harga-save-btn:hover{background:var(--blue-d);}
 .harga-save-btn:disabled{background:var(--gray-400);cursor:not-allowed;}
 
-/* ─── BUTTON STYLES ─────────────────────────────── */
+/* ─── KONTRAK MITRA ────────────────────────── */
+.kontrak-item{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:12px;
+}
+.kontrak-item-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:12px;}
+.kontrak-nomor{font-family:var(--fm);font-size:13px;font-weight:500;color:var(--blue);}
+.kontrak-mitra-name{font-size:15px;font-weight:600;color:var(--text);margin-top:2px;}
+.kontrak-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.kontrak-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.kontrak-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.st-aktif{background:#d1fae5;color:#065f46;}
+.st-expired{background:#fee2e2;color:#991b1b;}
+.st-draft{background:#dbeafe;color:#1e40af;}
+.st-suspended{background:#fef3c7;color:#92400e;}
+.kontrak-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0;padding:14px 0;border-top:1px solid var(--gray-100);border-bottom:1px solid var(--gray-100);}
+.kstat-box{text-align:center;}
+.kstat-val{font-size:16px;font-weight:600;font-family:var(--fm);color:var(--text);}
+.kstat-label{font-size:10px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
+.kontrak-progress-wrap{margin-top:12px;}
+.kontrak-progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+.kontrak-progress-bar{height:5px;background:var(--gray-100);border-radius:3px;overflow:hidden;}
+.kontrak-progress-fill{height:100%;border-radius:3px;transition:width .5s;}
+.kontrak-actions{display:flex;gap:8px;margin-top:14px;}
+.kontrak-btn{padding:6px 14px;font-size:12px;font-weight:500;border-radius:6px;cursor:pointer;font-family:var(--ff);border:1px solid var(--border);background:transparent;color:var(--text);transition:all .12s;}
+.kontrak-btn:hover{background:var(--gray-50);}
+.kontrak-btn.primary{background:var(--gray-900);color:#fff;border-color:var(--gray-900);}
+.kontrak-btn.primary:hover{background:#374151;}
 .refresh-btn{padding:6px 12px;background:transparent;border:.5px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-muted);cursor:pointer;font-family:var(--ff);}
 .refresh-btn:hover{background:var(--gray-50);}
 .export-btn{padding:6px 14px;background:var(--gray-900);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--ff);}
@@ -406,6 +433,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     <div class="tab" id="tab-history" onclick="switchTab('history')">Riwayat</div>
     <div class="tab" id="tab-dashboard" onclick="switchTab('dashboard')">Dashboard</div>
     <div class="tab hidden" id="tab-users" onclick="switchTab('users')">Manajemen User</div>
+    <div class="tab hidden" id="tab-kontrak" onclick="switchTab('kontrak')">Kontrak Mitra</div>
     <div class="tab hidden" id="tab-spbu" onclick="switchTab('spbu')">Data SPBU</div>
     <div class="tab hidden" id="tab-harga" onclick="switchTab('harga')">Produk & Harga</div>
   </div>
@@ -542,7 +570,9 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
         <thead><tr>
           <th>Waktu</th><th>Nopol</th><th>Produk</th>
           <th>Volume</th><th>Total (Rp)</th><th>Status</th>
-          <th>Operator</th><th id="th-aksi" style="display:none">Aksi</th>
+          <th>Operator</th>
+          <th id="th-spbu" style="display:none">SPBU</th>
+          <th id="th-aksi" style="display:none">Aksi</th>
         </tr></thead>
         <tbody id="history-body">
           <tr><td colspan="8" class="loading-msg">Memuat data...</td></tr>
@@ -621,6 +651,115 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
           <tr><td colspan="6" class="loading-msg">Memuat data user...</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- VIEW: KONTRAK MITRA (Manager & Super Admin) -->
+  <div class="view" id="view-kontrak">
+
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--gray-100);border-radius:8px;padding:3px;width:fit-content;">
+      <button class="period-pill active" id="subtab-kontrak-btn" onclick="switchSubtab('kontrak',this)">Kontrak Aktif</button>
+      <button class="period-pill" id="subtab-kendaraan-btn" onclick="switchSubtab('kendaraan',this)">Kendaraan Mitra</button>
+    </div>
+
+    <!-- SUB: KONTRAK LIST -->
+    <div id="subview-kontrak">
+      <div class="toolbar">
+        <div>
+          <div style="font-size:13px;font-weight:500">Kontrak Kerjasama Mitra</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="kontrak-desc"></div>
+        </div>
+        <a href="kontrak.html" style="text-decoration:none;">
+          <button class="add-btn">+ Buat Kontrak Baru</button>
+        </a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;" id="kontrak-summary"></div>
+      <div id="kontrak-list-wrap"><div class="loading-msg">Memuat kontrak...</div></div>
+    </div>
+
+    <!-- SUB: KENDARAAN MITRA -->
+    <div id="subview-kendaraan" style="display:none">
+      <div class="toolbar">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:500">Kendaraan Mitra Terdaftar</span>
+          <select id="filter-mitra-kend" class="refresh-btn" style="width:auto;font-size:12px;" onchange="loadKendaraanMitra()">
+            <option value="">Semua mitra</option>
+          </select>
+        </div>
+        <button class="add-btn" onclick="showModalKendaraan()">+ Tambah Kendaraan</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Nopol</th><th>Mitra</th><th>Jenis</th><th>Produk BBM</th><th>Status</th><th>Aksi</th>
+          </tr></thead>
+          <tbody id="kendaraan-body">
+            <tr><td colspan="6" class="loading-msg">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal Preview Kontrak -->
+    <div id="modal-preview-kontrak" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;overflow-y:auto;padding:20px;">
+      <div style="background:#fff;max-width:720px;margin:0 auto;border-radius:12px;overflow:hidden;">
+        <div style="background:var(--gray-900);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="color:#fff;font-size:13px;font-weight:600;" id="modal-kontrak-judul">Preview Kontrak</span>
+          <div style="display:flex;gap:8px;">
+            <button onclick="window.print()" style="padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--ff);">Cetak PDF</button>
+            <button onclick="closePreviewKontrak()" style="padding:6px 12px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--ff);">✕ Tutup</button>
+          </div>
+        </div>
+        <div id="modal-kontrak-body" style="padding:50px 60px;font-family:'Noto Serif',serif;font-size:13px;line-height:1.9;color:#1a1a1a;"></div>
+      </div>
+    </div>
+
+    <!-- Modal Tambah/Edit Kendaraan -->
+    <div class="modal-overlay" id="modal-kendaraan" onclick="if(event.target===this)closeModalKendaraan()">
+      <div class="modal" style="max-width:420px;">
+        <div class="modal-title" id="modal-kend-title">Tambah Kendaraan Mitra</div>
+        <input type="hidden" id="kend-edit-id"/>
+        <div class="field-group">
+          <label class="field-label">Mitra / Perusahaan</label>
+          <select class="field-input" id="kend-mitra-id" style="cursor:pointer;">
+            <option value="">— Pilih Mitra —</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Nomor Polisi <span style="color:var(--red)">*</span></label>
+          <input class="field-input" id="kend-nopol" placeholder="DT 1234 AB" style="text-transform:uppercase;font-family:var(--fm);font-size:16px;letter-spacing:.06em;"/>
+        </div>
+        <div class="field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field-group">
+            <label class="field-label">Jenis Kendaraan</label>
+            <input class="field-input" id="kend-jenis" placeholder="Pickup, Truk, dll"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Produk BBM</label>
+            <select class="field-input" id="kend-produk" style="cursor:pointer;">
+              <option value="">— Pilih —</option>
+              <option>Pertalite</option>
+              <option>Pertamax</option>
+              <option>Pertamax Turbo</option>
+              <option>Biosolar</option>
+              <option>Dexlite</option>
+              <option>Dex</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Catatan (opsional)</label>
+          <input class="field-input" id="kend-catatan" placeholder="Misal: kendaraan dinas, untuk lapangan"/>
+        </div>
+        <div class="error-msg" id="kend-error" style="display:none;margin-bottom:12px;"></div>
+        <div class="modal-row">
+          <button class="modal-btn cancel" onclick="closeModalKendaraan()">Batal</button>
+          <button class="modal-btn confirm" onclick="submitKendaraan()">
+            <span id="kend-submit-label">Simpan Kendaraan</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -897,9 +1036,13 @@ function applyRoleTabs() {
   if (role === 'manager' || role === 'super_admin') {
     document.getElementById('tab-users').classList.remove('hidden');
     document.getElementById('th-aksi').style.display = '';
+    document.getElementById('th-spbu').style.display = ''; // kolom SPBU di riwayat
   }
 
-  // Produk & Harga — manager bisa lihat (view only), super_admin bisa edit
+  // Kontrak Mitra — manager & super_admin
+  if (role === 'manager' || role === 'super_admin') {
+    document.getElementById('tab-kontrak').classList.remove('hidden');
+  }
   if (role === 'manager' || role === 'super_admin') {
     document.getElementById('tab-harga').classList.remove('hidden');
     if (role === 'manager') {
@@ -1375,12 +1518,12 @@ async function submitTrx() {
 // ─── RIWAYAT ─────────────────────────────────────────────────
 async function loadHistory() {
   const tbody = document.getElementById('history-body');
-  tbody.innerHTML = '<tr><td colspan="8" class="loading-msg">Memuat...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" class="loading-msg">Memuat...</td></tr>';
+  const isAdminOrMgr = ['manager', 'super_admin'].includes(currentProfile.role);
 
   try {
-    // Query transaksi tanpa join operator (hindari schema cache error)
     let q = sb.from('transaksi')
-      .select('id, spbu_id, operator_id, nopol, produk, volume, total, created_at, deleted_at, catatan')
+      .select('id, spbu_id, operator_id, nopol, produk, volume, total, created_at, deleted_at, catatan, mitra_id')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(200);
@@ -1390,58 +1533,79 @@ async function loadHistory() {
     const { data, error } = await q;
     if (error) throw error;
 
-    // Load nama operator dari profiles secara terpisah
+    // Load nama operator
     let operatorMap = {};
-    if (data && data.length) {
+    if (data?.length) {
       const opIds = [...new Set(data.map(t => t.operator_id).filter(Boolean))];
       if (opIds.length) {
-        const { data: ops } = await sb
-          .from('profiles')
-          .select('id, nama')
-          .in('id', opIds);
+        const { data: ops } = await sb.from('profiles').select('id, nama').in('id', opIds);
         (ops || []).forEach(o => { operatorMap[o.id] = o.nama; });
       }
     }
 
+    // Load nama SPBU — hanya untuk super_admin (manager sudah tahu SPBU-nya)
+    let spbuMap = {};
+    if (currentProfile.role === 'super_admin' && data?.length) {
+      const spbuIds = [...new Set(data.map(t => t.spbu_id).filter(Boolean))];
+      if (spbuIds.length) {
+        const { data: spbus } = await sb.from('spbu').select('id, nama, kode').in('id', spbuIds);
+        (spbus || []).forEach(s => { spbuMap[s.id] = s.nama; });
+      }
+    }
+    // Manager: gunakan nama SPBU sendiri
+    if (currentProfile.role === 'manager' && currentSpbu) {
+      spbuMap[currentSpbu.id] = currentSpbu.nama;
+    }
+
     historyData = data.map(t => ({
       ...t,
-      operator_nama: operatorMap[t.operator_id] || '—'
+      operator_nama: operatorMap[t.operator_id] || '—',
+      spbu_nama: spbuMap[t.spbu_id] || '—'
     }));
     document.getElementById('history-count').textContent = (data?.length || 0) + ' transaksi terbaru';
 
-    if (!data || !data.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Belum ada transaksi</td></tr>';
+    if (!data?.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Belum ada transaksi</td></tr>';
       return;
     }
 
-    const canEdit = ['manager', 'super_admin'].includes(currentProfile.role);
+    const canEdit = isAdminOrMgr;
     const nc = {};
     data.forEach(t => { nc[t.nopol] = (nc[t.nopol] || 0) + 1; });
 
     tbody.innerHTML = data.map(t => {
-      const dt = new Date(t.created_at);
-      const ts = dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      const ds = dt.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
-      const pk = (t.produk || '').replace(/\s/g, '-');
+      const dt  = new Date(t.created_at);
+      const ts  = dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const ds  = dt.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+      const pk  = (t.produk || '').replace(/\s/g, '-');
       const isR = nc[t.nopol] > 1;
-      const opNama = t.operator_nama || operatorMap[t.operator_id] || '—';
+      const isMitra = !!t.mitra_id;
+      const opNama  = operatorMap[t.operator_id] || '—';
+      const spbuCol = isAdminOrMgr
+        ? `<td style="font-size:12px;color:var(--text-muted)">${spbuMap[t.spbu_id] || '—'}</td>`
+        : '';
       const aksi = canEdit
         ? `<td><button class="act-btn del" onclick="hapusTrx('${t.id}')">Hapus</button></td>`
         : '<td style="display:none"></td>';
+
       return `<tr>
         <td style="font-family:var(--fm);font-size:12px;color:var(--text-muted)">${ds} ${ts}</td>
-        <td class="nopol-cell">${t.nopol}</td>
+        <td class="nopol-cell">
+          ${t.nopol}
+          ${isMitra ? '<span style="font-size:10px;background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:600;">B2B</span>' : ''}
+        </td>
         <td><span class="produk-pill pill-${pk}">${t.produk}</span></td>
         <td style="font-family:var(--fm)">${parseFloat(t.volume).toFixed(1)} L</td>
         <td style="font-family:var(--fm)">${parseInt(t.total).toLocaleString('id-ID')}</td>
         <td style="font-size:12px">${isR ? '<span style="color:var(--blue)">● Repeat</span>' : '<span style="color:var(--gray-400)">○ Baru</span>'}</td>
-        <td style="color:var(--text-muted)">${opNama}</td>
+        <td style="color:var(--text-muted);font-size:12px">${opNama}</td>
+        ${spbuCol}
         ${aksi}
       </tr>`;
     }).join('');
 
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Error: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Error: ${e.message}</td></tr>`;
   }
 }
 
@@ -1457,17 +1621,22 @@ async function hapusTrx(id) {
 
 function exportCSV() {
   if (!historyData.length) { showToast('Load riwayat dulu', true); return; }
-  const rows = [['Waktu','Nopol','Produk','Volume (L)','Harga/L','Total (Rp)','Status','Operator']];
+  const isAdminOrMgr = ['manager', 'super_admin'].includes(currentProfile.role);
+  const headers = ['Waktu','Nopol','Produk','Volume (L)','Harga/L','Total (Rp)','Status','Operator'];
+  if (isAdminOrMgr) headers.push('SPBU');
+  const rows = [headers];
   const nc = {}; historyData.forEach(t => { nc[t.nopol] = (nc[t.nopol] || 0) + 1; });
   historyData.forEach(t => {
-    rows.push([
+    const row = [
       new Date(t.created_at).toLocaleString('id-ID'),
       t.nopol, t.produk,
       parseFloat(t.volume).toFixed(2),
       t.harga_per_liter || '', t.total,
       nc[t.nopol] > 1 ? 'Repeat' : 'Baru',
       t.operator_nama || '—'
-    ]);
+    ];
+    if (isAdminOrMgr) row.push(t.spbu_nama || '—');
+    rows.push(row);
   });
   const csv = rows.map(r => r.map(v => '"' + v + '"').join(',')).join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
@@ -1694,6 +1863,7 @@ function switchTab(tab) {
   if (tab === 'history')   loadHistory();
   if (tab === 'dashboard') loadDashboard();
   if (tab === 'users')     loadUsers();
+  if (tab === 'kontrak')   loadKontrakList();
   if (tab === 'spbu')      loadSpbu();
   if (tab === 'harga')     loadProdukHarga();
 }
@@ -2004,27 +2174,352 @@ async function submitEditUser() {
 }
 
 
+// ─── SUB-TAB KONTRAK / KENDARAAN ─────────────────────────────
+function switchSubtab(tab, btn) {
+  document.querySelectorAll('#view-kontrak .period-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('subview-kontrak').style.display  = tab === 'kontrak'   ? '' : 'none';
+  document.getElementById('subview-kendaraan').style.display = tab === 'kendaraan' ? '' : 'none';
+  if (tab === 'kendaraan') loadKendaraanMitra();
+}
+
+// ─── KENDARAAN MITRA CRUD ────────────────────────────────────
+let mitraListKend = []; // cache list mitra untuk dropdown
+
+async function loadKendaraanMitra() {
+  const tbody = document.getElementById('kendaraan-body');
+  tbody.innerHTML = '<tr><td colspan="6" class="loading-msg">Memuat...</td></tr>';
+
+  // Load daftar mitra untuk dropdown filter & modal
+  if (!mitraListKend.length) {
+    let q = sb.from('mitra').select('id, nama_perusahaan').eq('status', 'aktif').order('nama_perusahaan');
+    if (currentProfile.role === 'manager' && currentSpbu) q = q.eq('spbu_id', currentSpbu.id);
+    const { data: mitras } = await q;
+    mitraListKend = mitras || [];
+
+    // Populate filter dropdown
+    const filterSel = document.getElementById('filter-mitra-kend');
+    filterSel.innerHTML = '<option value="">Semua mitra</option>' +
+      mitraListKend.map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+
+    // Populate modal dropdown
+    const modalSel = document.getElementById('kend-mitra-id');
+    modalSel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+      mitraListKend.map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+  }
+
+  // Query kendaraan
+  const filterMitra = document.getElementById('filter-mitra-kend').value;
+  let q = sb.from('kendaraan_mitra')
+    .select('*, mitra:mitra_id(nama_perusahaan)')
+    .order('nopol');
+
+  if (filterMitra) q = q.eq('mitra_id', filterMitra);
+  else if (currentProfile.role === 'manager' && currentSpbu) {
+    // Manager hanya lihat kendaraan mitra di SPBU-nya
+    const mitraIds = mitraListKend.map(m => m.id);
+    if (mitraIds.length) q = q.in('mitra_id', mitraIds);
+    else { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Belum ada mitra terdaftar</td></tr>'; return; }
+  }
+
+  const { data, error } = await q;
+  if (error) { tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${error.message}</td></tr>`; return; }
+  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Belum ada kendaraan terdaftar</td></tr>'; return; }
+
+  tbody.innerHTML = data.map(k => `<tr>
+    <td class="nopol-cell">${k.nopol}</td>
+    <td style="font-size:13px">${k.mitra?.nama_perusahaan || '—'}</td>
+    <td style="font-size:12px;color:var(--text-muted)">${k.jenis || '—'}</td>
+    <td>${k.produk_bbm ? `<span class="produk-pill pill-${(k.produk_bbm).replace(/\s/g,'-')}">${k.produk_bbm}</span>` : '—'}</td>
+    <td>
+      <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;
+        background:${k.aktif ? '#d1fae5' : '#fee2e2'};color:${k.aktif ? '#065f46' : '#991b1b'};">
+        ${k.aktif ? 'Aktif' : 'Nonaktif'}
+      </span>
+    </td>
+    <td>
+      <div style="display:flex;gap:4px;">
+        <button class="act-btn" onclick="showModalKendaraan(${JSON.stringify(k).replace(/"/g,'&quot;')})">Edit</button>
+        <button class="act-btn ${k.aktif ? 'del' : ''}" onclick="toggleKendaraan('${k.id}',${k.aktif})">
+          ${k.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+        </button>
+        <button class="act-btn del" onclick="deleteKendaraan('${k.id}','${k.nopol}')">Hapus</button>
+      </div>
+    </td>
+  </tr>`).join('');
+}
+
+function showModalKendaraan(k = null) {
+  const isEdit = !!k;
+  document.getElementById('modal-kend-title').textContent = isEdit ? 'Edit Kendaraan' : 'Tambah Kendaraan';
+  document.getElementById('kend-edit-id').value  = k?.id || '';
+  document.getElementById('kend-mitra-id').value = k?.mitra_id || '';
+  document.getElementById('kend-nopol').value    = k?.nopol || '';
+  document.getElementById('kend-jenis').value    = k?.jenis || '';
+  document.getElementById('kend-produk').value   = k?.produk_bbm || '';
+  document.getElementById('kend-catatan').value  = k?.catatan || '';
+  document.getElementById('kend-submit-label').textContent = isEdit ? 'Simpan Perubahan' : 'Tambah Kendaraan';
+  document.getElementById('kend-error').style.display = 'none';
+  document.getElementById('modal-kendaraan').classList.add('show');
+}
+
+function closeModalKendaraan() {
+  document.getElementById('modal-kendaraan').classList.remove('show');
+}
+
+async function submitKendaraan() {
+  const editId  = document.getElementById('kend-edit-id').value;
+  const mitraId = document.getElementById('kend-mitra-id').value;
+  const nopol   = document.getElementById('kend-nopol').value.trim().toUpperCase();
+  const jenis   = document.getElementById('kend-jenis').value.trim();
+  const produk  = document.getElementById('kend-produk').value;
+  const catatan = document.getElementById('kend-catatan').value.trim();
+  const errEl   = document.getElementById('kend-error');
+
+  errEl.style.display = 'none';
+  if (!mitraId) { errEl.textContent = 'Pilih mitra terlebih dahulu'; errEl.style.display = 'block'; return; }
+  if (!nopol)   { errEl.textContent = 'Nomor polisi wajib diisi'; errEl.style.display = 'block'; return; }
+
+  const btn = document.querySelector('#modal-kendaraan .modal-btn.confirm');
+  btn.disabled = true;
+
+  try {
+    const payload = { mitra_id: mitraId, nopol, jenis: jenis || null, produk_bbm: produk || null, catatan: catatan || null };
+    let error;
+
+    if (editId) {
+      ({ error } = await sb.from('kendaraan_mitra').update(payload).eq('id', editId));
+    } else {
+      ({ error } = await sb.from('kendaraan_mitra').insert({ ...payload, aktif: true }));
+    }
+
+    if (error) {
+      if (error.code === '23505') {
+        errEl.textContent = `Nopol ${nopol} sudah terdaftar untuk mitra ini`;
+      } else {
+        errEl.textContent = error.message;
+      }
+      errEl.style.display = 'block';
+      return;
+    }
+
+    closeModalKendaraan();
+    showToast(editId ? 'Kendaraan diperbarui' : 'Kendaraan berhasil ditambahkan');
+    loadKendaraanMitra();
+
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function toggleKendaraan(id, aktif) {
+  const { error } = await sb.from('kendaraan_mitra').update({ aktif: !aktif }).eq('id', id);
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(aktif ? 'Kendaraan dinonaktifkan' : 'Kendaraan diaktifkan');
+  loadKendaraanMitra();
+}
+
+async function deleteKendaraan(id, nopol) {
+  if (!confirm(`Hapus kendaraan ${nopol} dari daftar mitra?\n\nData transaksi historis tidak akan terhapus.`)) return;
+  const { error } = await sb.from('kendaraan_mitra').delete().eq('id', id);
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(`${nopol} dihapus dari daftar`);
+  loadKendaraanMitra();
+}
+
+
+async function loadKontrakList() {
+  const wrap = document.getElementById('kontrak-list-wrap');
+  wrap.innerHTML = '<div class="loading-msg">Memuat kontrak...</div>';
+
+  let q = sb.from('kontrak_mitra')
+    .select('*, mitra:mitra_id(nama_perusahaan,mekanisme_bayar,pic_nama), spbu:spbu_id(nama,kode)')
+    .order('created_at', { ascending: false });
+
+  if (currentProfile.role === 'manager' && currentSpbu) {
+    q = q.eq('spbu_id', currentSpbu.id);
+  }
+
+  const { data: kontraks, error } = await q;
+  if (error) { wrap.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`; return; }
+  if (!kontraks?.length) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:12px;">📄</div>
+      <div style="font-weight:500;margin-bottom:6px;">Belum ada kontrak</div>
+      <div style="font-size:12px;color:var(--text-muted);">Buat kontrak baru lewat tombol di atas</div>
+    </div>`;
+    document.getElementById('kontrak-summary').innerHTML = '';
+    return;
+  }
+
+  // Hitung tagihan bulan ini per mitra
+  const now = new Date();
+  const bulanStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const bulanEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString();
+
+  const mitraIds = [...new Set(kontraks.map(k => k.mitra_id))];
+  const { data: trxBulan } = await sb.from('transaksi')
+    .select('mitra_id, total, volume')
+    .in('mitra_id', mitraIds)
+    .is('deleted_at', null)
+    .gte('created_at', bulanStart)
+    .lte('created_at', bulanEnd);
+
+  // Agregasi per mitra
+  const tagihan = {};
+  (trxBulan || []).forEach(t => {
+    if (!tagihan[t.mitra_id]) tagihan[t.mitra_id] = { total: 0, vol: 0, trx: 0 };
+    tagihan[t.mitra_id].total += parseInt(t.total);
+    tagihan[t.mitra_id].vol   += parseFloat(t.volume);
+    tagihan[t.mitra_id].trx++;
+  });
+
+  // Summary bar
+  const totalAktif  = kontraks.filter(k => k.status === 'aktif').length;
+  const totalTagihan = Object.values(tagihan).reduce((s, t) => s + t.total, 0);
+  const totalVol     = Object.values(tagihan).reduce((s, t) => s + t.vol, 0);
+  document.getElementById('kontrak-summary').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;border-top:3px solid var(--blue);">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">KONTRAK AKTIF</div>
+      <div style="font-size:22px;font-weight:600;font-family:var(--fm);">${totalAktif}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">dari ${kontraks.length} total</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;border-top:3px solid var(--green);">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">TAGIHAN BULAN INI</div>
+      <div style="font-size:18px;font-weight:600;font-family:var(--fm);">Rp ${(totalTagihan/1e6).toFixed(2)}Jt</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${totalVol.toFixed(0)} liter</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;border-top:3px solid #f59e0b;">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">MITRA AKTIF</div>
+      <div style="font-size:22px;font-weight:600;font-family:var(--fm);">${mitraIds.length}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">perusahaan/instansi</div>
+    </div>`;
+
+  // Render daftar kontrak
+  wrap.innerHTML = kontraks.map(k => {
+    const t = tagihan[k.mitra_id] || { total: 0, vol: 0, trx: 0 };
+    const mulai   = new Date(k.tanggal_mulai);
+    const selesai = new Date(k.tanggal_selesai);
+    const totalDays  = (selesai - mulai) / 864e5;
+    const usedDays   = Math.max(0, (now - mulai) / 864e5);
+    const progress   = Math.min(100, Math.round(usedDays / totalDays * 100));
+    const sisaHari   = Math.max(0, Math.ceil((selesai - now) / 864e5));
+
+    const fmtTgl = d => new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+    const stClass = { aktif:'st-aktif', expired:'st-expired', draft:'st-draft', suspended:'st-suspended' };
+    const stLabel = { aktif:'Aktif', expired:'Expired', draft:'Draft', suspended:'Suspended' };
+
+    const progressColor = progress > 80 ? '#e02424' : progress > 60 ? '#d97706' : 'var(--blue)';
+
+    return `<div class="kontrak-item">
+      <div class="kontrak-item-head">
+        <div>
+          <div class="kontrak-nomor">${k.nomor_kontrak}</div>
+          <div class="kontrak-mitra-name">${k.mitra?.nama_perusahaan || '—'}</div>
+          <div class="kontrak-meta">${k.spbu?.nama || '—'} · PIC: ${k.mitra?.pic_nama || '—'}</div>
+        </div>
+        <div class="kontrak-badges">
+          <span class="kontrak-status ${stClass[k.status] || 'st-draft'}">${stLabel[k.status] || k.status}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${fmtTgl(k.tanggal_mulai)} – ${fmtTgl(k.tanggal_selesai)}</span>
+        </div>
+      </div>
+
+      <div class="kontrak-stats">
+        <div class="kstat-box">
+          <div class="kstat-val">Rp ${(t.total/1e6).toFixed(1)}Jt</div>
+          <div class="kstat-label">Tagihan bulan ini</div>
+        </div>
+        <div class="kstat-box">
+          <div class="kstat-val">${t.vol.toFixed(0)} L</div>
+          <div class="kstat-label">Volume bulan ini</div>
+        </div>
+        <div class="kstat-box">
+          <div class="kstat-val">${t.trx}</div>
+          <div class="kstat-label">Transaksi</div>
+        </div>
+        <div class="kstat-box">
+          <div class="kstat-val" style="color:${sisaHari < 30 ? 'var(--red)' : 'var(--text)'}">${sisaHari}</div>
+          <div class="kstat-label">Hari tersisa</div>
+        </div>
+      </div>
+
+      ${k.status === 'aktif' ? `
+      <div class="kontrak-progress-wrap">
+        <div class="kontrak-progress-label">
+          <span>Progress kontrak</span><span>${progress}%</span>
+        </div>
+        <div class="kontrak-progress-bar">
+          <div class="kontrak-progress-fill" style="width:${progress}%;background:${progressColor};"></div>
+        </div>
+      </div>` : ''}
+
+      <div class="kontrak-actions">
+        <button class="kontrak-btn primary" onclick="previewKontrak(${JSON.stringify(k).replace(/"/g,'&quot;')})">Preview Kontrak</button>
+        ${k.mitra?.mekanisme_bayar === 'invoice_bulanan'
+          ? `<button class="kontrak-btn" onclick="showToast('Tagihan bulan ini: Rp ${t.total.toLocaleString('id-ID')}')">Lihat Tagihan</button>`
+          : ''}
+        <a href="kontrak.html" style="text-decoration:none;"><button class="kontrak-btn">Buat Kontrak Baru</button></a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function previewKontrak(k) {
+  document.getElementById('modal-kontrak-judul').textContent = k.nomor_kontrak;
+  const fmtTgl = d => new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('modal-kontrak-body').innerHTML = `
+    <div style="text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #111;">
+      <div style="font-size:20px;font-weight:700;letter-spacing:.06em;">PERJANJIAN KERJASAMA</div>
+      <div style="font-size:16px;font-weight:700;margin-top:4px;">PENGADAAN BAHAN BAKAR MINYAK (BBM)</div>
+      <div style="margin-top:10px;display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:5px 14px;font-family:monospace;font-size:13px;font-weight:600;color:#1e40af;">${k.nomor_kontrak}</div>
+    </div>
+    <p>Perjanjian ini dibuat pada <strong>${fmtTgl(k.created_at)}</strong> antara:</p>
+    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin:16px 0;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:8px;">Pihak Pertama (SPBU)</div>
+      ${k.spbu ? `<strong>${k.spbu.nama}</strong> (${k.spbu.kode})` : '—'}
+    </div>
+    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin:16px 0;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:8px;">Pihak Kedua (Mitra)</div>
+      <strong>${k.mitra?.nama_perusahaan || '—'}</strong><br/>
+      PIC: ${k.mitra?.pic_nama || '—'}
+    </div>
+    <div style="margin:20px 0;">
+      <div style="font-weight:700;margin-bottom:8px;font-size:14px;">KETENTUAN KONTRAK</div>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;">
+        <tr><td style="padding:6px 0;color:#555;width:180px;">Periode</td><td><strong>${fmtTgl(k.tanggal_mulai)}</strong> s/d <strong>${fmtTgl(k.tanggal_selesai)}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#555;">Mekanisme Bayar</td><td>${k.syarat_pembayaran || '—'}</td></tr>
+        ${k.volume_estimasi ? `<tr><td style="padding:6px 0;color:#555;">Est. Volume/Bulan</td><td>${parseFloat(k.volume_estimasi).toLocaleString('id-ID')} Liter</td></tr>` : ''}
+        ${k.ketentuan_khusus ? `<tr><td style="padding:6px 0;color:#555;vertical-align:top;">Ketentuan Khusus</td><td>${k.ketentuan_khusus}</td></tr>` : ''}
+        ${k.disetujui_oleh ? `<tr><td style="padding:6px 0;color:#555;">Penandatangan Mitra</td><td>${k.disetujui_oleh} (${k.jabatan_penanda || '—'})</td></tr>` : ''}
+      </table>
+    </div>
+    <div style="text-align:center;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px;margin-top:30px;">
+      Preview ringkas — gunakan Generator Kontrak untuk dokumen lengkap dengan pasal-pasal
+    </div>`;
+  document.getElementById('modal-preview-kontrak').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closePreviewKontrak() {
+  document.getElementById('modal-preview-kontrak').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
 async function toggleUser(userId, aktif) {
   const action = aktif ? 'nonaktifkan' : 'aktifkan';
   if (!confirm(`${action} user ini?`)) return;
-
   try {
     const { data: { session } } = await sb.auth.getSession();
     const res = await fetch('/api/toggle-user', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
       body: JSON.stringify({ target_user_id: userId, aktif: !aktif })
     });
     const result = await res.json();
     if (!res.ok) { showToast(result.error || 'Gagal', true); return; }
     showToast(`User berhasil di-${action}kan`);
     loadUsers();
-  } catch (e) {
-    showToast('Error: ' + e.message, true);
-  }
+  } catch (e) { showToast('Error: ' + e.message, true); }
 }
 
 
