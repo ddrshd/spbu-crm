@@ -1108,9 +1108,37 @@ function onNopolInput(val) {
   nopolTimer = setTimeout(() => checkRepeat(val), 400);
 }
 
+let detectedMitraId = null; // mitra yang terdeteksi dari nopol
+
 async function checkRepeat(nopol) {
   if (!currentSpbu && currentProfile.role !== 'super_admin') return;
+  detectedMitraId = null; // reset setiap kali nopol berubah
+
   try {
+    // Cek apakah nopol terdaftar sebagai kendaraan mitra
+    const { data: kend } = await sb
+      .from('kendaraan_mitra')
+      .select('mitra_id, jenis, produk_bbm, mitra:mitra_id(nama_perusahaan)')
+      .eq('aktif', true)
+      .ilike('nopol', nopol.trim())
+      .maybeSingle();
+
+    const hint = document.getElementById('nopol-hint');
+
+    if (kend) {
+      detectedMitraId = kend.mitra_id;
+      const mitraNama = kend.mitra?.nama_perusahaan || 'Mitra';
+      hint.innerHTML = `
+        <span style="background:#d1fae5;color:#065f46;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600;">
+          🏢 Mitra: ${mitraNama}
+        </span>
+        ${kend.jenis ? `· ${kend.jenis}` : ''}
+        ${kend.produk_bbm ? `· <span style="color:var(--blue)">${kend.produk_bbm}</span>` : ''}
+      `;
+      return; // Sudah dapat info mitra, tidak perlu cek repeat biasa
+    }
+
+    // Bukan kendaraan mitra — cek riwayat repeat biasa
     let q = sb.from('transaksi')
       .select('produk,created_at')
       .eq('nopol', nopol)
@@ -1119,7 +1147,7 @@ async function checkRepeat(nopol) {
       .limit(20);
     if (currentSpbu) q = q.eq('spbu_id', currentSpbu.id);
     const { data } = await q;
-    const hint = document.getElementById('nopol-hint');
+
     if (data && data.length > 0) {
       const last = new Date(data[0].created_at);
       const lastStr = last.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
@@ -1314,7 +1342,9 @@ async function submitTrx() {
       volume: vol,
       harga_per_liter: selectedHarga,
       total,
-      catatan: catatan || null
+      catatan: catatan || null,
+      mitra_id: detectedMitraId || null,
+      nopol_mitra: detectedMitraId ? true : false
     });
     if (error) throw error;
 
@@ -1335,9 +1365,7 @@ async function submitTrx() {
     if (isSuperAdmin) document.getElementById('sa-spbu-select').value = '';
     document.querySelectorAll('.produk-btn').forEach(b => b.classList.remove('selected'));
     selectedProduk = null; selectedHarga = 0;
-
-  } catch (e) {
-    showToast('Gagal simpan: ' + e.message, true);
+    detectedMitraId = null;
   } finally {
     btn.disabled = false;
     btn.textContent = 'Simpan Transaksi';
