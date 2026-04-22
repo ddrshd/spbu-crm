@@ -1976,32 +1976,6 @@ async function submitEditUser() {
 }
 
 
-  const action = aktif ? 'nonaktifkan' : 'aktifkan';
-  if (!confirm(`${action} user ini?`)) return;
-
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    const token = session?.access_token;
-
-    const res = await fetch('/api/toggle-user', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ target_user_id: userId, aktif: !aktif })
-    });
-
-    const result = await res.json();
-    if (!res.ok) { showToast(result.error || 'Gagal', true); return; }
-
-    showToast(`User berhasil di-${action}kan`);
-    loadUsers();
-  } catch (e) {
-    showToast('Error: ' + e.message, true);
-  }
-}
-
 async function toggleUser(userId, aktif) {
   const action = aktif ? 'nonaktifkan' : 'aktifkan';
   if (!confirm(`${action} user ini?`)) return;
