@@ -6,20 +6,36 @@
 
 const SUPA_URL    = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const ANON_KEY    = process.env.SUPABASE_ANON_KEY;
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verifikasi caller
   const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
-  const callerRes = await fetch(`${SUPA_URL}/rest/v1/profiles?select=id,role,spbu_id&limit=1`, {
-    headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${token}` }
-  });
+  // Decode user ID dari JWT payload
+  let userId;
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    userId = payload.sub;
+  } catch {
+    return res.status(401).json({ error: 'Token tidak valid' });
+  }
+
+  if (!userId) return res.status(401).json({ error: 'User ID tidak ditemukan' });
+
+  // Ambil profil caller pakai service key + filter by user ID
+  const callerRes = await fetch(
+    `${SUPA_URL}/rest/v1/profiles?id=eq.${userId}&select=id,role,spbu_id&limit=1`,
+    {
+      headers: {
+        'apikey': SERVICE_KEY,
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+      }
+    }
+  );
   const profiles = await callerRes.json();
   if (!profiles?.length) return res.status(401).json({ error: 'Profil tidak ditemukan' });
 
@@ -38,12 +54,13 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'mitra_id, spbu_id, tanggal_mulai, tanggal_selesai wajib diisi' });
   }
 
-  // Manager hanya bisa simpan kontrak untuk SPBU-nya sendiri
+  // Manager hanya bisa simpan untuk SPBU-nya sendiri
   if (caller.role === 'manager' && spbu_id !== caller.spbu_id) {
     return res.status(403).json({ error: 'Manager hanya bisa membuat kontrak untuk SPBU-nya sendiri' });
   }
 
-  const { data, error } = await fetch(`${SUPA_URL}/rest/v1/kontrak_mitra`, {
+  // Insert pakai service key (bypass RLS)
+  const insertRes = await fetch(`${SUPA_URL}/rest/v1/kontrak_mitra`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -54,7 +71,7 @@ module.exports = async function handler(req, res) {
     body: JSON.stringify({
       mitra_id,
       spbu_id,
-      nomor_kontrak: '',  // auto-generate oleh trigger
+      nomor_kontrak: '',
       tanggal_mulai,
       tanggal_selesai,
       volume_estimasi: volume_estimasi || null,
@@ -65,11 +82,14 @@ module.exports = async function handler(req, res) {
       status: status || 'aktif',
       dibuat_oleh: caller.id,
     })
-  }).then(r => r.json().then(d => ({ data: d, error: r.ok ? null : d })));
+  });
 
-  if (error) {
-    return res.status(400).json({ error: error.message || 'Gagal menyimpan kontrak' });
+  const data = await insertRes.json();
+  if (!insertRes.ok) {
+    console.error('Insert error:', data);
+    return res.status(400).json({ error: data.message || data.error || 'Gagal menyimpan kontrak' });
   }
 
-  return res.status(200).json({ success: true, kontrak: Array.isArray(data) ? data[0] : data });
+  const kontrak = Array.isArray(data) ? data[0] : data;
+  return res.status(200).json({ success: true, kontrak });
 };
