@@ -459,7 +459,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
         <div class="field-group">
           <label class="field-label">Nomor Polisi Kendaraan</label>
           <input class="field-input nopol" id="nopol-input" type="text"
-            placeholder="DT 1234 AB" maxlength="12" autocomplete="off"
+            placeholder="DT1234AB" maxlength="12" autocomplete="off"
             oninput="onNopolInput(this.value)"/>
           <div class="nopol-hint" id="nopol-hint"></div>
         </div>
@@ -471,64 +471,31 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
           </div>
         </div>
 
-        <!-- Toggle mode input -->
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;" id="input-mode-wrap">
-          <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-600);">Mode input:</span>
-          <div style="display:flex;gap:4px;background:var(--gray-100);border-radius:6px;padding:3px;">
-            <button class="mode-btn active" id="mode-vol" onclick="setInputMode('volume')">Volume → Total</button>
-            <button class="mode-btn" id="mode-harga" onclick="setInputMode('harga')">Total → Volume</button>
+        <!-- Input volume & total — saling otomatis hitung -->
+        <div class="vol-row" style="margin-bottom:12px;">
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label">Volume (Liter)</label>
+            <input class="field-input" id="volume-input" type="number"
+              placeholder="0.00" min="0.5" max="500" step="0.01"
+              oninput="onVolumeInput(this.value)"/>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="vol-hint"></div>
           </div>
-        </div>
-
-        <!-- Mode A: input volume → hitung total -->
-        <div id="input-vol-mode">
-          <div class="vol-row">
-            <div class="field-group" style="margin-bottom:0">
-              <label class="field-label">Volume (Liter)</label>
-              <input class="field-input" id="volume-input" type="number"
-                placeholder="0.00" min="0.5" max="500" step="0.01"
-                oninput="calcFromVolume()"/>
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label">Total Bayar (Rp)</label>
+            <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--gray-400);">Rp</span>
+              <input class="field-input" id="harga-input" type="number"
+                placeholder="0" min="1000" step="500"
+                style="padding-left:36px;"
+                oninput="onHargaInput(this.value)"/>
             </div>
-            <div class="field-group" style="margin-bottom:0">
-              <label class="field-label">Total (Rp)</label>
-              <input class="field-input" id="total-display" type="text"
-                placeholder="Otomatis"
-                style="background:var(--gray-50);color:var(--gray-600);"
-                readonly/>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="harga-hint">
+              Isi salah satu, yang lain otomatis terhitung
             </div>
           </div>
         </div>
 
-        <!-- Mode B: input total/harga bayar → hitung volume -->
-        <div id="input-harga-mode" style="display:none;">
-          <div class="vol-row">
-            <div class="field-group" style="margin-bottom:0">
-              <label class="field-label">Harga Bayar (Rp)</label>
-              <div style="position:relative;">
-                <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--gray-400);">Rp</span>
-                <input class="field-input" id="harga-input" type="number"
-                  placeholder="50000" min="1000" step="500"
-                  style="padding-left:36px;"
-                  oninput="calcFromHarga()"/>
-              </div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="harga-hint">
-                Masukkan nominal yang dibayar pelanggan
-              </div>
-            </div>
-            <div class="field-group" style="margin-bottom:0">
-              <label class="field-label">Volume (Liter)</label>
-              <input class="field-input" id="volume-result" type="text"
-                placeholder="Otomatis"
-                style="background:var(--gray-50);color:var(--gray-600);font-family:var(--fm);font-size:18px;font-weight:500;"
-                readonly/>
-            </div>
-          </div>
-          <!-- Preview total aktual vs harga bayar -->
-          <div id="harga-preview" style="display:none;margin-top:10px;padding:10px 12px;background:var(--blue-light);border-radius:var(--radius);font-size:12px;color:var(--blue);">
-          </div>
-        </div>
-
-        <!-- Hidden input untuk submit — selalu berisi nilai final -->
+        <!-- Hidden input untuk submit -->
         <input type="hidden" id="volume-input-final"/>
         <input type="hidden" id="total-input-final"/>
 
@@ -728,7 +695,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
         </div>
         <div class="field-group">
           <label class="field-label">Nomor Polisi <span style="color:var(--red)">*</span></label>
-          <input class="field-input" id="kend-nopol" placeholder="DT 1234 AB" style="text-transform:uppercase;font-family:var(--fm);font-size:16px;letter-spacing:.06em;"/>
+          <input class="field-input" id="kend-nopol" placeholder="DT1234AB" style="text-transform:uppercase;font-family:var(--fm);font-size:16px;letter-spacing:.06em;"/>
         </div>
         <div class="field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="field-group">
@@ -1301,100 +1268,75 @@ async function checkRepeat(nopol) {
   } catch (e) {}
 }
 
-let currentInputMode = 'volume'; // 'volume' | 'harga'
+// ─── INPUT TRANSAKSI: dual auto-calc (no mode toggle) ────────
+// Volume ↔ Total saling otomatis hitung tanpa perlu switch mode
 
-function setInputMode(mode) {
-  currentInputMode = mode;
-  document.getElementById('mode-vol').classList.toggle('active', mode === 'volume');
-  document.getElementById('mode-harga').classList.toggle('active', mode === 'harga');
-  document.getElementById('input-vol-mode').style.display = mode === 'volume' ? '' : 'none';
-  document.getElementById('input-harga-mode').style.display = mode === 'harga' ? '' : 'none';
-  // Reset semua nilai saat ganti mode
-  document.getElementById('volume-input').value = '';
-  document.getElementById('total-display').value = '';
-  document.getElementById('harga-input').value = '';
-  document.getElementById('volume-result').value = '';
-  document.getElementById('harga-preview').style.display = 'none';
-  document.getElementById('volume-input-final').value = '';
-  document.getElementById('total-input-final').value = '';
+function onVolumeInput(val) {
+  if (!selectedHarga) return;
+  const vol = parseFloat(val);
+  const hargaEl = document.getElementById('harga-input');
+  if (!isNaN(vol) && vol > 0) {
+    const total = Math.round(vol * selectedHarga);
+    hargaEl.value = total;
+    hargaEl.style.color = 'var(--gray-600)';
+    document.getElementById('harga-hint').textContent =
+      `${vol.toFixed(2)} L × Rp ${selectedHarga.toLocaleString('id-ID')} = Rp ${total.toLocaleString('id-ID')}`;
+    document.getElementById('volume-input-final').value = vol;
+    document.getElementById('total-input-final').value = total;
+  } else {
+    hargaEl.value = '';
+    hargaEl.style.color = '';
+    document.getElementById('harga-hint').textContent = 'Isi salah satu, yang lain otomatis terhitung';
+    document.getElementById('volume-input-final').value = '';
+    document.getElementById('total-input-final').value = '';
+  }
 }
+
+function onHargaInput(val) {
+  if (!selectedHarga) return;
+  const harga = parseFloat(val);
+  const volEl = document.getElementById('volume-input');
+  if (!isNaN(harga) && harga > 0) {
+    const vol = Math.floor((harga / selectedHarga) * 100) / 100;
+    const totalAktual = Math.round(vol * selectedHarga);
+    const kembalian = harga - totalAktual;
+    volEl.value = vol > 0 ? vol : '';
+    volEl.style.color = 'var(--gray-600)';
+    if (kembalian > 0) {
+      document.getElementById('harga-hint').innerHTML =
+        `<span style="color:var(--green);font-weight:500">✓ ${vol.toFixed(2)} L</span> · kembalian <strong>Rp ${kembalian.toLocaleString('id-ID')}</strong>`;
+    } else {
+      document.getElementById('harga-hint').textContent =
+        `${vol.toFixed(2)} L × Rp ${selectedHarga.toLocaleString('id-ID')}`;
+    }
+    document.getElementById('volume-input-final').value = vol;
+    document.getElementById('total-input-final').value = totalAktual;
+  } else {
+    volEl.value = '';
+    volEl.style.color = '';
+    document.getElementById('harga-hint').textContent = 'Isi salah satu, yang lain otomatis terhitung';
+    document.getElementById('volume-input-final').value = '';
+    document.getElementById('total-input-final').value = '';
+  }
+}
+
+function setInputMode() {} // tidak dipakai — backward compat
+function calcFromVolume() { onVolumeInput(document.getElementById('volume-input')?.value || ''); }
+function calcFromHarga()  { onHargaInput(document.getElementById('harga-input')?.value || ''); }
+function calcTotal()      { calcFromVolume(); }
 
 function selectProduk(el, nama, harga, kode) {
   document.querySelectorAll('.produk-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   selectedProduk = { nama, harga, kode };
   selectedHarga = harga;
-  // Recalculate berdasarkan mode aktif
-  if (currentInputMode === 'volume') calcFromVolume();
-  else calcFromHarga();
+  // Recalculate — cek field mana yang sudah diisi
+  const vol   = document.getElementById('volume-input').value;
+  const total = document.getElementById('harga-input').value;
+  if (vol)   onVolumeInput(vol);
+  else if (total) onHargaInput(total);
 }
 
-function calcFromVolume() {
-  const vol = parseFloat(document.getElementById('volume-input').value);
-  const dispEl = document.getElementById('total-display');
-  if (selectedProduk && !isNaN(vol) && vol > 0) {
-    const total = Math.round(vol * selectedHarga);
-    dispEl.value = 'Rp ' + total.toLocaleString('id-ID');
-    document.getElementById('volume-input-final').value = vol;
-    document.getElementById('total-input-final').value = total;
-  } else {
-    dispEl.value = '';
-    document.getElementById('volume-input-final').value = '';
-    document.getElementById('total-input-final').value = '';
-  }
-}
-
-function calcFromHarga() {
-  const hargaBayar = parseFloat(document.getElementById('harga-input').value);
-  const volEl   = document.getElementById('volume-result');
-  const preview = document.getElementById('harga-preview');
-
-  if (!selectedProduk || isNaN(hargaBayar) || hargaBayar <= 0) {
-    volEl.value = '';
-    preview.style.display = 'none';
-    document.getElementById('volume-input-final').value = '';
-    document.getElementById('total-input-final').value = '';
-    return;
-  }
-
-  // Hitung volume = harga bayar / harga per liter (bulatkan ke 2 desimal)
-  const volRaw  = hargaBayar / selectedHarga;
-  const vol     = Math.floor(volRaw * 100) / 100; // floor ke 0.01 L
-  const totalAktual = Math.round(vol * selectedHarga);
-  const sisa    = hargaBayar - totalAktual;
-
-  volEl.value = vol.toFixed(2) + ' L';
-  document.getElementById('volume-input-final').value = vol;
-  document.getElementById('total-input-final').value = totalAktual;
-
-  // Preview: tampilkan breakdown
-  preview.style.display = 'block';
-  preview.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">
-      <div>
-        <div style="font-weight:600;font-size:14px;">${vol.toFixed(2)} L</div>
-        <div style="font-size:10px;opacity:.7;margin-top:2px;">Volume</div>
-      </div>
-      <div>
-        <div style="font-weight:600;font-size:14px;">Rp ${totalAktual.toLocaleString('id-ID')}</div>
-        <div style="font-size:10px;opacity:.7;margin-top:2px;">Total BBM</div>
-      </div>
-      <div>
-        <div style="font-weight:600;font-size:14px;color:${sisa > 0 ? 'var(--green)' : 'inherit'}">
-          ${sisa > 0 ? 'Rp ' + sisa.toLocaleString('id-ID') : '—'}
-        </div>
-        <div style="font-size:10px;opacity:.7;margin-top:2px;">Kembalian</div>
-      </div>
-    </div>
-  `;
-
-  // Update hint
-  document.getElementById('harga-hint').textContent =
-    `@ Rp ${selectedHarga.toLocaleString('id-ID')}/L · ${vol.toFixed(2)} L`;
-}
-
-// Fungsi lama tetap ada untuk kompatibilitas (dipanggil di beberapa tempat)
-function calcTotal() { calcFromVolume(); }
 
 function confirmTrx() {
   const nopol = document.getElementById('nopol-input').value.trim().toUpperCase();
@@ -1417,9 +1359,7 @@ function confirmTrx() {
   }
   if (!selectedProduk) { showToast('Pilih produk BBM!', true); return; }
   if (!vol || vol <= 0 || vol > 500) {
-    showToast(currentInputMode === 'harga'
-      ? 'Masukkan harga bayar terlebih dahulu!'
-      : 'Volume tidak valid (0.5 – 500 L)!', true);
+    showToast('Isi volume atau total bayar terlebih dahulu!', true);
     return;
   }
   if (isSuperAdmin && !saSpbuId) {
@@ -1429,9 +1369,11 @@ function confirmTrx() {
   }
   document.getElementById('nopol-input').classList.remove('error');
 
-  // Label mode di modal
-  const modeLabel = currentInputMode === 'harga'
-    ? `<div><div class="label">Harga bayar</div><div class="val">Rp ${parseInt(document.getElementById('harga-input').value).toLocaleString('id-ID')}</div></div>`
+  // Info kembalian jika ada
+  const hargaBayar = parseFloat(document.getElementById('harga-input').value);
+  const kembalian  = hargaBayar > total ? hargaBayar - total : 0;
+  const kembalianInfo = kembalian > 0
+    ? `<div><div class="label">Kembalian</div><div class="val" style="color:var(--green)">Rp ${kembalian.toLocaleString('id-ID')}</div></div>`
     : '';
   const spbuInfo = isSuperAdmin
     ? `<div><div class="label">SPBU</div><div class="val">${saSpbu?.nama || '—'}</div></div>`
@@ -1443,7 +1385,7 @@ function confirmTrx() {
       <div><div class="label">Produk</div><div class="val">${selectedProduk.nama}</div></div>
       <div><div class="label">Volume</div><div class="val">${vol.toFixed(2)} L</div></div>
       <div><div class="label">Total</div><div class="val" style="color:var(--blue)">Rp ${total.toLocaleString('id-ID')}</div></div>
-      ${modeLabel}
+      ${kembalianInfo}
       ${spbuInfo}
       ${catatan ? `<div style="grid-column:1/-1"><div class="label">Catatan</div><div>${catatan}</div></div>` : ''}
     </div>
@@ -1489,18 +1431,18 @@ async function submitTrx() {
 
     showToast('Tersimpan — ' + nopol);
 
-    // Reset form lengkap
+    // Reset form
     document.getElementById('nopol-input').value = '';
     document.getElementById('volume-input').value = '';
-    document.getElementById('total-display').value = '';
+    document.getElementById('volume-input').style.color = '';
     document.getElementById('harga-input').value = '';
-    document.getElementById('volume-result').value = '';
+    document.getElementById('harga-input').style.color = '';
     document.getElementById('catatan-input').value = '';
     document.getElementById('nopol-hint').innerHTML = '';
+    document.getElementById('harga-hint').textContent = 'Isi salah satu, yang lain otomatis terhitung';
+    document.getElementById('vol-hint').textContent = '';
     document.getElementById('volume-input-final').value = '';
     document.getElementById('total-input-final').value = '';
-    document.getElementById('harga-preview').style.display = 'none';
-    document.getElementById('harga-hint').textContent = 'Masukkan nominal yang dibayar pelanggan';
     if (isSuperAdmin) document.getElementById('sa-spbu-select').value = '';
     document.querySelectorAll('.produk-btn').forEach(b => b.classList.remove('selected'));
     selectedProduk = null; selectedHarga = 0;
