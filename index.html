@@ -602,6 +602,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
       <button class="filter-tab active" onclick="filterUsers('all',this)">Semua</button>
       <button class="filter-tab" onclick="filterUsers('operator',this)">Operator</button>
       <button class="filter-tab" id="filter-manager-btn" onclick="filterUsers('manager',this)">Manager</button>
+      <button class="filter-tab" id="filter-mitra-btn" onclick="filterUsers('mitra',this)">Mitra</button>
     </div>
 
     <div class="tbl-wrap">
@@ -610,7 +611,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
           <th>Nama</th>
           <th>Email</th>
           <th>Role</th>
-          <th>SPBU</th>
+          <th>SPBU / Perusahaan</th>
           <th>Status</th>
           <th>Aksi</th>
         </tr></thead>
@@ -786,6 +787,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
       <select class="field-select" id="u-role" onchange="onRoleChange()">
         <option value="operator">Operator</option>
         <option value="manager">Manager</option>
+        <option value="mitra">Mitra</option>
       </select>
     </div>
 
@@ -795,6 +797,16 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
         <option value="">— Pilih SPBU —</option>
       </select>
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="u-spbu-hint"></div>
+    </div>
+
+    <div class="field-group" id="u-mitra-group" style="display:none">
+      <label class="field-label">Perusahaan / Mitra <span style="color:var(--red)">*</span></label>
+      <select class="field-select" id="u-mitra-id">
+        <option value="">— Pilih Mitra —</option>
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+        User ini akan bisa login ke portal mitra dan memonitor transaksi perusahaannya.
+      </div>
     </div>
 
     <div class="error-msg" id="u-error" style="display:none;margin-bottom:12px;"></div>
@@ -1835,11 +1847,10 @@ async function loadUsers() {
 
   try {
     let q = sb.from('profiles')
-      .select('id, nama, role, aktif, spbu_id, spbu:spbu_id(nama, kode)')
+      .select('id, nama, role, aktif, spbu_id, mitra_id, spbu:spbu_id(nama, kode), mitra:mitra_id(nama_perusahaan)')
       .neq('role', 'super_admin')
       .order('role').order('nama');
 
-    // Manager hanya lihat user SPBU-nya
     if (currentProfile.role === 'manager' && currentSpbu) {
       q = q.eq('spbu_id', currentSpbu.id);
     }
@@ -1872,19 +1883,33 @@ function renderUsersTable() {
     return;
   }
 
-  const roleLabel = { operator: 'Operator', manager: 'Manager', super_admin: 'Super Admin' };
-  const roleBg    = { operator: '#dbeafe', manager: '#d1fae5', super_admin: '#ede9fe' };
-  const roleColor = { operator: '#1e40af', manager: '#065f46', super_admin: '#5b21b6' };
+  const roleLabel = {
+    operator: 'Operator', manager: 'Manager',
+    super_admin: 'Super Admin', mitra: 'Mitra'
+  };
+  const roleBg = {
+    operator: '#dbeafe', manager: '#d1fae5',
+    super_admin: '#ede9fe', mitra: '#fef3c7'
+  };
+  const roleColor = {
+    operator: '#1e40af', manager: '#065f46',
+    super_admin: '#5b21b6', mitra: '#92400e'
+  };
   const canToggle = currentProfile.role === 'manager' || currentProfile.role === 'super_admin';
 
   tbody.innerHTML = data.map(u => {
     const inisial = (u.nama || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
-    const spbuNama = u.spbu ? u.spbu.nama.replace('SPBU ', '') : '—';
+    // Kolom SPBU/Perusahaan — mitra tampilkan nama perusahaan, lainnya tampilkan SPBU
+    const isMitra = u.role === 'mitra';
+    const perusahaanCol = isMitra
+      ? (u.mitra?.nama_perusahaan || '—')
+      : (u.spbu ? u.spbu.nama.replace('SPBU ', '') : '—');
+
     return `<tr>
       <td>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:28px;height:28px;border-radius:50%;background:${roleBg[u.role]};
-            color:${roleColor[u.role]};display:flex;align-items:center;justify-content:center;
+          <div style="width:28px;height:28px;border-radius:50%;background:${roleBg[u.role] || '#f3f4f6'};
+            color:${roleColor[u.role] || '#374151'};display:flex;align-items:center;justify-content:center;
             font-size:10px;font-weight:600;flex-shrink:0;">${inisial}</div>
           <span style="font-weight:500;">${u.nama}</span>
         </div>
@@ -1892,11 +1917,11 @@ function renderUsersTable() {
       <td style="font-size:12px;color:var(--text-muted);font-family:var(--fm);" id="email-${u.id}">—</td>
       <td>
         <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;
-          background:${roleBg[u.role]};color:${roleColor[u.role]};">
-          ${roleLabel[u.role]}
+          background:${roleBg[u.role] || '#f3f4f6'};color:${roleColor[u.role] || '#374151'};">
+          ${roleLabel[u.role] || u.role || 'Unknown'}
         </span>
       </td>
-      <td style="font-size:12px;color:var(--text-muted);">${spbuNama}</td>
+      <td style="font-size:12px;color:var(--text-muted);">${perusahaanCol}</td>
       <td>
         <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;
           background:${u.aktif ? '#d1fae5' : '#fee2e2'};color:${u.aktif ? '#065f46' : '#991b1b'};">
@@ -1923,7 +1948,6 @@ function renderUsersTable() {
 
 // ─── ADD USER MODAL ───────────────────────────────────────────
 async function showAddUserModal() {
-  // Load daftar SPBU untuk dropdown
   await loadSpbuList();
 
   const spbuSel = document.getElementById('u-spbu');
@@ -1932,7 +1956,13 @@ async function showAddUserModal() {
       `<option value="${s.id}">${s.nama} (${s.kode})</option>`
     ).join('');
 
-  // Kalau manager, auto-select dan lock SPBU-nya
+  // Load daftar mitra untuk dropdown mitra
+  const { data: mitras } = await sb.from('mitra')
+    .select('id, nama_perusahaan').eq('status', 'aktif').order('nama_perusahaan');
+  const mitraSel = document.getElementById('u-mitra-id');
+  mitraSel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+    (mitras || []).map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+
   if (currentProfile.role === 'manager' && currentSpbu) {
     spbuSel.value = currentSpbu.id;
     spbuSel.disabled = true;
@@ -1942,7 +1972,6 @@ async function showAddUserModal() {
     document.getElementById('u-spbu-hint').textContent = '';
   }
 
-  // Reset form
   ['u-nama','u-email','u-password'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('u-role').value = 'operator';
   document.getElementById('u-error').style.display = 'none';
@@ -1958,9 +1987,13 @@ function closeUserModal() {
 
 function onRoleChange() {
   const role = document.getElementById('u-role').value;
-  const spbuGroup = document.getElementById('u-spbu-group');
-  // Manager tidak perlu SPBU (super_admin assign ke semua), operator wajib SPBU
-  spbuGroup.style.display = role === 'super_admin' ? 'none' : 'block';
+  const spbuGroup  = document.getElementById('u-spbu-group');
+  const mitraGroup = document.getElementById('u-mitra-group');
+  // Mitra: tampilkan dropdown mitra, sembunyikan SPBU
+  // Super admin: sembunyikan keduanya
+  // Operator/Manager: tampilkan SPBU
+  spbuGroup.style.display  = (role === 'mitra' || role === 'super_admin') ? 'none' : 'block';
+  mitraGroup.style.display = role === 'mitra' ? 'block' : 'none';
 }
 
 function toggleUPw() {
@@ -1976,15 +2009,16 @@ async function submitAddUser() {
   const password = document.getElementById('u-password').value;
   const role     = document.getElementById('u-role').value;
   const spbu_id  = document.getElementById('u-spbu').value || null;
+  const mitra_id = document.getElementById('u-mitra-id').value || null;
   const errEl    = document.getElementById('u-error');
 
   errEl.style.display = 'none';
 
-  // Validasi
   if (!nama)     { showUError('Nama tidak boleh kosong'); return; }
   if (!email || !email.includes('@')) { showUError('Email tidak valid'); return; }
   if (password.length < 8) { showUError('Password minimal 8 karakter'); return; }
-  if (!spbu_id && role !== 'super_admin') { showUError('Pilih SPBU terlebih dahulu'); return; }
+  if (role === 'mitra' && !mitra_id) { showUError('Pilih perusahaan/mitra terlebih dahulu'); return; }
+  if (role !== 'mitra' && role !== 'super_admin' && !spbu_id) { showUError('Pilih SPBU terlebih dahulu'); return; }
 
   const btn = document.getElementById('u-submit-btn');
   const label = document.getElementById('u-submit-label');
@@ -1993,26 +2027,17 @@ async function submitAddUser() {
 
   try {
     const { data: { session } } = await sb.auth.getSession();
-    const token = session?.access_token;
-
     const res = await fetch('/api/create-user', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ nama, email, password, role, spbu_id })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ nama, email, password, role, spbu_id, mitra_id })
     });
 
     const result = await res.json();
-
-    if (!res.ok) {
-      showUError(result.error || 'Gagal membuat akun');
-      return;
-    }
+    if (!res.ok) { showUError(result.error || 'Gagal membuat akun'); return; }
 
     closeUserModal();
-    showToast(`Akun ${nama} berhasil dibuat!`);
+    showToast(`Akun ${nama} (${role}) berhasil dibuat!`);
     loadUsers();
 
   } catch (e) {
@@ -2022,7 +2047,6 @@ async function submitAddUser() {
     label.textContent = 'Buat Akun';
   }
 }
-
 function showUError(msg) {
   const el = document.getElementById('u-error');
   el.textContent = msg;
