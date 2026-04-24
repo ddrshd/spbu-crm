@@ -442,7 +442,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
   <div class="view active" id="view-input">
 
     <!-- Shift bar -->
-    <div class="shift-bar" id="shift-bar">
+    <div class="shift-bar" id="shift-bar" style="display:none">
       <div class="shift-info">
         <div class="shift-dot" id="shift-dot"></div>
         <div class="shift-text" id="shift-text">Memuat status shift...</div>
@@ -452,7 +452,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 
     <div class="form-card">
       <div class="form-header">
-        <span class="form-title">Catat Transaksi BBM Non-Subsidi</span>
+        <span class="form-title">Catat Transaksi BBM</span>
         <span class="time-display" id="clock"></span>
       </div>
       <div class="form-body">
@@ -998,8 +998,8 @@ async function init() {
     // Load harga produk dari DB
     await loadProdukHarga();
 
-    // Load shift aktif
-    await loadShift();
+    // Shift dinonaktifkan — tidak perlu load
+    currentShift = null;
 
     setConn(true);
     startClock();
@@ -1427,10 +1427,6 @@ function confirmTrx() {
     document.getElementById('sa-spbu-select').focus();
     return;
   }
-  if (!isSuperAdmin && currentSpbu && !currentShift) {
-    showToast('Buka shift terlebih dahulu!', true); return;
-  }
-
   document.getElementById('nopol-input').classList.remove('error');
 
   // Label mode di modal
