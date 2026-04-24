@@ -801,11 +801,69 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 
     <div class="field-group" id="u-mitra-group" style="display:none">
       <label class="field-label">Perusahaan / Mitra <span style="color:var(--red)">*</span></label>
-      <select class="field-select" id="u-mitra-id">
-        <option value="">— Pilih Mitra —</option>
-      </select>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select class="field-select" id="u-mitra-id" style="flex:1;">
+          <option value="">— Pilih Mitra —</option>
+        </select>
+        <button type="button" onclick="toggleFormMitraBaru()"
+          style="flex-shrink:0;padding:8px 12px;background:var(--gray-900);color:#fff;
+          border:none;border-radius:var(--radius);font-size:12px;font-weight:500;
+          cursor:pointer;font-family:var(--ff);white-space:nowrap;">
+          + Buat Baru
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px);">
         User ini akan bisa login ke portal mitra dan memonitor transaksi perusahaannya.
+      </div>
+
+      <!-- Form inline buat mitra baru -->
+      <div id="form-mitra-baru" style="display:none;margin-top:12px;padding:14px;
+        background:var(--gray-50);border:1px solid var(--border);border-radius:var(--radius-lg);">
+        <div style="font-size:12px;font-weight:600;color:var(--gray-800);margin-bottom:10px;">Daftarkan Mitra Baru</div>
+        <div class="field-group" style="margin-bottom:8px;">
+          <label class="field-label">Nama Perusahaan / Instansi <span style="color:var(--red)">*</span></label>
+          <input class="field-input" id="nm-nama" placeholder="PT. Contoh Perusahaan" style="font-size:13px;"/>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div class="field-group" style="margin-bottom:0;">
+            <label class="field-label">Nama PIC <span style="color:var(--red)">*</span></label>
+            <input class="field-input" id="nm-pic" placeholder="Nama kontak" style="font-size:13px;"/>
+          </div>
+          <div class="field-group" style="margin-bottom:0;">
+            <label class="field-label">No. Telp PIC</label>
+            <input class="field-input" id="nm-telp" placeholder="08xxxxxxxxxx" type="tel" style="font-size:13px;"/>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div class="field-group" style="margin-bottom:0;">
+            <label class="field-label">NPWP</label>
+            <input class="field-input" id="nm-npwp" placeholder="00.000.000.0-000" style="font-size:13px;"/>
+          </div>
+          <div class="field-group" style="margin-bottom:0;">
+            <label class="field-label">Mekanisme Bayar</label>
+            <select class="field-select" id="nm-mekanisme" style="font-size:13px;">
+              <option value="tunai">Tunai saat transaksi</option>
+              <option value="invoice_bulanan">Invoice bulanan</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group" style="margin-bottom:10px;">
+          <label class="field-label">Alamat</label>
+          <input class="field-input" id="nm-alamat" placeholder="Alamat perusahaan" style="font-size:13px;"/>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" onclick="toggleFormMitraBaru()"
+            style="flex:1;padding:8px;background:transparent;border:1px solid var(--border);
+            border-radius:var(--radius);font-size:12px;cursor:pointer;font-family:var(--ff);color:var(--text-muted);">
+            Batal
+          </button>
+          <button type="button" onclick="simpanMitraBaru()"
+            style="flex:2;padding:8px;background:var(--blue);color:#fff;border:none;
+            border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--ff);">
+            <span id="nm-submit-label">Simpan Mitra</span>
+          </button>
+        </div>
+        <div id="nm-error" style="display:none;font-size:12px;color:var(--red);margin-top:8px;"></div>
       </div>
     </div>
 
@@ -2047,6 +2105,84 @@ async function submitAddUser() {
     label.textContent = 'Buat Akun';
   }
 }
+// ─── INLINE BUAT MITRA BARU dari modal tambah user ───────────
+function toggleFormMitraBaru() {
+  const form = document.getElementById('form-mitra-baru');
+  const isOpen = form.style.display !== 'none';
+  form.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    // Reset form
+    ['nm-nama','nm-pic','nm-telp','nm-npwp','nm-alamat'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('nm-error').style.display = 'none';
+    document.getElementById('nm-nama').focus();
+  }
+}
+
+async function simpanMitraBaru() {
+  const nama      = document.getElementById('nm-nama').value.trim();
+  const pic       = document.getElementById('nm-pic').value.trim();
+  const telp      = document.getElementById('nm-telp').value.trim();
+  const npwp      = document.getElementById('nm-npwp').value.trim();
+  const mekanisme = document.getElementById('nm-mekanisme').value;
+  const alamat    = document.getElementById('nm-alamat').value.trim();
+  const errEl     = document.getElementById('nm-error');
+
+  errEl.style.display = 'none';
+  if (!nama) { errEl.textContent = 'Nama perusahaan wajib diisi'; errEl.style.display = 'block'; return; }
+  if (!pic)  { errEl.textContent = 'Nama PIC wajib diisi'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('nm-submit-label');
+  btn.textContent = 'Menyimpan...';
+
+  try {
+    // Tentukan spbu_id — pakai SPBU pertama yang terhubung ke manager, atau null untuk super_admin
+    const spbuId = currentSpbu?.id || null;
+
+    const { data, error } = await sb.from('mitra').insert({
+      nama_perusahaan: nama,
+      pic_nama: pic,
+      pic_telp: telp || null,
+      npwp: npwp || null,
+      alamat: alamat || null,
+      mekanisme_bayar: mekanisme,
+      spbu_id: spbuId,
+      status: 'aktif',
+      created_by: currentUser.id,
+    }).select('id, nama_perusahaan').single();
+
+    if (error) {
+      errEl.textContent = 'Gagal: ' + error.message;
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // Tambahkan ke dropdown dan auto-select
+    const sel = document.getElementById('u-mitra-id');
+    const opt = document.createElement('option');
+    opt.value = data.id;
+    opt.textContent = data.nama_perusahaan;
+    sel.appendChild(opt);
+    sel.value = data.id;
+
+    // Tutup form
+    document.getElementById('form-mitra-baru').style.display = 'none';
+    showToast(`Mitra "${nama}" berhasil didaftarkan`);
+
+    // Refresh cache mitraListKend jika ada
+    mitraListKend = [];
+
+  } catch (e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = 'Simpan Mitra';
+  }
+}
+
+
 function showUError(msg) {
   const el = document.getElementById('u-error');
   el.textContent = msg;
