@@ -654,7 +654,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
             <option value="">Semua mitra</option>
           </select>
         </div>
-        <button class="add-btn" onclick="showModalKendaraan()">+ Tambah Kendaraan</button>
+        <button class="add-btn" id="btn-tambah-kendaraan" onclick="showModalKendaraan()" style="display:none">+ Tambah Kendaraan</button>
       </div>
       <div class="tbl-wrap">
         <table>
@@ -1021,6 +1021,9 @@ function applyRoleTabs() {
   if (role === 'super_admin') {
     document.getElementById('tab-spbu').classList.remove('hidden');
     document.getElementById('filter-manager-btn')?.classList.remove('hidden');
+    // Tombol tambah/edit kendaraan mitra hanya super_admin
+    const btnKend = document.getElementById('btn-tambah-kendaraan');
+    if (btnKend) btnKend.style.display = '';
   } else {
     document.getElementById('filter-manager-btn')?.classList.add('hidden');
   }
@@ -2164,6 +2167,8 @@ async function loadKendaraanMitra() {
   if (error) { tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${error.message}</td></tr>`; return; }
   if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Belum ada kendaraan terdaftar</td></tr>'; return; }
 
+  const isAdmin = currentProfile.role === 'super_admin';
+
   tbody.innerHTML = data.map(k => `<tr>
     <td class="nopol-cell">${k.nopol}</td>
     <td style="font-size:13px">${k.mitra?.nama_perusahaan || '—'}</td>
@@ -2176,18 +2181,20 @@ async function loadKendaraanMitra() {
       </span>
     </td>
     <td>
+      ${isAdmin ? `
       <div style="display:flex;gap:4px;">
         <button class="act-btn" onclick="showModalKendaraan(${JSON.stringify(k).replace(/"/g,'&quot;')})">Edit</button>
         <button class="act-btn ${k.aktif ? 'del' : ''}" onclick="toggleKendaraan('${k.id}',${k.aktif})">
           ${k.aktif ? 'Nonaktifkan' : 'Aktifkan'}
         </button>
         <button class="act-btn del" onclick="deleteKendaraan('${k.id}','${k.nopol}')">Hapus</button>
-      </div>
+      </div>` : '<span style="font-size:11px;color:var(--text-muted)">—</span>'}
     </td>
   </tr>`).join('');
 }
 
 function showModalKendaraan(k = null) {
+  if (currentProfile.role !== 'super_admin') { showToast('Hanya Super Admin yang bisa mengelola kendaraan mitra', true); return; }
   const isEdit = !!k;
   document.getElementById('modal-kend-title').textContent = isEdit ? 'Edit Kendaraan' : 'Tambah Kendaraan';
   document.getElementById('kend-edit-id').value  = k?.id || '';
@@ -2251,6 +2258,7 @@ async function submitKendaraan() {
 }
 
 async function toggleKendaraan(id, aktif) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
   const { error } = await sb.from('kendaraan_mitra').update({ aktif: !aktif }).eq('id', id);
   if (error) { showToast('Gagal: ' + error.message, true); return; }
   showToast(aktif ? 'Kendaraan dinonaktifkan' : 'Kendaraan diaktifkan');
@@ -2258,6 +2266,7 @@ async function toggleKendaraan(id, aktif) {
 }
 
 async function deleteKendaraan(id, nopol) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
   if (!confirm(`Hapus kendaraan ${nopol} dari daftar mitra?\n\nData transaksi historis tidak akan terhapus.`)) return;
   const { error } = await sb.from('kendaraan_mitra').delete().eq('id', id);
   if (error) { showToast('Gagal: ' + error.message, true); return; }
