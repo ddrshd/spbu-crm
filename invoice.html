@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Invoice — SPBU CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--ff:'IBM Plex Sans',sans-serif;--fm:'IBM Plex Mono',monospace;--fs:'Noto Serif',serif;
+  --blue:#1a56db;--green:#0e9f6e;--red:#e02424;--amber:#d97706;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-400:#9ca3af;
+  --gray-600:#4b5563;--gray-800:#1f2937;--gray-900:#111827;
+  --text:#111827;--text-muted:#6b7280;--border:#e5e7eb;--surface:#fff;}
+body{font-family:var(--ff);background:#f0f2f5;color:var(--text);font-size:14px;}
+
+/* TOOLBAR */
+.toolbar{background:var(--gray-900);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.toolbar-left{display:flex;align-items:center;gap:10px;}
+.back-btn{padding:6px 12px;background:transparent;border:1px solid rgba(255,255,255,.15);
+  border-radius:6px;font-size:12px;color:rgba(255,255,255,.6);cursor:pointer;font-family:var(--ff);
+  text-decoration:none;transition:all .15s;}
+.back-btn:hover{color:#fff;border-color:rgba(255,255,255,.3);}
+.toolbar-title{font-size:13px;font-weight:500;color:#fff;}
+.print-btn{padding:8px 18px;background:var(--green);color:#fff;border:none;border-radius:6px;
+  font-size:13px;font-weight:500;cursor:pointer;font-family:var(--ff);transition:background .15s;}
+.print-btn:hover{background:#0a7a5a;}
+.status-select{padding:6px 12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+  border-radius:6px;font-size:12px;color:#fff;font-family:var(--ff);cursor:pointer;}
+.status-select option{background:#1f2937;}
+
+/* INVOICE DOC */
+.page-wrap{max-width:800px;margin:24px auto;padding:0 20px 40px;}
+.invoice-doc{background:#fff;padding:52px 60px;box-shadow:0 2px 16px rgba(0,0,0,.07);}
+
+/* Header */
+.inv-header{display:flex;justify-content:space-between;align-items:flex-start;
+  margin-bottom:36px;padding-bottom:28px;border-bottom:2px solid var(--gray-900);}
+.inv-brand{}
+.inv-logo{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.inv-logo-box{width:44px;height:44px;background:#c00;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;}
+.inv-company{font-size:17px;font-weight:600;color:var(--gray-900);}
+.inv-company-sub{font-size:11px;color:var(--text-muted);margin-top:1px;}
+.inv-title-block{text-align:right;}
+.inv-title{font-family:var(--fs);font-size:26px;font-weight:700;color:var(--gray-900);letter-spacing:.02em;}
+.inv-nomor{font-family:var(--fm);font-size:14px;color:var(--blue);font-weight:500;margin-top:6px;}
+.inv-status{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;margin-top:8px;}
+.st-draft{background:#dbeafe;color:#1e40af;}
+.st-dikirim{background:#fef3c7;color:#92400e;}
+.st-menunggu{background:#ede9fe;color:#5b21b6;}
+.st-lunas{background:#d1fae5;color:#065f46;}
+.st-terlambat{background:#fee2e2;color:#991b1b;}
+
+/* Meta */
+.inv-meta{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px;}
+.meta-block{}
+.meta-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-muted);margin-bottom:8px;}
+.meta-value{font-size:13px;color:var(--gray-800);line-height:1.7;}
+.meta-value strong{font-weight:600;color:var(--gray-900);}
+
+/* Table */
+.inv-table{width:100%;border-collapse:collapse;margin-bottom:24px;}
+.inv-table thead{background:var(--gray-50);}
+.inv-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);
+  border-bottom:1px solid var(--border);border-top:1px solid var(--border);}
+.inv-table th:last-child{text-align:right;}
+.inv-table td{padding:9px 14px;font-size:13px;border-bottom:1px solid var(--gray-100);color:var(--gray-800);}
+.inv-table td:last-child{text-align:right;font-family:var(--fm);}
+.inv-table tr:last-child td{border-bottom:none;}
+.inv-table tfoot td{padding:10px 14px;font-weight:600;font-size:13px;border-top:2px solid var(--border);}
+
+/* Summary */
+.inv-summary{display:flex;justify-content:flex-end;margin-bottom:32px;}
+.summary-box{min-width:260px;}
+.summary-row{display:flex;justify-content:space-between;gap:24px;padding:7px 0;
+  font-size:13px;border-bottom:1px solid var(--gray-100);}
+.summary-row:last-child{border-bottom:none;padding-top:12px;margin-top:4px;}
+.summary-row.total{font-size:17px;font-weight:600;color:var(--gray-900);}
+.summary-row .label{color:var(--text-muted);}
+.summary-row .val{font-family:var(--fm);text-align:right;}
+
+/* Footer */
+.inv-footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:flex-end;gap:24px;}
+.inv-notes{font-size:12px;color:var(--text-muted);line-height:1.7;max-width:340px;}
+.ttd-block{text-align:center;min-width:160px;}
+.ttd-label{font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+.ttd-space{height:64px;border-bottom:1px solid var(--gray-800);margin:12px 0 8px;}
+.ttd-name{font-size:12px;font-weight:600;color:var(--gray-900);}
+.ttd-role{font-size:11px;color:var(--text-muted);}
+
+/* Loading/Error */
+.page-msg{text-align:center;padding:60px;color:var(--text-muted);font-size:14px;}
+
+@media print{
+  body{background:#fff;}
+  .toolbar{display:none!important;}
+  .page-wrap{margin:0;padding:0;max-width:100%;}
+  .invoice-doc{box-shadow:none;padding:30px 40px;}
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <div class="toolbar-left">
+    <a href="index.html" class="back-btn">← Kembali</a>
+    <span class="toolbar-title" id="tb-title">Invoice</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;" id="tb-actions" style="display:none">
+    <select class="status-select" id="status-select" onchange="updateStatus(this.value)" style="display:none">
+      <option value="draft">Draft</option>
+      <option value="dikirim">Dikirim</option>
+      <option value="menunggu">Menunggu</option>
+      <option value="terlambat">Terlambat</option>
+      <option value="lunas">Lunas</option>
+    </select>
+    <button class="print-btn" id="btn-lunas" onclick="tandaiLunas()" style="display:none;background:var(--green)">✓ Tandai Lunas</button>
+    <button class="print-btn" onclick="window.print()">Cetak / PDF</button>
+  </div>
+</div>
+
+<div class="page-wrap" id="page-wrap">
+  <div class="page-msg" id="loading-msg">Memuat invoice...</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+const SUPA_URL = 'https://vjmsqwdzprajgqrpohzl.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbXNxd2R6cHJhamdxcnBvaHpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTM2MTgsImV4cCI6MjA5MDUyOTYxOH0.dPMY_HEozO267sA4IvfwCcf9s0_z2pmk7zYE19T2sCU';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let currentTagihan = null, currentProfile = null, currentTrx = [];
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+}
+function fmtRp(n) { return 'Rp ' + parseInt(n).toLocaleString('id-ID'); }
+function fmtVol(v) { return parseFloat(v).toFixed(2) + ' L'; }
+
+async function init() {
+  const {data:{session}} = await sb.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const {data:p} = await sb.from('profiles').select('role,spbu_id,mitra_id').eq('id',session.user.id).single();
+  currentProfile = p;
+
+  const params = new URLSearchParams(window.location.search);
+  const tagihanId = params.get('id');
+
+  if (!tagihanId) {
+    document.getElementById('loading-msg').textContent = 'ID invoice tidak ditemukan.';
+    return;
+  }
+
+  // Load tagihan + relasi
+  const {data:t, error} = await sb.from('tagihan_mitra')
+    .select('*, mitra:mitra_id(nama_perusahaan,alamat,npwp,pic_nama,pic_telp), spbu:spbu_id(nama,kode,alamat)')
+    .eq('id', tagihanId)
+    .single();
+
+  if (error || !t) {
+    document.getElementById('loading-msg').textContent = 'Invoice tidak ditemukan.';
+    return;
+  }
+  currentTagihan = t;
+
+  // Load transaksi periode ini
+  const {data:trx} = await sb.from('transaksi')
+    .select('nopol,produk,volume,total,created_at')
+    .eq('mitra_id', t.mitra_id)
+    .eq('spbu_id', t.spbu_id)
+    .gte('created_at', t.periode_mulai + 'T00:00:00')
+    .lte('created_at', t.periode_selesai + 'T23:59:59')
+    .is('deleted_at', null)
+    .order('created_at');
+  currentTrx = trx || [];
+
+  renderInvoice();
+  setupToolbar();
+}
+
+function setupToolbar() {
+  const t = currentTagihan;
+  const role = currentProfile?.role;
+  document.getElementById('tb-title').textContent = t.nomor_invoice;
+  document.getElementById('tb-actions').style.display = 'flex';
+
+  if (['manager','super_admin'].includes(role)) {
+    document.getElementById('status-select').style.display = 'block';
+    document.getElementById('status-select').value = t.status;
+    if (!['lunas'].includes(t.status)) {
+      document.getElementById('btn-lunas').style.display = 'block';
+    }
+  }
+}
+
+function renderInvoice() {
+  const t = currentTagihan;
+  const stClass = { draft:'st-draft', dikirim:'st-dikirim', menunggu:'st-menunggu', lunas:'st-lunas', terlambat:'st-terlambat' };
+  const stLabel = { draft:'Draft', dikirim:'Dikirim', menunggu:'Menunggu Pembayaran', lunas:'LUNAS', terlambat:'TERLAMBAT' };
+
+  // Group transaksi by produk
+  const byProduk = {};
+  currentTrx.forEach(tx => {
+    if (!byProduk[tx.produk]) byProduk[tx.produk] = {vol:0, total:0, count:0};
+    byProduk[tx.produk].vol   += parseFloat(tx.volume);
+    byProduk[tx.produk].total += parseInt(tx.total);
+    byProduk[tx.produk].count++;
+  });
+
+  const produkRows = Object.entries(byProduk).map(([p,v]) => `
+    <tr>
+      <td>${p}</td>
+      <td style="font-family:var(--fm)">${v.count} transaksi</td>
+      <td style="font-family:var(--fm)">${fmtVol(v.vol)}</td>
+      <td>${fmtRp(v.vol > 0 ? Math.round(v.total/v.vol) : 0)}/L</td>
+      <td>${fmtRp(v.total)}</td>
+    </tr>`).join('');
+
+  // Detail transaksi (5 terbaru + ringkasan)
+  const detailRows = currentTrx.slice(0, 50).map(tx => `
+    <tr>
+      <td style="font-size:12px;color:var(--text-muted);font-family:var(--fm)">
+        ${new Date(tx.created_at).toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}
+        ${new Date(tx.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}
+      </td>
+      <td style="font-family:var(--fm);font-weight:500">${tx.nopol}</td>
+      <td>${tx.produk}</td>
+      <td style="font-family:var(--fm)">${fmtVol(tx.volume)}</td>
+      <td>${fmtRp(tx.total)}</td>
+    </tr>`).join('');
+
+  const lunasPadaInfo = t.lunas_pada
+    ? `<div class="summary-row"><span class="label">Dibayar pada</span><span class="val">${fmtDate(t.lunas_pada)}</span></div>`
+    : '';
+
+  document.getElementById('page-wrap').innerHTML = `
+    <div class="invoice-doc">
+      <div class="inv-header">
+        <div class="inv-brand">
+          <div class="inv-logo">
+            <div class="inv-logo-box">⛽</div>
+            <div>
+              <div class="inv-company">Pertamina Patra Niaga</div>
+              <div class="inv-company-sub">${t.spbu?.nama || '—'} · Sulawesi Tenggara</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">${t.spbu?.alamat || ''}</div>
+        </div>
+        <div class="inv-title-block">
+          <div class="inv-title">INVOICE</div>
+          <div class="inv-nomor">${t.nomor_invoice}</div>
+          <div><span class="inv-status ${stClass[t.status]}">${stLabel[t.status]}</span></div>
+        </div>
+      </div>
+
+      <div class="inv-meta">
+        <div class="meta-block">
+          <div class="meta-label">Tagihan kepada</div>
+          <div class="meta-value">
+            <strong>${t.mitra?.nama_perusahaan || '—'}</strong><br/>
+            ${t.mitra?.alamat || ''}<br/>
+            ${t.mitra?.npwp ? 'NPWP: ' + t.mitra.npwp : ''}<br/>
+            ${t.mitra?.pic_nama ? 'Attn: ' + t.mitra.pic_nama : ''}
+            ${t.mitra?.pic_telp ? ' · ' + t.mitra.pic_telp : ''}
+          </div>
+        </div>
+        <div class="meta-block" style="text-align:right;">
+          <div class="meta-label">Detail invoice</div>
+          <div class="meta-value">
+            <strong>${t.nomor_invoice}</strong><br/>
+            Periode: ${fmtDate(t.periode_mulai)} – ${fmtDate(t.periode_selesai)}<br/>
+            Diterbitkan: ${fmtDate(t.created_at)}<br/>
+            ${t.dikirim_pada ? 'Dikirim: ' + fmtDate(t.dikirim_pada) : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- Ringkasan per produk -->
+      <table class="inv-table">
+        <thead><tr>
+          <th>Produk BBM</th><th>Kunjungan</th><th>Volume (L)</th><th>Harga Rata-rata</th><th>Subtotal</th>
+        </tr></thead>
+        <tbody>${produkRows}</tbody>
+        <tfoot><tr>
+          <td colspan="2" style="color:var(--text-muted)">Total ${currentTrx.length} transaksi · ${fmtVol(t.total_volume)}</td>
+          <td></td><td></td>
+          <td style="text-align:right;font-family:var(--fm);color:var(--blue)">${fmtRp(t.total_tagihan)}</td>
+        </tr></tfoot>
+      </table>
+
+      <div class="inv-summary">
+        <div class="summary-box">
+          <div class="summary-row"><span class="label">Total transaksi</span><span class="val">${currentTrx.length} kali</span></div>
+          <div class="summary-row"><span class="label">Total volume</span><span class="val">${fmtVol(t.total_volume)}</span></div>
+          <div class="summary-row total"><span class="label">Total tagihan</span><span class="val" style="color:var(--blue)">${fmtRp(t.total_tagihan)}</span></div>
+          ${lunasPadaInfo}
+        </div>
+      </div>
+
+      <!-- Detail transaksi -->
+      <div style="margin-bottom:12px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">
+        Rincian transaksi${currentTrx.length > 50 ? ' (50 dari '+currentTrx.length+')' : ''}
+      </div>
+      <table class="inv-table" style="margin-bottom:36px;">
+        <thead><tr>
+          <th>Waktu</th><th>Nopol</th><th>Produk</th><th>Volume</th><th>Total</th>
+        </tr></thead>
+        <tbody>${detailRows}</tbody>
+      </table>
+
+      <div class="inv-footer">
+        <div class="inv-notes">
+          ${t.catatan ? `<div style="margin-bottom:8px;"><strong>Catatan:</strong> ${t.catatan}</div>` : ''}
+          <div>Dokumen ini merupakan bukti tagihan resmi atas penggunaan BBM kendaraan operasional
+          ${t.mitra?.nama_perusahaan} di ${t.spbu?.nama}.</div>
+          <div style="margin-top:6px;font-family:var(--fm);font-size:11px;color:var(--text-muted)">
+            ${t.nomor_invoice} · Generated by SPBU CRM
+          </div>
+        </div>
+        <div class="ttd-block">
+          <div class="ttd-label">Pengelola SPBU,</div>
+          <div class="ttd-role">${t.spbu?.nama || '—'}</div>
+          <div class="ttd-space"></div>
+          <div class="ttd-name">.....................................</div>
+          <div class="ttd-role">Pengelola / Manager</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function tandaiLunas() {
+  if (!confirm('Tandai invoice ini sebagai LUNAS?\nPastikan pembayaran sudah diterima.')) return;
+  const {data:{session}} = await sb.auth.getSession();
+  const res = await fetch('/api/billing', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},
+    body: JSON.stringify({ action: 'lunas', tagihan_id: currentTagihan.id })
+  });
+  const result = await res.json();
+  if (!res.ok) { alert('Gagal: ' + result.error); return; }
+  alert('Invoice ditandai LUNAS!');
+  window.location.reload();
+}
+
+async function updateStatus(val) {
+  if (val === 'lunas') { tandaiLunas(); return; }
+  const {data:{session}} = await sb.auth.getSession();
+  await fetch('/api/billing', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},
+    body: JSON.stringify({ action: 'update_status', tagihan_id: currentTagihan.id, status: val })
+  });
+  window.location.reload();
+}
+
+init();
+</script>
+</body>
+</html>
