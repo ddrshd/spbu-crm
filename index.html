@@ -1,408 +1,567 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"/><!-- deploy: 2026-04-22 14:11:43 -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="theme-color" content="#111827"/>
-<title>SPBU CRM — Pertamina Patra Niaga</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#003B8E"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>FUELTRACK — Pertamina Patra Niaga</title>
 <link rel="manifest" href="manifest.json"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
-  --ff:'IBM Plex Sans',sans-serif;--fm:'IBM Plex Mono',monospace;
-  --blue:#1a56db;--blue-light:#e8f0fe;--blue-d:#1240a8;
-  --green:#0e9f6e;--red:#e02424;--amber:#d97706;
-  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
-  --gray-400:#9ca3af;--gray-600:#4b5563;--gray-800:#1f2937;--gray-900:#111827;
-  --surface:#fff;--bg:#f0f2f5;--border:#e5e7eb;
-  --text:#111827;--text-muted:#6b7280;
-  --radius:8px;--radius-lg:12px;
+  --ff:'Inter',sans-serif;
+  --fm:'JetBrains Mono',monospace;
+
+  /* Pertamina Brand */
+  --red:#E8182C;
+  --red-d:#C0101F;
+  --red-light:#FEE8EA;
+  --blue:#003B8E;
+  --blue-mid:#1A56C8;
+  --blue-light:#E6EEFF;
+  --green:#00A651;
+  --green-d:#007A3C;
+  --green-light:#E6F5ED;
+
+  /* Neutrals */
+  --white:#FFFFFF;
+  --gray-50:#F8F9FC;
+  --gray-100:#F0F2F7;
+  --gray-200:#E2E6EF;
+  --gray-300:#C8CDD9;
+  --gray-400:#9AA3B5;
+  --gray-600:#4B5673;
+  --gray-800:#1E2540;
+  --gray-900:#111828;
+
+  /* Semantic */
+  --surface:#FFFFFF;
+  --bg:#F0F2F7;
+  --border:#E2E6EF;
+  --text:#1E2540;
+  --text-muted:#6B7591;
+  --amber:#F59E0B;
+
+  /* Layout */
+  --radius:10px;
+  --radius-lg:14px;
+  --radius-xl:20px;
+
+  /* Safe areas */
+  --safe-top:env(safe-area-inset-top, 0px);
+  --safe-bottom:env(safe-area-inset-bottom, 0px);
 }
-body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
-.app{max-width:960px;margin:0 auto;}
+
+html{height:100%;overflow:hidden;}
+body{
+  font-family:var(--ff);
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  height:100%;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+}
+.app{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  max-width:480px;
+  margin:0 auto;
+  width:100%;
+  position:relative;
+  overflow:hidden;
+  background:var(--bg);
+}
 
 /* ─── TOPBAR ─────────────────────────────────────── */
 .topbar{
-  background:var(--gray-900);color:#fff;
-  padding:10px 20px;
-  display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:10;
-  gap:12px;
-}
-.topbar-brand{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
-.topbar-sub{font-size:11px;color:var(--gray-400);font-family:var(--fm);}
-.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.conn-dot{width:7px;height:7px;border-radius:50%;background:#6b7280;display:inline-block;transition:background .3s;}
-.conn-dot.ok{background:#10b981;}.conn-dot.err{background:#ef4444;}
-.conn-label{font-size:11px;color:var(--gray-400);font-family:var(--fm);}
-.user-chip{
-  display:flex;align-items:center;gap:7px;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:20px;
-  padding:4px 10px 4px 6px;
-  font-size:12px;cursor:pointer;
-  transition:background .15s;
-}
-.user-chip:hover{background:rgba(255,255,255,.1);}
-.user-avatar{
-  width:22px;height:22px;border-radius:50%;
   background:var(--blue);
+  color:#fff;
+  padding:12px 16px;
+  padding-top:calc(12px + var(--safe-top));
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+  gap:10px;
+  position:relative;
+  z-index:10;
+}
+.topbar::after{
+  content:'';
+  position:absolute;
+  bottom:0;left:0;right:0;
+  height:3px;
+  background:linear-gradient(90deg, var(--red) 0%, var(--red) 33%, var(--white) 33%, var(--white) 66%, var(--green) 66%);
+}
+.topbar-left{display:flex;align-items:center;gap:10px;min-width:0;}
+.brand-logo{
+  width:34px;height:34px;
+  background:var(--white);
+  border-radius:8px;
   display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:600;
   flex-shrink:0;
 }
-.user-name{color:#fff;font-weight:500;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.role-badge{
-  font-size:10px;font-family:var(--fm);
-  padding:1px 6px;border-radius:4px;
-  background:rgba(26,86,219,.3);color:#93c5fd;
+.brand-logo svg{width:22px;height:22px;}
+.topbar-brand{font-size:16px;font-weight:700;letter-spacing:-.01em;color:#fff;line-height:1;}
+.topbar-sub{font-size:10px;color:rgba(255,255,255,.65);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);display:inline-block;}
+.conn-dot.ok{background:#4ADE80;}
+.conn-dot.err{background:var(--red-light);}
+.conn-label{font-size:10px;color:rgba(255,255,255,.6);}
+.user-chip{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;
+  padding:4px 10px 4px 4px;
+  cursor:pointer;
 }
-.role-badge.manager{background:rgba(14,159,110,.3);color:#6ee7b7;}
-.role-badge.super_admin{background:rgba(139,92,246,.3);color:#c4b5fd;}
+.user-avatar{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--red);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#fff;
+  flex-shrink:0;
+}
+.user-name{color:#fff;font-weight:500;font-size:12px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.role-badge{font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.15);color:#fff;font-weight:500;}
 .logout-btn{
-  padding:5px 10px;
-  background:transparent;border:1px solid rgba(255,255,255,.12);
-  border-radius:6px;font-size:11px;color:var(--gray-400);
-  cursor:pointer;font-family:var(--ff);transition:all .15s;
+  padding:5px 10px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:6px;font-size:11px;color:rgba(255,255,255,.7);
+  cursor:pointer;font-family:var(--ff);
 }
-.logout-btn:hover{border-color:rgba(255,255,255,.25);color:#fff;}
 
 /* ─── TABS ──────────────────────────────────────── */
 .tabs{
-  background:var(--gray-900);
-  display:flex;border-top:1px solid #374151;
-  position:sticky;top:51px;z-index:9;
+  background:var(--blue);
+  display:flex;
+  border-top:1px solid rgba(255,255,255,.08);
+  flex-shrink:0;
   overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
 }
 .tabs::-webkit-scrollbar{display:none;}
 .tab{
-  padding:10px 16px;font-size:12px;font-weight:500;
-  color:var(--gray-400);cursor:pointer;
+  padding:10px 14px;
+  font-size:11px;font-weight:600;
+  color:rgba(255,255,255,.45);
+  cursor:pointer;
   border-bottom:2px solid transparent;
-  letter-spacing:.04em;text-transform:uppercase;
-  transition:color .15s;user-select:none;white-space:nowrap;
+  letter-spacing:.05em;text-transform:uppercase;
+  white-space:nowrap;flex-shrink:0;
+  transition:color .15s;
 }
-.tab.active{color:#fff;border-bottom-color:var(--blue);}
-.tab:hover:not(.active){color:#d1d5db;}
+.tab.active{color:#fff;border-bottom-color:var(--green);}
+.tab:hover:not(.active){color:rgba(255,255,255,.75);}
 .tab.hidden{display:none;}
 
 /* ─── VIEWS ─────────────────────────────────────── */
-.view{display:none;padding:20px;}
+.views{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+.view{display:none;padding:16px;padding-bottom:calc(16px + var(--safe-bottom));}
 .view.active{display:block;}
 
 /* ─── SHIFT BAR ─────────────────────────────────── */
-.shift-bar{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-lg);
-  padding:12px 16px;
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:16px;gap:12px;flex-wrap:wrap;
-}
-.shift-info{display:flex;align-items:center;gap:10px;}
-.shift-dot{width:8px;height:8px;border-radius:50%;background:var(--gray-400);}
-.shift-dot.aktif{background:var(--green);box-shadow:0 0 0 3px rgba(14,159,110,.15);}
-.shift-text{font-size:13px;color:var(--text-muted);}
-.shift-text strong{color:var(--text);}
-.shift-actions{display:flex;gap:8px;}
-.shift-btn{
-  padding:7px 14px;border-radius:var(--radius);
-  font-size:12px;font-weight:500;cursor:pointer;
-  font-family:var(--ff);transition:all .15s;
-  border:1.5px solid var(--border);
-}
-.shift-btn.open{background:var(--gray-900);color:#fff;border-color:var(--gray-900);}
-.shift-btn.open:hover{background:#374151;}
-.shift-btn.close{background:transparent;color:var(--red);border-color:var(--red);}
-.shift-btn.close:hover{background:#fff5f5;}
+.shift-bar{display:none;}
 
-/* ─── FORM ──────────────────────────────────────── */
-.form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
-.form-header{background:var(--gray-50);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;}
-.form-title{font-size:13px;font-weight:600;color:var(--gray-800);}
-.time-display{font-family:var(--fm);font-size:13px;color:var(--blue);font-weight:500;}
-.form-body{padding:20px;}
-.field-group{margin-bottom:18px;}
-.field-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-600);margin-bottom:6px;display:block;}
+/* ─── FORM CARD ─────────────────────────────────── */
+.form-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  overflow:hidden;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.form-header{
+  background:var(--gray-50);
+  border-bottom:1px solid var(--border);
+  padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.form-title{font-size:14px;font-weight:600;color:var(--gray-800);}
+.time-display{font-family:var(--fm);font-size:12px;color:var(--blue-mid);font-weight:500;}
+.form-body{padding:16px;}
+
+/* ─── FIELDS ─────────────────────────────────────── */
+.field-group{margin-bottom:16px;}
+.field-label{
+  font-size:11px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--gray-600);
+  margin-bottom:6px;display:block;
+}
 .field-input{
-  width:100%;padding:10px 12px;
+  width:100%;padding:12px 14px;
   border:1.5px solid var(--border);border-radius:var(--radius);
   font-size:15px;font-family:var(--ff);color:var(--text);
-  background:#fff;transition:border-color .15s;outline:none;
+  background:#fff;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+  -webkit-appearance:none;
 }
-.field-input:focus{border-color:var(--blue);}
-.field-input.nopol{font-family:var(--fm);font-size:20px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;}
+.field-input:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px rgba(26,86,200,.1);}
+.field-input.nopol{
+  font-family:var(--fm);font-size:22px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;
+  text-align:center;padding:14px;
+}
 .field-input.error{border-color:var(--red);}
-.nopol-hint{margin-top:6px;font-size:12px;color:var(--blue);font-family:var(--fm);min-height:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.repeat-badge{background:var(--blue-light);color:var(--blue);font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;}
+.nopol-hint{
+  margin-top:6px;font-size:12px;color:var(--blue-mid);
+  min-height:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+}
+.repeat-badge{
+  background:var(--blue-light);color:var(--blue);
+  font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600;
+}
+
+/* ─── PRODUK GRID ────────────────────────────────── */
 .produk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 .produk-btn{
-  padding:10px 6px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:10px 6px 8px;
+  border:1.5px solid var(--border);border-radius:var(--radius);
   background:#fff;cursor:pointer;text-align:center;
   transition:all .15s;font-family:var(--ff);
-  display:flex;flex-direction:column;align-items:center;gap:4px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
   min-height:80px;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
 }
-.produk-btn:hover{border-color:var(--blue);background:var(--blue-light);}
-.produk-btn.selected{border-color:var(--blue);background:var(--blue-light);}
-.produk-btn:disabled{opacity:.5;cursor:not-allowed;}
-.produk-btn svg{flex-shrink:0;}
-.produk-name{font-size:13px;font-weight:600;color:var(--gray-800);display:block;}
-.produk-price{font-size:11px;color:var(--gray-400);font-family:var(--fm);display:block;margin-top:2px;}
-.produk-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
-.vol-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.produk-btn:active{transform:scale(.97);}
+.produk-btn:hover{border-color:var(--blue-mid);}
+.produk-btn.selected{
+  border-color:var(--green);
+  background:var(--green-light);
+  box-shadow:0 0 0 3px rgba(0,166,81,.12);
+}
+.produk-btn:disabled{opacity:.4;cursor:not-allowed;}
+.produk-name{font-size:12px;font-weight:600;color:var(--gray-800);}
+.produk-price{font-size:10px;color:var(--gray-400);font-family:var(--fm);}
+
+/* ─── VOL ROW ────────────────────────────────────── */
+.vol-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
 .field-select{
-  width:100%;padding:10px 12px;
+  width:100%;padding:12px 14px;
   border:1.5px solid var(--border);border-radius:var(--radius);
   font-size:14px;font-family:var(--ff);background:#fff;
   color:var(--text);outline:none;cursor:pointer;
+  -webkit-appearance:none;
 }
-.field-select:focus{border-color:var(--blue);}
-.catatan-input{
-  resize:vertical;min-height:60px;font-size:13px;
-  padding:10px 12px;line-height:1.5;
-}
-.submit-btn{
-  width:100%;padding:14px;
-  background:var(--gray-900);color:#fff;border:none;
-  border-radius:var(--radius);font-size:14px;font-weight:600;
-  cursor:pointer;letter-spacing:.04em;text-transform:uppercase;
-  font-family:var(--ff);transition:background .15s;margin-top:4px;
-}
-.submit-btn:hover{background:#374151;}
-.submit-btn:active{transform:scale(.99);}
-.submit-btn:disabled{background:var(--gray-400);cursor:not-allowed;}
+.field-select:focus{border-color:var(--blue-mid);}
+.catatan-input{resize:vertical;min-height:56px;font-size:13px;line-height:1.5;}
 
-/* Konfirmasi modal */
+/* ─── SUBMIT BTN ─────────────────────────────────── */
+.submit-btn{
+  width:100%;padding:16px;
+  background:var(--green);color:#fff;border:none;
+  border-radius:var(--radius);font-size:15px;font-weight:700;
+  cursor:pointer;letter-spacing:.03em;
+  font-family:var(--ff);
+  transition:background .15s,transform .1s;
+  margin-top:4px;
+  box-shadow:0 4px 12px rgba(0,166,81,.3);
+}
+.submit-btn:hover{background:var(--green-d);}
+.submit-btn:active{transform:scale(.99);}
+.submit-btn:disabled{background:var(--gray-300);box-shadow:none;cursor:not-allowed;}
+
+/* ─── MODALS ─────────────────────────────────────── */
 .modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.5);
-  z-index:50;display:flex;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity .2s;
-  padding:16px;
+  position:fixed;inset:0;background:rgba(0,0,0,.55);
+  z-index:50;display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+  padding-bottom:var(--safe-bottom);
 }
 .modal-overlay.show{opacity:1;pointer-events:all;}
 .modal{
-  background:var(--surface);border-radius:var(--radius-lg);
-  padding:24px;max-width:380px;width:100%;
-  box-shadow:0 20px 60px rgba(0,0,0,.2);
-  transform:scale(.96);transition:transform .2s;
+  background:var(--surface);
+  border-radius:var(--radius-xl) var(--radius-xl) 0 0;
+  padding:20px 20px calc(20px + var(--safe-bottom));
+  max-width:480px;width:100%;
+  box-shadow:0 -8px 40px rgba(0,0,0,.2);
+  transform:translateY(20px);transition:transform .25s;
+  max-height:90vh;overflow-y:auto;
 }
-.modal-overlay.show .modal{transform:scale(1);}
-.modal-title{font-size:15px;font-weight:600;margin-bottom:8px;}
+.modal-overlay.show .modal{transform:translateY(0);}
+.modal-handle{width:36px;height:4px;background:var(--gray-200);border-radius:2px;margin:0 auto 16px;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text);}
 .modal-body{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:20px;}
 .modal-row{display:flex;gap:8px;}
 .modal-data{
   background:var(--gray-50);border:1px solid var(--border);
-  border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;
-  font-size:13px;line-height:1.8;
+  border-radius:var(--radius);padding:14px;margin-bottom:16px;
+  font-size:13px;line-height:1.9;
 }
-.modal-data .label{color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;}
-.modal-data .val{font-weight:600;font-family:var(--fm);}
+.modal-data .label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);}
+.modal-data .val{font-weight:600;color:var(--text);}
 .modal-btn{
-  flex:1;padding:11px;border-radius:var(--radius);
-  font-size:13px;font-weight:500;cursor:pointer;font-family:var(--ff);
-  transition:all .15s;border:1px solid var(--border);
+  flex:1;padding:13px 16px;border-radius:var(--radius);
+  font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff);
+  border:1.5px solid var(--border);background:var(--surface);
+  color:var(--text);transition:all .15s;
 }
-.modal-btn.confirm{background:var(--gray-900);color:#fff;border-color:var(--gray-900);}
-.modal-btn.confirm:hover{background:#374151;}
-.modal-btn.cancel{background:#fff;color:var(--text);}
-.modal-btn.cancel:hover{background:var(--gray-50);}
+.modal-btn.cancel{color:var(--text-muted);}
+.modal-btn.confirm{
+  background:var(--green);color:#fff;border-color:var(--green);
+  box-shadow:0 4px 10px rgba(0,166,81,.25);
+}
+.modal-btn.confirm:hover{background:var(--green-d);}
+.error-msg{color:var(--red);font-size:12px;padding:8px 12px;background:var(--red-light);border-radius:var(--radius);margin-bottom:8px;}
 
-/* ─── TABLE ─────────────────────────────────────── */
-.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;}
-.toolbar-left{display:flex;align-items:center;gap:8px;}
-.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto;}
-.tbl-wrap table{width:100%;border-collapse:collapse;min-width:600px;}
+/* ─── TABLES ─────────────────────────────────────── */
+.tbl-wrap{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:auto;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.tbl-wrap table{width:100%;border-collapse:collapse;min-width:400px;}
 .tbl-wrap thead{background:var(--gray-50);}
-.tbl-wrap th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);border-bottom:1px solid var(--border);white-space:nowrap;}
-.tbl-wrap td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--gray-100);color:var(--gray-800);}
+.tbl-wrap th{
+  padding:10px 12px;text-align:left;
+  font-size:10px;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--gray-600);
+  border-bottom:1px solid var(--border);white-space:nowrap;
+}
+.tbl-wrap td{
+  padding:10px 12px;font-size:13px;
+  border-bottom:1px solid var(--gray-100);color:var(--gray-800);
+}
 .tbl-wrap tr:last-child td{border-bottom:none;}
 .tbl-wrap tr:hover td{background:var(--gray-50);}
-.nopol-cell{font-family:var(--fm);font-weight:500;letter-spacing:.06em;font-size:12px;}
+.nopol-cell{font-family:var(--fm);font-weight:600;font-size:12px;letter-spacing:.06em;color:var(--blue);}
+.empty-state{text-align:center;padding:36px 20px;color:var(--gray-400);font-size:13px;}
+.loading-msg{text-align:center;padding:28px;color:var(--gray-400);font-size:13px;}
+
+/* ─── KPI CARDS ──────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.kpi-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:14px 16px;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.kpi-card.accent-red{border-top:3px solid var(--red);}
+.kpi-card.accent-blue{border-top:3px solid var(--blue);}
+.kpi-card.accent-green{border-top:3px solid var(--green);}
+.kpi-card.accent-amber{border-top:3px solid var(--amber);}
+.kpi-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+.kpi-value{font-size:22px;font-weight:700;color:var(--text);line-height:1;font-family:var(--fm);}
+.kpi-sub{font-size:11px;color:var(--text-muted);margin-top:5px;}
+
+/* ─── PRODUK PILLS ───────────────────────────────── */
 .produk-pill{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
-.pill-Pertalite{background:#fef3c7;color:#92400e;}
-.pill-Pertamax{background:#dbeafe;color:#1e40af;}
-.pill-Pertamax-Turbo{background:#ede9fe;color:#5b21b6;}
-.pill-Pertadex{background:#d1fae5;color:#065f46;}
-.pill-Dex{background:#cffafe;color:#155e75;}
-.empty-state{text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px;}
-.loading-msg{text-align:center;padding:30px;color:var(--gray-400);font-size:13px;}
+.pill-Pertalite{background:#FEF9E7;color:#7D6608;}
+.pill-Pertamax{background:#EBF5FB;color:#1B4F72;}
+.pill-Pertamax-Turbo{background:#EDE7F6;color:#4527A0;}
+.pill-Biosolar{background:#E8F5E9;color:#1B5E20;}
+.pill-Dexlite{background:#E0F7FA;color:#006064;}
+.pill-Dex{background:#E8F5E9;color:#1B5E20;}
 
-/* Edit/hapus actions di tabel */
-.act-btn{
-  padding:4px 8px;font-size:11px;border-radius:4px;
-  cursor:pointer;font-family:var(--ff);border:1px solid var(--border);
-  background:transparent;color:var(--text-muted);transition:all .12s;
-}
-.act-btn:hover{background:var(--gray-50);color:var(--text);}
-.act-btn.del{color:var(--red);border-color:rgba(224,36,36,.25);}
-.act-btn.del:hover{background:#fff5f5;}
-
-/* ─── KPI & DASHBOARD ──────────────────────────── */
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
-.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;}
-.kpi-label{font-size:11px;color:var(--text-muted);font-weight:500;letter-spacing:.04em;margin-bottom:6px;}
-.kpi-value{font-size:22px;font-weight:600;color:var(--text);line-height:1;font-family:var(--fm);}
-.kpi-sub{font-size:11px;color:var(--text-muted);margin-top:4px;}
-.kpi-up{color:var(--green);}
-.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;}
-.section-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-600);margin-bottom:12px;}
-.loyal-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px;}
-.loyal-header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--gray-50);display:flex;align-items:center;justify-content:space-between;}
-.loyal-wrap table{width:100%;border-collapse:collapse;min-width:500px;}
-.loyal-wrap th{padding:9px 14px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);}
-.loyal-wrap td{padding:10px 14px;font-size:13px;border-top:1px solid var(--gray-100);color:var(--gray-800);}
-.rank-badge{width:22px;height:22px;border-radius:50%;background:var(--gray-900);color:#fff;font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;}
-.rank-1{background:#b45309;}.rank-2{background:#6b7280;}.rank-3{background:#92400e;}
-.vol-bar-wrap{display:flex;align-items:center;gap:8px;}
-.vol-bar{height:6px;border-radius:3px;background:var(--blue);min-width:4px;}
-
-/* ─── MANAGER: OPERATOR MANAGEMENT ─────────────── */
-.operator-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:20px;}
-.op-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-lg);padding:16px;
-  display:flex;flex-direction:column;gap:10px;
-}
-.op-card-head{display:flex;align-items:center;gap:10px;}
-.op-avatar{
-  width:40px;height:40px;border-radius:50%;
-  background:var(--gray-200);display:flex;align-items:center;justify-content:center;
-  font-size:16px;font-weight:600;color:var(--gray-600);flex-shrink:0;
-}
-.op-name{font-size:14px;font-weight:600;}
-.op-email{font-size:12px;color:var(--text-muted);}
-.op-status{
-  display:inline-block;font-size:10px;padding:2px 7px;
-  border-radius:4px;font-weight:500;
-}
-.op-status.active{background:#d1fae5;color:#065f46;}
-.op-status.inactive{background:#fee2e2;color:#991b1b;}
-.op-actions{display:flex;gap:6px;margin-top:4px;}
-.op-btn{
-  padding:5px 10px;font-size:11px;border-radius:6px;
-  cursor:pointer;font-family:var(--ff);border:1px solid var(--border);
-  background:transparent;color:var(--text);transition:all .12s;
-}
-.op-btn:hover{background:var(--gray-50);}
-.op-btn.danger{color:var(--red);border-color:rgba(224,36,36,.25);}
-.op-btn.danger:hover{background:#fff5f5;}
-
-/* ─── ADMIN: HARGA CONFIG ──────────────────────── */
-.harga-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-lg);overflow:hidden;margin-bottom:20px;
-}
-.harga-header{
-  background:var(--gray-50);border-bottom:1px solid var(--border);
-  padding:12px 16px;font-size:13px;font-weight:600;color:var(--gray-800);
+/* ─── TOOLBAR ────────────────────────────────────── */
+.toolbar{
   display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;gap:8px;flex-wrap:wrap;
 }
-.harga-row{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:12px 16px;border-bottom:1px solid var(--gray-100);gap:12px;
+.add-btn{
+  padding:9px 16px;background:var(--blue);color:#fff;
+  border:none;border-radius:var(--radius);font-size:12px;font-weight:600;
+  cursor:pointer;font-family:var(--ff);
+  box-shadow:0 2px 8px rgba(0,59,142,.25);
+  white-space:nowrap;
 }
-.harga-row:last-child{border-bottom:none;}
-.harga-produk-info{display:flex;align-items:center;gap:10px;}
-.harga-dot{width:10px;height:10px;border-radius:50%;}
-.harga-nama{font-size:14px;font-weight:500;}
-.harga-kode{font-size:11px;color:var(--text-muted);font-family:var(--fm);}
-.harga-input-wrap{display:flex;align-items:center;gap:8px;}
-.harga-prefix{font-size:13px;color:var(--text-muted);}
-.harga-input{
-  width:120px;padding:7px 10px;
-  border:1.5px solid var(--border);border-radius:var(--radius);
-  font-size:14px;font-family:var(--fm);font-weight:500;
-  text-align:right;outline:none;
-  transition:border-color .15s;
+.add-btn:hover{background:var(--blue-mid);}
+.refresh-btn{
+  padding:7px 12px;background:transparent;
+  border:1px solid var(--border);border-radius:var(--radius);
+  font-size:11px;color:var(--text-muted);cursor:pointer;font-family:var(--ff);
 }
-.harga-input:focus{border-color:var(--blue);}
-.harga-save-btn{
-  padding:7px 14px;background:var(--blue);color:#fff;
-  border:none;border-radius:6px;font-size:12px;font-weight:500;
-  cursor:pointer;font-family:var(--ff);transition:background .15s;
-}
-.harga-save-btn:hover{background:var(--blue-d);}
-.harga-save-btn:disabled{background:var(--gray-400);cursor:not-allowed;}
-
-/* ─── KONTRAK MITRA ────────────────────────── */
-.kontrak-item{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:12px;
-}
-.kontrak-item-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:12px;}
-.kontrak-nomor{font-family:var(--fm);font-size:13px;font-weight:500;color:var(--blue);}
-.kontrak-mitra-name{font-size:15px;font-weight:600;color:var(--text);margin-top:2px;}
-.kontrak-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
-.kontrak-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
-.kontrak-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
-.st-aktif{background:#d1fae5;color:#065f46;}
-.st-expired{background:#fee2e2;color:#991b1b;}
-.st-draft{background:#dbeafe;color:#1e40af;}
-.st-suspended{background:#fef3c7;color:#92400e;}
-.kontrak-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0;padding:14px 0;border-top:1px solid var(--gray-100);border-bottom:1px solid var(--gray-100);}
-.kstat-box{text-align:center;}
-.kstat-val{font-size:16px;font-weight:600;font-family:var(--fm);color:var(--text);}
-.kstat-label{font-size:10px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
-.kontrak-progress-wrap{margin-top:12px;}
-.kontrak-progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
-.kontrak-progress-bar{height:5px;background:var(--gray-100);border-radius:3px;overflow:hidden;}
-.kontrak-progress-fill{height:100%;border-radius:3px;transition:width .5s;}
-.kontrak-actions{display:flex;gap:8px;margin-top:14px;}
-.kontrak-btn{padding:6px 14px;font-size:12px;font-weight:500;border-radius:6px;cursor:pointer;font-family:var(--ff);border:1px solid var(--border);background:transparent;color:var(--text);transition:all .12s;}
-.kontrak-btn:hover{background:var(--gray-50);}
-.kontrak-btn.primary{background:var(--gray-900);color:#fff;border-color:var(--gray-900);}
-.kontrak-btn.primary:hover{background:#374151;}
-.refresh-btn{padding:6px 12px;background:transparent;border:.5px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-muted);cursor:pointer;font-family:var(--ff);}
 .refresh-btn:hover{background:var(--gray-50);}
-.export-btn{padding:6px 14px;background:var(--gray-900);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--ff);}
-.export-btn:hover{background:#374151;}
-.add-btn{padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--ff);}
-.add-btn:hover{background:var(--blue-d);}
-
-/* ─── MODE BTN ───────────────────────────────────── */
-.mode-btn{
-  padding:4px 12px;font-size:11px;font-weight:500;
-  border:none;border-radius:4px;cursor:pointer;
-  font-family:var(--ff);background:transparent;
-  color:var(--text-muted);transition:all .15s;
+.export-btn{
+  padding:7px 14px;background:var(--gray-800);color:#fff;
+  border:none;border-radius:var(--radius);font-size:11px;font-weight:500;
+  cursor:pointer;font-family:var(--ff);
 }
-.mode-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1);}
 
 /* ─── FILTER TABS ────────────────────────────────── */
 .filter-tab{
-  padding:5px 14px;font-size:12px;font-weight:500;
-  border:1px solid var(--border);border-radius:20px;
-  background:transparent;color:var(--text-muted);
-  cursor:pointer;font-family:var(--ff);transition:all .15s;
+  padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;
+  background:transparent;color:var(--text-muted);cursor:pointer;
+  border:1.5px solid var(--border);font-family:var(--ff);
+  transition:all .15s;
 }
-.filter-tab.active{background:var(--gray-900);color:#fff;border-color:var(--gray-900);}
-.filter-tab:hover:not(.active){background:var(--gray-50);}
+.filter-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.filter-tab:hover:not(.active){background:var(--gray-100);}
 
-/* ─── ERROR MSG IN MODAL ─────────────────────────── */
-.error-msg{
-  font-size:12px;color:var(--red);
-  padding:10px 12px;
-  background:rgba(224,36,36,.06);
-  border:1px solid rgba(224,36,36,.2);
-  border-radius:var(--radius);
-  line-height:1.5;margin-bottom:0;
+/* ─── OPERATOR CARDS ─────────────────────────────── */
+.operator-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.op-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.op-card-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.op-avatar{width:36px;height:36px;border-radius:50%;background:var(--blue-light);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.op-name{font-size:13px;font-weight:600;color:var(--text);}
+.op-email{font-size:11px;color:var(--text-muted);}
+.op-status{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin-bottom:8px;}
+.op-status.active{background:var(--green-light);color:var(--green-d);}
+.op-status.inactive{background:var(--red-light);color:var(--red-d);}
+.op-actions{display:flex;gap:6px;}
+.op-btn{flex:1;padding:7px;font-size:11px;font-weight:500;border-radius:var(--radius);cursor:pointer;font-family:var(--ff);border:1px solid var(--border);background:transparent;color:var(--text-muted);}
+.op-btn.danger{color:var(--red);border-color:rgba(232,24,44,.2);}
+
+/* ─── ACT BUTTONS ────────────────────────────────── */
+.act-btn{
+  padding:5px 10px;font-size:11px;font-weight:500;
+  border-radius:6px;cursor:pointer;font-family:var(--ff);
+  border:1px solid var(--border);background:transparent;
+  color:var(--gray-600);transition:all .12s;white-space:nowrap;
 }
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#fff;padding:12px 24px;border-radius:var(--radius);font-size:13px;font-weight:500;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:100;white-space:nowrap;}
+.act-btn:hover{background:var(--gray-100);}
+.act-btn.del{color:var(--red);border-color:rgba(232,24,44,.2);}
+.act-btn.del:hover{background:var(--red-light);}
+
+/* ─── HARGA CARD ─────────────────────────────────── */
+.harga-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.harga-header{padding:14px 16px;background:var(--gray-50);border-bottom:1px solid var(--border);font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;}
+.harga-row{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-100);gap:12px;flex-wrap:wrap;}
+.harga-row:last-child{border-bottom:none;}
+.harga-produk-info{display:flex;align-items:center;gap:12px;}
+.harga-nama{font-size:14px;font-weight:600;color:var(--text);}
+.harga-kode{font-size:11px;font-family:var(--fm);color:var(--text-muted);margin-top:2px;}
+.harga-input-wrap{display:flex;align-items:center;gap:8px;}
+.harga-prefix{font-size:13px;color:var(--text-muted);}
+.harga-input{
+  width:120px;padding:8px 10px;border:1.5px solid var(--border);
+  border-radius:var(--radius);font-size:14px;font-family:var(--fm);
+  font-weight:500;color:var(--text);text-align:right;
+  outline:none;
+}
+.harga-input:focus{border-color:var(--blue-mid);}
+.harga-save-btn{
+  padding:7px 14px;background:var(--blue);color:#fff;border:none;
+  border-radius:var(--radius);font-size:12px;font-weight:600;
+  cursor:pointer;font-family:var(--ff);
+}
+.harga-save-btn:hover{background:var(--blue-mid);}
+
+/* ─── KONTRAK ITEMS ──────────────────────────────── */
+.kontrak-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.kontrak-item-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:10px;}
+.kontrak-nomor{font-family:var(--fm);font-size:12px;font-weight:500;color:var(--blue);}
+.kontrak-mitra-name{font-size:15px;font-weight:700;color:var(--text);margin-top:2px;}
+.kontrak-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.kontrak-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.kontrak-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.st-aktif{background:var(--green-light);color:var(--green-d);}
+.st-expired{background:var(--red-light);color:var(--red-d);}
+.st-draft{background:var(--blue-light);color:var(--blue);}
+.st-suspended{background:#FEF3C7;color:#92400E;}
+.kontrak-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0;padding:12px 0;border-top:1px solid var(--gray-100);border-bottom:1px solid var(--gray-100);}
+.kstat-box{text-align:center;}
+.kstat-val{font-size:15px;font-weight:700;font-family:var(--fm);color:var(--text);}
+.kstat-label{font-size:10px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
+.kontrak-progress-wrap{margin-top:10px;}
+.kontrak-progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+.kontrak-progress-bar{height:5px;background:var(--gray-100);border-radius:3px;overflow:hidden;}
+.kontrak-progress-fill{height:100%;border-radius:3px;transition:width .5s;}
+.kontrak-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
+.kontrak-btn{padding:7px 14px;font-size:12px;font-weight:500;border-radius:var(--radius);cursor:pointer;font-family:var(--ff);border:1px solid var(--border);background:transparent;color:var(--text);}
+.kontrak-btn:hover{background:var(--gray-50);}
+.kontrak-btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+
+/* ─── PERIOD PILLS ───────────────────────────────── */
+.period-pills{display:flex;gap:4px;background:var(--gray-100);border-radius:8px;padding:3px;}
+.period-pill{padding:5px 12px;font-size:12px;font-weight:500;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;border:none;font-family:var(--ff);}
+.period-pill.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+
+/* ─── MODE BTN ───────────────────────────────────── */
+.mode-btn{padding:5px 12px;font-size:11px;font-weight:500;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;border:1px solid transparent;font-family:var(--ff);}
+.mode-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1);border-color:var(--border);}
+
+/* ─── TAGIHAN CARD ───────────────────────────────── */
+.tagihan-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.tagihan-header{background:var(--gray-50);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.tagihan-title{font-size:13px;font-weight:600;color:var(--gray-800);}
+.tagihan-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.status-lunas{background:var(--green-light);color:var(--green-d);}
+.status-belum{background:var(--red-light);color:var(--red-d);}
+.status-tagihan{background:var(--blue-light);color:var(--blue);}
+.tagihan-body{padding:16px;}
+.tagihan-amount{font-size:26px;font-weight:700;font-family:var(--fm);color:var(--text);}
+.tagihan-detail{font-size:12px;color:var(--text-muted);margin-top:4px;}
+.tagihan-breakdown{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.breakdown-item{text-align:center;}
+.breakdown-val{font-size:16px;font-weight:700;font-family:var(--fm);color:var(--text);}
+.breakdown-label{font-size:10px;color:var(--text-muted);margin-top:2px;}
+
+/* ─── KENDARAAN GRID ─────────────────────────────── */
+.kendaraan-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.kendaraan-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.nopol-big{font-family:var(--fm);font-size:17px;font-weight:700;color:var(--blue);letter-spacing:.08em;}
+.kendaraan-info{font-size:12px;color:var(--text-muted);margin-top:4px;}
+.kendaraan-stats{display:flex;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.kstat{flex:1;text-align:center;}
+.kstat-val{font-size:14px;font-weight:700;font-family:var(--fm);color:var(--text);}
+.kstat-label{font-size:10px;color:var(--text-muted);margin-top:1px;}
+
+/* ─── SA SPBU SELECTOR ───────────────────────────── */
+.sa-spbu-group{
+  background:var(--blue-light);border:1.5px solid var(--blue-mid);
+  border-radius:var(--radius);padding:12px;margin-bottom:14px;
+  display:none;
+}
+.sa-spbu-group .field-label{color:var(--blue);}
+.sa-spbu-select{
+  width:100%;padding:10px 12px;border:1.5px solid rgba(26,86,200,.3);
+  border-radius:var(--radius);font-size:14px;font-family:var(--ff);
+  background:#fff;color:var(--text);outline:none;
+}
+
+/* ─── TOAST ──────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:calc(20px + var(--safe-bottom));left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--gray-900);color:#fff;
+  padding:12px 24px;border-radius:var(--radius);
+  font-size:13px;font-weight:500;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  z-index:100;white-space:nowrap;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);
+}
 .toast.show{transform:translateX(-50%) translateY(0);}
+.toast.success{background:var(--green);}
+.toast.error{background:var(--red);}
 
-/* ─── RESPONSIVE ─────────────────────────────────── */
-@media(max-width:640px){
-  .kpi-grid{grid-template-columns:repeat(2,1fr);}
-  .charts-row{grid-template-columns:1fr;}
-  .produk-grid{grid-template-columns:repeat(2,1fr);}
-  .vol-row{grid-template-columns:1fr;}
-  .tab{padding:10px 10px;font-size:11px;}
-  .topbar{padding:8px 14px;}
-  .user-name{display:none;}
+/* ─── PROGRESS BAR ───────────────────────────────── */
+.progress-bar-wrap{margin-top:10px;}
+.progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+.progress-bar{height:5px;background:var(--gray-100);border-radius:3px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--blue);border-radius:3px;}
+
+/* ─── SCROLLBAR ──────────────────────────────────── */
+.views::-webkit-scrollbar{width:3px;}
+.views::-webkit-scrollbar-track{background:transparent;}
+.views::-webkit-scrollbar-thumb{background:var(--gray-200);border-radius:2px;}
+
+/* ─── RESPONSIVE DESKTOP ─────────────────────────── */
+@media(min-width:481px){
+  body{background:#1E2540;display:flex;align-items:center;justify-content:center;}
+  .app{
+    height:calc(100vh - 40px);
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 24px 80px rgba(0,0,0,.5);
+  }
 }
 </style>
 </head>
@@ -411,14 +570,26 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 
   <!-- TOPBAR -->
   <div class="topbar">
-    <div style="min-width:0;">
-      <div class="topbar-brand">SPBU CRM</div>
-      <div class="topbar-sub" id="spbu-label">Memuat...</div>
+    <div class="topbar-left">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="3" width="8" height="12" rx="2" fill="#003B8E"/>
+          <rect x="13" y="3" width="8" height="8" rx="2" fill="#E8182C"/>
+          <rect x="13" y="13" width="8" height="8" rx="2" fill="#00A651"/>
+          <rect x="5" y="17" width="4" height="4" rx="1" fill="#00A651"/>
+        </svg>
+      </div>
+      <div style="min-width:0;">
+        <div class="topbar-brand">FUELTRACK</div>
+        <div class="topbar-sub" id="spbu-label">Pertamina Patra Niaga · Sultra</div>
+      </div>
     </div>
     <div class="topbar-right">
-      <span class="conn-dot" id="conn-dot"></span>
-      <span class="conn-label" id="conn-label">Menghubungkan...</span>
-      <div class="user-chip" id="user-chip" title="Profil saya">
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span class="conn-dot" id="conn-dot"></span>
+        <span class="conn-label" id="conn-label">...</span>
+      </div>
+      <div class="user-chip" id="user-chip">
         <div class="user-avatar" id="user-avatar">—</div>
         <span class="user-name" id="user-name">—</span>
         <span class="role-badge" id="role-badge">—</span>
@@ -429,14 +600,18 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 
   <!-- TABS -->
   <div class="tabs" id="tabs">
-    <div class="tab active" id="tab-input" onclick="switchTab('input')">Input Transaksi</div>
+    <div class="tab active" id="tab-input" onclick="switchTab('input')">Input</div>
     <div class="tab" id="tab-history" onclick="switchTab('history')">Riwayat</div>
     <div class="tab" id="tab-dashboard" onclick="switchTab('dashboard')">Dashboard</div>
-    <div class="tab hidden" id="tab-users" onclick="switchTab('users')">Manajemen User</div>
-    <div class="tab hidden" id="tab-kontrak" onclick="switchTab('kontrak')">Kontrak Mitra</div>
-    <div class="tab hidden" id="tab-spbu" onclick="switchTab('spbu')">Data SPBU</div>
-    <div class="tab hidden" id="tab-harga" onclick="switchTab('harga')">Produk & Harga</div>
+    <div class="tab hidden" id="tab-users" onclick="switchTab('users')">Users</div>
+    <div class="tab hidden" id="tab-kontrak" onclick="switchTab('kontrak')">Kontrak</div>
+    <div class="tab hidden" id="tab-tagihan" onclick="switchTab('tagihan')">Tagihan</div>
+    <div class="tab hidden" id="tab-spbu" onclick="switchTab('spbu')">SPBU</div>
+    <div class="tab hidden" id="tab-harga" onclick="switchTab('harga')">Produk</div>
   </div>
+
+  <!-- VIEWS SCROLL CONTAINER -->
+  <div class="views">
 
   <!-- VIEW: INPUT TRANSAKSI -->
   <div class="view active" id="view-input">
@@ -731,6 +906,85 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     </div>
   </div>
 
+  <!-- VIEW: TAGIHAN MITRA -->
+  <div class="view" id="view-tagihan">
+    <div class="toolbar">
+      <div>
+        <div style="font-size:13px;font-weight:500">Tagihan Mitra</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Kelola invoice dan status pembayaran</div>
+      </div>
+      <button class="add-btn" onclick="showModalGenerateTagihan()">+ Generate Invoice</button>
+    </div>
+
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;" id="tagihan-summary-cards"></div>
+
+    <!-- Filter -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+      <button class="filter-tab active" onclick="filterTagihan('semua',this)">Semua</button>
+      <button class="filter-tab" onclick="filterTagihan('draft',this)">Draft</button>
+      <button class="filter-tab" onclick="filterTagihan('dikirim',this)">Dikirim</button>
+      <button class="filter-tab" onclick="filterTagihan('menunggu',this)">Menunggu</button>
+      <button class="filter-tab" onclick="filterTagihan('terlambat',this)" style="color:var(--red)">Terlambat</button>
+      <button class="filter-tab" onclick="filterTagihan('lunas',this)">Lunas</button>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>No. Invoice</th><th>Mitra</th><th>Periode</th>
+          <th>Transaksi</th><th>Total</th><th>Status</th><th>Aksi</th>
+        </tr></thead>
+        <tbody id="tagihan-body">
+          <tr><td colspan="7" class="loading-msg">Memuat...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Generate Invoice -->
+  <div class="modal-overlay" id="modal-gen-tagihan" onclick="if(event.target===this)closeModalGenTagihan()">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-title">Generate Invoice Baru</div>
+      <div class="field-group">
+        <label class="field-label">Mitra</label>
+        <select class="field-input" id="gen-mitra-id" style="cursor:pointer;" onchange="loadKontrakForMitra()">
+          <option value="">— Pilih Mitra —</option>
+        </select>
+      </div>
+      <div class="field-group" id="gen-kontrak-group" style="display:none">
+        <label class="field-label">Kontrak (opsional)</label>
+        <select class="field-input" id="gen-kontrak-id" style="cursor:pointer;">
+          <option value="">— Pilih Kontrak —</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field-group">
+          <label class="field-label">Periode Mulai</label>
+          <input class="field-input" id="gen-mulai" type="date"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Periode Selesai</label>
+          <input class="field-input" id="gen-selesai" type="date"/>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Catatan (opsional)</label>
+        <input class="field-input" id="gen-catatan" placeholder="Misal: tagihan bulan April 2026"/>
+      </div>
+      <div id="gen-preview" style="display:none;background:var(--gray-50);border:1px solid var(--border);
+        border-radius:var(--radius);padding:12px;font-size:13px;margin-bottom:12px;"></div>
+      <div class="error-msg" id="gen-error" style="display:none;margin-bottom:12px;"></div>
+      <div class="modal-row">
+        <button class="modal-btn cancel" onclick="closeModalGenTagihan()">Batal</button>
+        <button class="modal-btn" onclick="previewTagihan()" style="background:var(--gray-100);color:var(--text)">Preview</button>
+        <button class="modal-btn confirm" onclick="submitGenTagihan()">
+          <span id="gen-submit-label">Generate & Simpan</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- VIEW: DATA SPBU (Super Admin only) -->
   <div class="view" id="view-spbu">
     <div class="toolbar">
@@ -749,6 +1003,8 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
       </table>
     </div>
   </div>
+
+  </div><!-- end .views -->
 
 </div><!-- .app -->
 
@@ -1079,6 +1335,11 @@ function applyRoleTabs() {
   // Kontrak Mitra — manager & super_admin
   if (role === 'manager' || role === 'super_admin') {
     document.getElementById('tab-kontrak').classList.remove('hidden');
+  }
+
+  // Tagihan — manager & super_admin
+  if (role === 'manager' || role === 'super_admin') {
+    document.getElementById('tab-tagihan').classList.remove('hidden');
   }
   if (role === 'manager' || role === 'super_admin') {
     document.getElementById('tab-harga').classList.remove('hidden');
@@ -1875,6 +2136,7 @@ function switchTab(tab) {
   if (tab === 'dashboard') loadDashboard();
   if (tab === 'users')     loadUsers();
   if (tab === 'kontrak')   loadKontrakList();
+  if (tab === 'tagihan')   loadTagihan();
   if (tab === 'spbu')      loadSpbu();
   if (tab === 'harga')     loadProdukHarga();
 }
@@ -2275,7 +2537,242 @@ async function submitEditUser() {
 }
 
 
-// ─── SUB-TAB KONTRAK / KENDARAAN ─────────────────────────────
+// ─── BILLING / TAGIHAN MITRA ─────────────────────────────────
+let allTagihan = [], filteredTagihan = [];
+const ST_LABEL = { draft:'Draft', dikirim:'Dikirim', menunggu:'Menunggu', lunas:'Lunas', terlambat:'Terlambat' };
+const ST_BG    = { draft:'#dbeafe', dikirim:'#fef3c7', menunggu:'#ede9fe', lunas:'#d1fae5', terlambat:'#fee2e2' };
+const ST_CLR   = { draft:'#1e40af', dikirim:'#92400e', menunggu:'#5b21b6', lunas:'#065f46', terlambat:'#991b1b' };
+
+async function loadTagihan() {
+  const tbody = document.getElementById('tagihan-body');
+  tbody.innerHTML = '<tr><td colspan="7" class="loading-msg">Memuat...</td></tr>';
+
+  let q = sb.from('tagihan_mitra')
+    .select('*, mitra:mitra_id(nama_perusahaan), spbu:spbu_id(nama,kode)')
+    .order('created_at', { ascending: false });
+  if (currentProfile.role === 'manager' && currentSpbu) q = q.eq('spbu_id', currentSpbu.id);
+
+  const { data, error } = await q;
+  if (error) { tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Error: ${error.message}</td></tr>`; return; }
+
+  allTagihan = data || [];
+  renderTagihanSummary();
+  renderTagihanTable(allTagihan);
+}
+
+function renderTagihanSummary() {
+  const stats = { draft:0, dikirim:0, menunggu:0, lunas:0, terlambat:0, belumLunas:0 };
+  allTagihan.forEach(t => {
+    stats[t.status] = (stats[t.status] || 0) + 1;
+    if (!['lunas'].includes(t.status)) stats.belumLunas += t.total_tagihan;
+  });
+  document.getElementById('tagihan-summary-cards').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+      padding:14px 16px;border-top:3px solid var(--blue);">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">TOTAL INVOICE</div>
+      <div style="font-size:22px;font-weight:600;font-family:var(--fm);">${allTagihan.length}</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+      padding:14px 16px;border-top:3px solid var(--amber);">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">BELUM LUNAS</div>
+      <div style="font-size:16px;font-weight:600;font-family:var(--fm);">Rp ${(stats.belumLunas/1e6).toFixed(1)}Jt</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${(stats.dikirim||0)+(stats.menunggu||0)+(stats.terlambat||0)} invoice</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+      padding:14px 16px;border-top:3px solid var(--red);">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">TERLAMBAT</div>
+      <div style="font-size:22px;font-weight:600;font-family:var(--fm);color:var(--red);">${stats.terlambat||0}</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+      padding:14px 16px;border-top:3px solid var(--green);">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">LUNAS</div>
+      <div style="font-size:22px;font-weight:600;font-family:var(--fm);color:var(--green);">${stats.lunas||0}</div>
+    </div>`;
+}
+
+function renderTagihanTable(data) {
+  const tbody = document.getElementById('tagihan-body');
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Belum ada tagihan</td></tr>'; return; }
+
+  tbody.innerHTML = data.map(t => {
+    const fmtD = d => new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    const st = `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;
+      background:${ST_BG[t.status]};color:${ST_CLR[t.status]};">${ST_LABEL[t.status]}</span>`;
+    const aksi = `
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        <a href="invoice.html?id=${t.id}" target="_blank">
+          <button class="act-btn">Lihat PDF</button></a>
+        ${!['lunas'].includes(t.status) ? `<button class="act-btn" onclick="tandaiLunasFromList('${t.id}')">Tandai Lunas</button>` : ''}
+        ${t.status === 'draft' ? `<button class="act-btn" onclick="kirimTagihan('${t.id}')">Kirim</button>` : ''}
+      </div>`;
+    return `<tr>
+      <td style="font-family:var(--fm);font-size:12px;font-weight:500;color:var(--blue)">${t.nomor_invoice}</td>
+      <td style="font-size:13px;">${t.mitra?.nama_perusahaan || '—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${fmtD(t.periode_mulai)} – ${fmtD(t.periode_selesai)}</td>
+      <td style="font-family:var(--fm)">${t.total_transaksi} trx</td>
+      <td style="font-family:var(--fm);font-weight:500">Rp ${(t.total_tagihan/1e6).toFixed(2)}Jt</td>
+      <td>${st}</td>
+      <td>${aksi}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterTagihan(status, btn) {
+  document.querySelectorAll('#view-tagihan .filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = status === 'semua' ? allTagihan : allTagihan.filter(t => t.status === status);
+  renderTagihanTable(filtered);
+}
+
+async function tandaiLunasFromList(id) {
+  if (!confirm('Tandai invoice ini sebagai LUNAS?\nPastikan pembayaran sudah diterima.')) return;
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch('/api/billing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: 'lunas', tagihan_id: id })
+  });
+  const result = await res.json();
+  if (!res.ok) { showToast('Gagal: ' + result.error, true); return; }
+  showToast('Invoice ditandai LUNAS');
+  loadTagihan();
+}
+
+async function kirimTagihan(id) {
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch('/api/billing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: 'kirim', tagihan_id: id })
+  });
+  const result = await res.json();
+  if (!res.ok) { showToast('Gagal: ' + result.error, true); return; }
+  showToast('Status invoice diubah ke Dikirim');
+  loadTagihan();
+}
+
+async function showModalGenerateTagihan() {
+  // Load mitra list
+  let q = sb.from('mitra').select('id, nama_perusahaan').eq('status', 'aktif').order('nama_perusahaan');
+  if (currentProfile.role === 'manager' && currentSpbu) q = q.eq('spbu_id', currentSpbu.id);
+  const { data: mitras } = await q;
+
+  const sel = document.getElementById('gen-mitra-id');
+  sel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+    (mitras || []).map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+
+  // Default periode ke bulan lalu
+  const now = new Date();
+  const bulanLalu = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const akhirBulanLalu = new Date(now.getFullYear(), now.getMonth(), 0);
+  document.getElementById('gen-mulai').value = bulanLalu.toISOString().split('T')[0];
+  document.getElementById('gen-selesai').value = akhirBulanLalu.toISOString().split('T')[0];
+  document.getElementById('gen-catatan').value = '';
+  document.getElementById('gen-error').style.display = 'none';
+  document.getElementById('gen-preview').style.display = 'none';
+  document.getElementById('modal-gen-tagihan').classList.add('show');
+}
+
+function closeModalGenTagihan() {
+  document.getElementById('modal-gen-tagihan').classList.remove('show');
+}
+
+async function loadKontrakForMitra() {
+  const mitraId = document.getElementById('gen-mitra-id').value;
+  const grp = document.getElementById('gen-kontrak-group');
+  if (!mitraId) { grp.style.display = 'none'; return; }
+
+  const { data: kontraks } = await sb.from('kontrak_mitra')
+    .select('id, nomor_kontrak, tanggal_mulai, tanggal_selesai')
+    .eq('mitra_id', mitraId).eq('status', 'aktif');
+
+  const sel = document.getElementById('gen-kontrak-id');
+  sel.innerHTML = '<option value="">— Tanpa kontrak —</option>' +
+    (kontraks || []).map(k => `<option value="${k.id}">${k.nomor_kontrak}</option>`).join('');
+  grp.style.display = kontraks?.length ? 'block' : 'none';
+}
+
+async function previewTagihan() {
+  const mitraId = document.getElementById('gen-mitra-id').value;
+  const mulai   = document.getElementById('gen-mulai').value;
+  const selesai = document.getElementById('gen-selesai').value;
+  const errEl   = document.getElementById('gen-error');
+  errEl.style.display = 'none';
+
+  if (!mitraId || !mulai || !selesai) {
+    errEl.textContent = 'Pilih mitra dan periode terlebih dahulu';
+    errEl.style.display = 'block'; return;
+  }
+
+  const spbuId = currentSpbu?.id;
+  const { data: trx } = await sb.from('transaksi')
+    .select('total, volume')
+    .eq('mitra_id', mitraId)
+    .eq('spbu_id', spbuId)
+    .gte('created_at', mulai + 'T00:00:00')
+    .lte('created_at', selesai + 'T23:59:59')
+    .is('deleted_at', null);
+
+  const total   = (trx || []).reduce((s, t) => s + parseInt(t.total), 0);
+  const vol     = (trx || []).reduce((s, t) => s + parseFloat(t.volume), 0);
+  const prev    = document.getElementById('gen-preview');
+  prev.style.display = 'block';
+  prev.innerHTML = `
+    <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--gray-700)">Preview tagihan</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">
+      <div><div style="font-size:18px;font-weight:600;font-family:var(--fm)">${(trx||[]).length}</div><div style="font-size:11px;color:var(--text-muted)">Transaksi</div></div>
+      <div><div style="font-size:18px;font-weight:600;font-family:var(--fm)">${vol.toFixed(0)} L</div><div style="font-size:11px;color:var(--text-muted)">Volume</div></div>
+      <div><div style="font-size:18px;font-weight:600;font-family:var(--fm);color:var(--blue)">Rp ${(total/1e6).toFixed(2)}Jt</div><div style="font-size:11px;color:var(--text-muted)">Total</div></div>
+    </div>`;
+}
+
+async function submitGenTagihan() {
+  const mitraId  = document.getElementById('gen-mitra-id').value;
+  const mulai    = document.getElementById('gen-mulai').value;
+  const selesai  = document.getElementById('gen-selesai').value;
+  const kontrakId = document.getElementById('gen-kontrak-id').value || null;
+  const catatan  = document.getElementById('gen-catatan').value;
+  const errEl    = document.getElementById('gen-error');
+  errEl.style.display = 'none';
+
+  if (!mitraId || !mulai || !selesai) {
+    errEl.textContent = 'Lengkapi semua field'; errEl.style.display = 'block'; return;
+  }
+
+  const btn = document.getElementById('gen-submit-label');
+  btn.textContent = 'Generating...';
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch('/api/billing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({
+        action: 'generate',
+        mitra_id: mitraId,
+        spbu_id: currentSpbu?.id,
+        periode_mulai: mulai,
+        periode_selesai: selesai,
+        kontrak_id: kontrakId,
+        catatan: catatan || null
+      })
+    });
+    const result = await res.json();
+    if (!res.ok) { errEl.textContent = result.error || 'Gagal'; errEl.style.display = 'block'; return; }
+
+    closeModalGenTagihan();
+    showToast(`Invoice ${result.tagihan.nomor_invoice} berhasil dibuat!`);
+    loadTagihan();
+    // Buka invoice langsung
+    setTimeout(() => window.open(`invoice.html?id=${result.tagihan.id}`, '_blank'), 500);
+  } catch (e) {
+    errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block';
+  } finally {
+    btn.textContent = 'Generate & Simpan';
+  }
+}
+
+
 function switchSubtab(tab, btn) {
   document.querySelectorAll('#view-kontrak .period-pill').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
