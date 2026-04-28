@@ -223,6 +223,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
     <div class="tab" onclick="switchTab('transaksi')">Riwayat Transaksi</div>
     <div class="tab" onclick="switchTab('kendaraan')">Kendaraan</div>
+    <div class="tab" onclick="switchTab('tagihan')">Tagihan</div>
     <div class="tab" onclick="switchTab('kontrak')">Kontrak</div>
   </div>
 
@@ -344,7 +345,15 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     </div>
   </div>
 
-  <!-- KONTRAK -->
+  <!-- TAGIHAN -->
+  <div class="view" id="view-tagihan">
+    <div class="toolbar">
+      <span style="font-size:13px;font-weight:500">Status Tagihan</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;" id="tagihan-mitra-summary"></div>
+    <div id="tagihan-mitra-list"><div class="loading-msg">Memuat...</div></div>
+  </div>
+
   <div class="view" id="view-kontrak">
     <div id="kontrak-list">
       <div class="loading-msg">Memuat kontrak...</div>
@@ -633,6 +642,88 @@ async function loadKendaraan() {
   }).join('');
 }
 
+async function loadTagihanMitra() {
+  const summary = document.getElementById('tagihan-mitra-summary');
+  const list    = document.getElementById('tagihan-mitra-list');
+  list.innerHTML = '<div class="loading-msg">Memuat...</div>';
+
+  const { data: tagihans, error } = await sb.from('tagihan_mitra')
+    .select('*, spbu:spbu_id(nama)')
+    .eq('mitra_id', currentMitra.id)
+    .order('created_at', { ascending: false });
+
+  if (error || !tagihans) {
+    list.innerHTML = '<div class="empty-state">Gagal memuat tagihan</div>';
+    return;
+  }
+
+  // Summary
+  const belumLunas = tagihans.filter(t => !['lunas'].includes(t.status)).reduce((s,t) => s+t.total_tagihan, 0);
+  const terlambat  = tagihans.filter(t => t.status === 'terlambat').length;
+  const lunas      = tagihans.filter(t => t.status === 'lunas').length;
+
+  summary.innerHTML = `
+    <div class="tagihan-card" style="padding:14px 16px;border-top:3px solid var(--blue);">
+      <div class="kpi-label">Belum Lunas</div>
+      <div class="kpi-value" style="font-size:18px;">Rp ${(belumLunas/1e6).toFixed(2)}Jt</div>
+    </div>
+    <div class="tagihan-card" style="padding:14px 16px;border-top:3px solid var(--red);">
+      <div class="kpi-label">Terlambat</div>
+      <div class="kpi-value" style="color:var(--red)">${terlambat}</div>
+    </div>
+    <div class="tagihan-card" style="padding:14px 16px;border-top:3px solid var(--green);">
+      <div class="kpi-label">Lunas</div>
+      <div class="kpi-value" style="color:var(--green)">${lunas}</div>
+    </div>`;
+
+  if (!tagihans.length) {
+    list.innerHTML = '<div class="empty-state">Belum ada tagihan</div>';
+    return;
+  }
+
+  const ST_BG  = { draft:'#dbeafe', dikirim:'#fef3c7', menunggu:'#ede9fe', lunas:'#d1fae5', terlambat:'#fee2e2' };
+  const ST_CLR = { draft:'#1e40af', dikirim:'#92400e', menunggu:'#5b21b6', lunas:'#065f46', terlambat:'#991b1b' };
+  const ST_LBL = { draft:'Draft', dikirim:'Dikirim', menunggu:'Menunggu Pembayaran', lunas:'LUNAS', terlambat:'TERLAMBAT' };
+
+  list.innerHTML = tagihans.map(t => {
+    const fmtD = d => new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    const fmtRp = n => 'Rp ' + parseInt(n).toLocaleString('id-ID');
+    return `
+    <div class="tagihan-card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:var(--fm);font-size:13px;font-weight:500;color:var(--blue)">${t.nomor_invoice}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${t.spbu?.nama || '—'}</div>
+        </div>
+        <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;
+          background:${ST_BG[t.status]};color:${ST_CLR[t.status]};">${ST_LBL[t.status]}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 0;border-top:1px solid var(--border);">
+        <div>
+          <div style="font-size:11px;color:var(--text-muted)">Periode</div>
+          <div style="font-size:12px;font-weight:500">${fmtD(t.periode_mulai)} – ${fmtD(t.periode_selesai)}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted)">Transaksi</div>
+          <div style="font-size:12px;font-weight:500;font-family:var(--fm)">${t.total_transaksi} kali · ${parseFloat(t.total_volume).toFixed(0)} L</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted)">Total</div>
+          <div style="font-size:14px;font-weight:600;font-family:var(--fm);color:var(--blue)">${fmtRp(t.total_tagihan)}</div>
+        </div>
+      </div>
+      ${t.lunas_pada ? `<div style="font-size:11px;color:var(--green);margin-top:6px;">✓ Dibayar pada ${fmtD(t.lunas_pada)}</div>` : ''}
+      <div style="margin-top:12px;">
+        <a href="invoice.html?id=${t.id}" target="_blank"
+          style="display:inline-block;padding:7px 16px;background:var(--gray-900);color:#fff;
+          text-decoration:none;border-radius:6px;font-size:12px;font-weight:500;">
+          Lihat Invoice PDF
+        </a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 async function loadKontrak() {
   const list = document.getElementById('kontrak-list');
 
@@ -722,7 +813,8 @@ function switchTab(tab) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
   if (tab === 'transaksi') loadTransaksiMitra();
-  if (tab === 'kontrak') loadKontrak();
+  if (tab === 'tagihan')   loadTagihanMitra();
+  if (tab === 'kontrak')   loadKontrak();
 }
 
 async function doLogout() {
