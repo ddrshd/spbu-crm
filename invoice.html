@@ -106,7 +106,7 @@ body{font-family:var(--ff);background:#f0f2f5;color:var(--text);font-size:14px;}
 <body>
 <div class="toolbar">
   <div class="toolbar-left">
-    <a href="index.html" class="back-btn">← Kembali</a>
+    <a href="index.html" class="back-btn" id="back-btn">← Kembali</a>
     <span class="toolbar-title" id="tb-title">Invoice</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px;" id="tb-actions" style="display:none">
@@ -147,6 +147,12 @@ async function init() {
 
   const {data:p} = await sb.from('profiles').select('role,spbu_id,mitra_id').eq('id',session.user.id).single();
   currentProfile = p;
+
+  // Fix tombol kembali berdasarkan role
+  const backBtn = document.getElementById('back-btn');
+  if (p?.role === 'mitra') {
+    backBtn.href = 'mitra.html';
+  }
 
   const params = new URLSearchParams(window.location.search);
   const tagihanId = params.get('id');

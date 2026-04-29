@@ -1200,8 +1200,11 @@ async function init() {
     currentProfile = profile;
     currentSpbu = profile.spbu;
 
-    // Render user info di topbar
-    renderUserTopbar();
+    // Mitra tidak boleh akses index.html — redirect ke portal mitra
+    if (profile.role === 'mitra') {
+      window.location.href = 'mitra.html';
+      return;
+    }
 
     // Tampilkan tab sesuai role
     applyRoleTabs();
