@@ -39,8 +39,8 @@ body::before{
 
 .wrap{
   position:relative;z-index:1;
-  width:100%;max-width:420px;
-  padding:24px 20px;
+  width:100%;max-width:440px;
+  padding:20px 16px;
   display:flex;flex-direction:column;align-items:center;
 }
 
@@ -48,7 +48,8 @@ body::before{
 .logo-block{
   width:100%;
   text-align:center;
-  margin-bottom:36px;
+  margin-bottom:28px;
+  padding:0 4px;
 }
 
 /* Full horizontal BISON logo — SVG recreation dari gambar referensi */
@@ -167,20 +168,23 @@ body::before{
 .logo-img-wrap{
   background:#fff;
   border-radius:20px;
-  padding:24px 32px;
+  padding:20px 24px;
   box-shadow:0 4px 24px rgba(13,27,62,.08), 0 1px 4px rgba(13,27,62,.04);
   border:1px solid var(--border);
-  display:inline-block;
+  display:block;
   margin-bottom:14px;
-  max-width:380px;
   width:100%;
+  max-width:400px;
+  margin-left:auto;
+  margin-right:auto;
+  overflow:visible;
 }
 .bison-logo-img{
   width:100%;
   height:auto;
   display:block;
   object-fit:contain;
-  max-height:100px;
+  object-position:center;
 }
 .powered-by{
   font-size:12px;
