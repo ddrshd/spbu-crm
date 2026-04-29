@@ -1555,11 +1555,10 @@ function onHargaInput(val) {
     volEl.value = vol > 0 ? vol : '';
     volEl.style.color = 'var(--gray-600)';
     if (kembalian > 0) {
-      document.getElementById('harga-hint').innerHTML =
-        `<span style="color:var(--green);font-weight:500">✓ ${vol.toFixed(2)} L</span> · kembalian <strong>Rp ${kembalian.toLocaleString('id-ID')}</strong>`;
+      document.getElementById('harga-hint').textContent = '';
     } else {
       document.getElementById('harga-hint').textContent =
-        `${vol.toFixed(2)} L × Rp ${selectedHarga.toLocaleString('id-ID')}`;
+        `Isi salah satu, yang lain otomatis terhitung`;
     }
     document.getElementById('volume-input-final').value = vol;
     document.getElementById('total-input-final').value = totalAktual;
