@@ -7,6 +7,8 @@
 <title>BISON — Login</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<!-- Supabase dimuat di head — lebih cepat tersedia saat user klik Masuk -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -301,58 +303,113 @@ body::before{
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
+// ── Lazy Supabase init — aman untuk perangkat lambat (EDC A920, dll)
 const SUPA_URL = 'https://vjmsqwdzprajgqrpohzl.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbXNxd2R6cHJhamdxcnBvaHpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTM2MTgsImV4cCI6MjA5MDUyOTYxOH0.dPMY_HEozO267sA4IvfwCcf9s0_z2pmk7zYE19T2sCU';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-(async()=>{const{data:{session}}=await sb.auth.getSession();if(session)window.location.href='index.html';})();
+let sb = null;
 
-function setLoading(on){
-  document.getElementById('login-btn').disabled=on;
-  document.getElementById('spinner').classList.toggle('show',on);
-  document.getElementById('login-label').textContent=on?'Memverifikasi...':'Masuk';
+function getSb() {
+  if (!sb) {
+    if (typeof supabase === 'undefined') {
+      throw new Error('Koneksi gagal. Periksa jaringan internet dan muat ulang halaman.');
+    }
+    sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+  }
+  return sb;
 }
-function showError(msg){
-  const el=document.getElementById('error-msg');el.textContent=msg;el.classList.add('show');
-  ['email','password'].forEach(id=>document.getElementById(id).classList.add('error'));
+
+// Cek session aktif saat halaman siap
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const client = getSb();
+    const { data: { session } } = await client.auth.getSession();
+    if (session) window.location.href = 'index.html';
+  } catch(e) {
+    // Tidak ada session atau library belum siap — biarkan user login manual
+    console.warn('Session check:', e.message);
+  }
+});
+
+function setLoading(on) {
+  document.getElementById('login-btn').disabled = on;
+  document.getElementById('spinner').classList.toggle('show', on);
+  document.getElementById('login-label').textContent = on ? 'Memverifikasi...' : 'Masuk';
 }
-function clearError(){
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg; el.classList.add('show');
+  ['email','password'].forEach(id => document.getElementById(id).classList.add('error'));
+}
+function clearError() {
   document.getElementById('error-msg').classList.remove('show');
-  ['email','password'].forEach(id=>document.getElementById(id).classList.remove('error'));
+  ['email','password'].forEach(id => document.getElementById(id).classList.remove('error'));
 }
-async function doLogin(){
-  const email=document.getElementById('email').value.trim();
-  const password=document.getElementById('password').value;
+
+async function doLogin() {
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
   clearError();
-  if(!email){showError('Email tidak boleh kosong.');return;}
-  if(!password){showError('Password tidak boleh kosong.');return;}
+  if (!email)    { showError('Email tidak boleh kosong.'); return; }
+  if (!password) { showError('Password tidak boleh kosong.'); return; }
   setLoading(true);
-  try{
-    const{data,error}=await sb.auth.signInWithPassword({email,password});
-    if(error){showError(error.message.includes('Invalid login')?'Email atau password salah.':error.message.includes('not confirmed')?'Email belum dikonfirmasi.':'Login gagal: '+error.message);setLoading(false);return;}
-    const{data:profile,error:perr}=await sb.from('profiles').select('id,nama,role,aktif').eq('id',data.user.id).single();
-    if(perr||!profile){showError('Profil tidak ditemukan.');await sb.auth.signOut();setLoading(false);return;}
-    if(!profile.aktif){showError('Akun telah dinonaktifkan.');await sb.auth.signOut();setLoading(false);return;}
-    showToast('Selamat datang, '+profile.nama+'!');
-    setTimeout(()=>window.location.href=profile.role==='mitra'?'mitra.html':'index.html',800);
-  }catch(e){showError('Terjadi kesalahan: '+e.message);setLoading(false);}
+  try {
+    const client = getSb();
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (error) {
+      const msg = error.message.includes('Invalid login') ? 'Email atau password salah.' :
+                  error.message.includes('not confirmed') ? 'Email belum dikonfirmasi.' :
+                  'Login gagal: ' + error.message;
+      showError(msg); setLoading(false); return;
+    }
+    const { data: profile, error: perr } = await client.from('profiles')
+      .select('id,nama,role,aktif').eq('id', data.user.id).single();
+    if (perr || !profile) {
+      showError('Profil tidak ditemukan. Hubungi administrator.');
+      await client.auth.signOut(); setLoading(false); return;
+    }
+    if (!profile.aktif) {
+      showError('Akun dinonaktifkan. Hubungi administrator.');
+      await client.auth.signOut(); setLoading(false); return;
+    }
+    showToast('Selamat datang, ' + profile.nama + '!');
+    setTimeout(() => window.location.href = profile.role === 'mitra' ? 'mitra.html' : 'index.html', 800);
+  } catch(e) {
+    showError(e.message.includes('library') || e.message.includes('Koneksi')
+      ? e.message
+      : 'Terjadi kesalahan: ' + e.message);
+    setLoading(false);
+  }
 }
-function togglePassword(){
-  const pw=document.getElementById('password');const eye=document.getElementById('pw-eye');
-  pw.type=pw.type==='password'?'text':'password';eye.textContent=pw.type==='password'?'👁':'🙈';
+
+function togglePassword() {
+  const pw  = document.getElementById('password');
+  const eye = document.getElementById('pw-eye');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+  eye.textContent = pw.type === 'password' ? '👁' : '🙈';
 }
-async function showForgot(e){
-  e.preventDefault();const email=document.getElementById('email').value.trim();
-  if(!email){showError('Masukkan email dulu.');return;}
+
+async function showForgot(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  if (!email) { showError('Masukkan email dulu.'); return; }
   setLoading(true);
-  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/index.html'});
-  setLoading(false);error?showError('Gagal kirim email reset.'):showToast('Link reset dikirim ke '+email);
+  try {
+    const { error } = await getSb().auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/index.html'
+    });
+    setLoading(false);
+    error ? showError('Gagal kirim email reset.') : showToast('Link reset dikirim ke ' + email);
+  } catch(e) {
+    showError('Gagal: ' + e.message); setLoading(false);
+  }
 }
-function showToast(msg){
-  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
 }
 </script>
 </body>
