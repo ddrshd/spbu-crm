@@ -1,0 +1,54 @@
+name: Auto Update Changelog
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest commit info
+        id: commit
+        run: |
+          echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+          echo "date=$(date '+%d %b %Y')" >> $GITHUB_OUTPUT
+          echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
+
+      - name: Update BISON.md changelog
+        run: |
+          # Baca commit message
+          MSG="${{ steps.commit.outputs.msg }}"
+          DATE="${{ steps.commit.outputs.date }}"
+
+          # Skip jika commit dari bot ini sendiri (hindari loop)
+          if [[ "$MSG" == "docs: auto-update changelog"* ]]; then
+            echo "Skipping auto-commit"
+            exit 0
+          fi
+
+          # Tambahkan ke changelog di BISON.md
+          # Cari baris "### Auto-generated" dan insert setelahnya
+          ENTRY="- $DATE: $MSG"
+
+          if grep -q "### Auto-generated" BISON.md; then
+            # Insert setelah header Auto-generated
+            sed -i "/### Auto-generated/a $ENTRY" BISON.md
+          else
+            # Buat section baru jika belum ada
+            echo -e "\n### Auto-generated Commit Log\n$ENTRY" >> BISON.md
+          fi
+
+      - name: Commit updated BISON.md
+        run: |
+          git config user.name "BISON Bot"
+          git config user.email "action@github.com"
+          git add BISON.md
+          # Hanya commit jika ada perubahan
+          git diff --staged --quiet || git commit -m "docs: auto-update changelog"
+          git push
