@@ -1253,14 +1253,13 @@ function applyRoleTabs() {
     document.getElementById('th-spbu').style.display = ''; // kolom SPBU di riwayat
   }
 
-  // Kontrak Mitra — manager & super_admin
+  // Kontrak Mitra + Tagihan + Kendaraan — manager & super_admin
   if (role === 'manager' || role === 'super_admin') {
     document.getElementById('tab-kontrak').classList.remove('hidden');
-  }
-
-  // Tagihan — manager & super_admin
-  if (role === 'manager' || role === 'super_admin') {
     document.getElementById('tab-tagihan').classList.remove('hidden');
+    // Tombol tambah kendaraan mitra
+    const btnKend = document.getElementById('btn-tambah-kendaraan');
+    if (btnKend) btnKend.style.display = '';
   }
   if (role === 'manager' || role === 'super_admin') {
     document.getElementById('tab-harga').classList.remove('hidden');
@@ -1273,7 +1272,7 @@ function applyRoleTabs() {
   if (role === 'super_admin') {
     document.getElementById('tab-spbu').classList.remove('hidden');
     document.getElementById('filter-manager-btn')?.classList.remove('hidden');
-    // Tombol tambah/edit kendaraan mitra hanya super_admin
+    // Tombol tambah/edit kendaraan mitra: manager & super_admin
     const btnKend = document.getElementById('btn-tambah-kendaraan');
     if (btnKend) btnKend.style.display = '';
   } else {
@@ -2744,9 +2743,16 @@ async function loadKendaraanMitra() {
   if (error) { tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${error.message}</td></tr>`; return; }
   if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Belum ada kendaraan terdaftar</td></tr>'; return; }
 
-  const isAdmin = currentProfile.role === 'super_admin';
+  // Manager dan super_admin bisa kelola kendaraan
+  // Manager hanya bisa kelola kendaraan mitra di SPBU-nya
+  const canManage = ['super_admin','manager'].includes(currentProfile.role);
 
-  tbody.innerHTML = data.map(k => `<tr>
+  tbody.innerHTML = data.map(k => {
+    // Cek apakah mitra kendaraan ini di SPBU manager
+    const mitraInScope = currentProfile.role === 'super_admin' ||
+      mitraListKend.some(m => m.id === k.mitra_id);
+
+    return `<tr>
     <td class="nopol-cell">${k.nopol}</td>
     <td style="font-size:13px">${k.mitra?.nama_perusahaan || '—'}</td>
     <td style="font-size:12px;color:var(--text-muted)">${k.jenis || '—'}</td>
@@ -2758,7 +2764,7 @@ async function loadKendaraanMitra() {
       </span>
     </td>
     <td>
-      ${isAdmin ? `
+      ${canManage && mitraInScope ? `
       <div style="display:flex;gap:4px;">
         <button class="act-btn" onclick="showModalKendaraan(${JSON.stringify(k).replace(/"/g,'&quot;')})">Edit</button>
         <button class="act-btn ${k.aktif ? 'del' : ''}" onclick="toggleKendaraan('${k.id}',${k.aktif})">
@@ -2767,21 +2773,33 @@ async function loadKendaraanMitra() {
         <button class="act-btn del" onclick="deleteKendaraan('${k.id}','${k.nopol}')">Hapus</button>
       </div>` : '<span style="font-size:11px;color:var(--text-muted)">—</span>'}
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 function showModalKendaraan(k = null) {
-  if (currentProfile.role !== 'super_admin') { showToast('Hanya Super Admin yang bisa mengelola kendaraan mitra', true); return; }
+  const canManage = ['super_admin','manager'].includes(currentProfile.role);
+  if (!canManage) { showToast('Akses ditolak', true); return; }
+
   const isEdit = !!k;
   document.getElementById('modal-kend-title').textContent = isEdit ? 'Edit Kendaraan' : 'Tambah Kendaraan';
   document.getElementById('kend-edit-id').value  = k?.id || '';
-  document.getElementById('kend-mitra-id').value = k?.mitra_id || '';
   document.getElementById('kend-nopol').value    = k?.nopol || '';
   document.getElementById('kend-jenis').value    = k?.jenis || '';
   document.getElementById('kend-produk').value   = k?.produk_bbm || '';
   document.getElementById('kend-catatan').value  = k?.catatan || '';
   document.getElementById('kend-submit-label').textContent = isEdit ? 'Simpan Perubahan' : 'Tambah Kendaraan';
   document.getElementById('kend-error').style.display = 'none';
+
+  // Dropdown mitra: manager hanya lihat mitra SPBU-nya
+  const modalSel = document.getElementById('kend-mitra-id');
+  const listToUse = currentProfile.role === 'manager'
+    ? mitraListKend  // sudah difilter per SPBU saat loadKendaraanMitra()
+    : mitraListKend;
+  modalSel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+    listToUse.map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+  modalSel.value = k?.mitra_id || '';
+
   document.getElementById('modal-kendaraan').classList.add('show');
 }
 
@@ -2801,6 +2819,12 @@ async function submitKendaraan() {
   errEl.style.display = 'none';
   if (!mitraId) { errEl.textContent = 'Pilih mitra terlebih dahulu'; errEl.style.display = 'block'; return; }
   if (!nopol)   { errEl.textContent = 'Nomor polisi wajib diisi'; errEl.style.display = 'block'; return; }
+
+  // Isolasi SPBU: validasi mitra memang di SPBU manager
+  if (currentProfile.role === 'manager') {
+    const valid = mitraListKend.some(m => m.id === mitraId);
+    if (!valid) { errEl.textContent = 'Mitra ini bukan bagian dari SPBU Anda'; errEl.style.display = 'block'; return; }
+  }
 
   const btn = document.querySelector('#modal-kendaraan .modal-btn.confirm');
   btn.disabled = true;
@@ -2835,7 +2859,13 @@ async function submitKendaraan() {
 }
 
 async function toggleKendaraan(id, aktif) {
-  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!['super_admin','manager'].includes(currentProfile.role)) { showToast('Akses ditolak', true); return; }
+  // Isolasi SPBU: verifikasi kendaraan ini mitra di SPBU manager
+  if (currentProfile.role === 'manager') {
+    const { data: k } = await sb.from('kendaraan_mitra').select('mitra_id').eq('id', id).single();
+    const valid = k && mitraListKend.some(m => m.id === k.mitra_id);
+    if (!valid) { showToast('Kendaraan ini bukan lingkup SPBU Anda', true); return; }
+  }
   const { error } = await sb.from('kendaraan_mitra').update({ aktif: !aktif }).eq('id', id);
   if (error) { showToast('Gagal: ' + error.message, true); return; }
   showToast(aktif ? 'Kendaraan dinonaktifkan' : 'Kendaraan diaktifkan');
@@ -2843,7 +2873,13 @@ async function toggleKendaraan(id, aktif) {
 }
 
 async function deleteKendaraan(id, nopol) {
-  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!['super_admin','manager'].includes(currentProfile.role)) { showToast('Akses ditolak', true); return; }
+  // Isolasi SPBU: verifikasi kendaraan ini mitra di SPBU manager
+  if (currentProfile.role === 'manager') {
+    const { data: k } = await sb.from('kendaraan_mitra').select('mitra_id').eq('id', id).single();
+    const valid = k && mitraListKend.some(m => m.id === k.mitra_id);
+    if (!valid) { showToast('Kendaraan ini bukan lingkup SPBU Anda', true); return; }
+  }
   if (!confirm(`Hapus kendaraan ${nopol} dari daftar mitra?\n\nData transaksi historis tidak akan terhapus.`)) return;
   const { error } = await sb.from('kendaraan_mitra').delete().eq('id', id);
   if (error) { showToast('Gagal: ' + error.message, true); return; }
