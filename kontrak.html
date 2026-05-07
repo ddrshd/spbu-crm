@@ -324,15 +324,132 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 
 <!-- ACTION BAR -->
 <div class="action-bar">
-  <div style="display:flex;align-items:center;gap:8px;flex:1;">
-    <select id="sel-mitra-save" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--ff);color:var(--text);background:#fff;outline:none;max-width:220px;display:none;">
+  <div style="display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap;">
+    <select id="sel-mitra-save" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--ff);color:var(--text);background:#fff;outline:none;max-width:220px;display:none;" onchange="onMitraSelectChange()">
       <option value="">— Pilih Mitra —</option>
     </select>
+    <button id="btn-tambah-mitra-baru" onclick="showModalMitraBaru()"
+      style="display:none;padding:8px 14px;background:var(--green);color:#fff;border:none;
+      border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;
+      font-family:var(--ff);white-space:nowrap;">
+      + Mitra Baru
+    </button>
   </div>
   <button class="btn-save" onclick="saveToDb()" id="save-btn">Simpan ke Database</button>
   <button class="btn-preview" onclick="showPreview()">
     <span>👁</span> Lihat Preview Kontrak
   </button>
+</div>
+
+<!-- MODAL TAMBAH MITRA BARU -->
+<div id="modal-mitra-baru" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
+  z-index:200;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;
+    box-shadow:0 24px 64px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);">Daftarkan Mitra Baru</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Mitra akan langsung tersedia untuk kontrak ini</div>
+      </div>
+      <button onclick="closeModalMitraBaru()"
+        style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border);
+        background:transparent;font-size:16px;cursor:pointer;display:flex;align-items:center;
+        justify-content:center;color:var(--text-muted);">✕</button>
+    </div>
+
+    <!-- Nama perusahaan -->
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.07em;
+        text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">
+        Nama Perusahaan / Instansi <span style="color:red">*</span>
+      </label>
+      <input id="nm-nama-perusahaan" type="text" placeholder="PT Contoh Maju, Dinas Kesehatan Kota, dll"
+        style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);
+        font-size:14px;font-family:var(--ff);outline:none;"
+        onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/>
+    </div>
+
+    <!-- PIC + Telp -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.07em;
+          text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">
+          Nama PIC <span style="color:red">*</span>
+        </label>
+        <input id="nm-pic-nama" type="text" placeholder="Nama penanggung jawab"
+          style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);
+          font-size:13px;font-family:var(--ff);outline:none;"
+          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/>
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.07em;
+          text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">No. HP / WhatsApp</label>
+        <input id="nm-pic-telp" type="tel" placeholder="0812xxxxxxxx"
+          style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);
+          font-size:13px;font-family:var(--ff);outline:none;"
+          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/>
+      </div>
+    </div>
+
+    <!-- Email PIC -->
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.07em;
+        text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Email PIC</label>
+      <input id="nm-pic-email" type="email" placeholder="email@perusahaan.com"
+        style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);
+        font-size:13px;font-family:var(--ff);outline:none;"
+        onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/>
+    </div>
+
+    <!-- Alamat -->
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.07em;
+        text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Alamat</label>
+      <input id="nm-alamat" type="text" placeholder="Alamat perusahaan/instansi"
+        style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);
+        font-size:13px;font-family:var(--ff);outline:none;"
+        onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/>
+    </div>
+
+    <!-- NPWP + Mekanisme bayar -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.07em;
+          text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">NPWP (opsional)</label>
+        <input id="nm-npwp" type="text" placeholder="00.000.000.0-000.000"
+          style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);
+          font-size:13px;font-family:var(--fm);outline:none;"
+          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/>
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.07em;
+          text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Mekanisme Bayar</label>
+        <select id="nm-mekanisme" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);
+          border-radius:var(--radius);font-size:13px;font-family:var(--ff);background:#fff;outline:none;cursor:pointer;">
+          <option value="tunai">Tunai saat transaksi</option>
+          <option value="invoice_bulanan">Invoice bulanan</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="nm-error" style="display:none;padding:10px 14px;background:#FFF0F1;border:1px solid rgba(232,24,44,.2);
+      border-radius:var(--radius);font-size:12px;color:#E8182C;margin-bottom:14px;"></div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeModalMitraBaru()"
+        style="flex:1;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius);
+        background:transparent;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--ff);
+        color:var(--text-muted);">Batal</button>
+      <button onclick="submitMitraBaru()" id="nm-submit-btn"
+        style="flex:2;padding:12px;background:var(--green);color:#fff;border:none;
+        border-radius:var(--radius);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--ff);">
+        <span id="nm-submit-label">Simpan & Pilih Mitra Ini</span>
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- PREVIEW OVERLAY -->
@@ -658,24 +775,163 @@ async function initSession() {
 
   // Tampilkan dropdown pilih mitra di action bar
   const sel = document.getElementById('sel-mitra-save');
-  if (mitraList.length > 0) {
-    sel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
-      mitraList.map(m => `<option value="${m.id}" data-spbu="${m.spbu_id}">${m.nama_perusahaan}</option>`).join('');
+  sel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+    mitraList.map(m => `<option value="${m.id}" data-spbu="${m.spbu_id}">${m.nama_perusahaan}</option>`).join('');
+  sel.style.display = 'block';
+
+  // Tampilkan tombol + Mitra Baru (selalu untuk manager & super_admin)
+  const btnBaru = document.getElementById('btn-tambah-mitra-baru');
+  if (btnBaru) btnBaru.style.display = 'block';
+
+  // Jika hanya ada 1 mitra, auto-select dan auto-fill
+  if (mitraList.length === 1) {
+    sel.value = mitraList[0].id;
+    autoFillMitraForm(mitraList[0]);
+  }
+}
+
+// ─── TAMBAH MITRA BARU ───────────────────────────────────────
+
+function showModalMitraBaru() {
+  // Reset form
+  ['nm-nama-perusahaan','nm-pic-nama','nm-pic-telp','nm-pic-email','nm-alamat','nm-npwp']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('nm-mekanisme').value = 'tunai';
+  document.getElementById('nm-error').style.display = 'none';
+  document.getElementById('nm-submit-label').textContent = 'Simpan & Pilih Mitra Ini';
+  document.getElementById('nm-submit-btn').disabled = false;
+  document.getElementById('modal-mitra-baru').style.display = 'flex';
+}
+
+function closeModalMitraBaru() {
+  document.getElementById('modal-mitra-baru').style.display = 'none';
+}
+
+// Klik di luar modal untuk tutup
+document.getElementById('modal-mitra-baru').addEventListener('click', function(e) {
+  if (e.target === this) closeModalMitraBaru();
+});
+
+async function submitMitraBaru() {
+  const nama      = document.getElementById('nm-nama-perusahaan').value.trim();
+  const picNama   = document.getElementById('nm-pic-nama').value.trim();
+  const picTelp   = document.getElementById('nm-pic-telp').value.trim();
+  const picEmail  = document.getElementById('nm-pic-email').value.trim();
+  const alamat    = document.getElementById('nm-alamat').value.trim();
+  const npwp      = document.getElementById('nm-npwp').value.trim();
+  const mekanisme = document.getElementById('nm-mekanisme').value;
+  const errEl     = document.getElementById('nm-error');
+
+  errEl.style.display = 'none';
+  if (!nama)    { errEl.textContent = 'Nama perusahaan/instansi wajib diisi.'; errEl.style.display = 'block'; return; }
+  if (!picNama) { errEl.textContent = 'Nama PIC wajib diisi.'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('nm-submit-btn');
+  const lbl = document.getElementById('nm-submit-label');
+  btn.disabled = true;
+  lbl.textContent = 'Menyimpan...';
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+
+    // Insert ke tabel mitra
+    const { data: newMitra, error } = await sb.from('mitra').insert({
+      nama_perusahaan: nama,
+      pic_nama:        picNama,
+      pic_telp:        picTelp  || null,
+      pic_email:       picEmail || null,
+      alamat:          alamat   || null,
+      npwp:            npwp     || null,
+      mekanisme_bayar: mekanisme,
+      spbu_id:         sessionProfile.spbu_id || null,
+      status:          'aktif',
+    }).select().single();
+
+    if (error) {
+      errEl.textContent = error.message.includes('duplicate')
+        ? 'Perusahaan dengan nama tersebut sudah terdaftar.'
+        : 'Gagal menyimpan: ' + error.message;
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // Tambahkan ke mitraList dan dropdown
+    mitraList.push(newMitra);
+    const sel = document.getElementById('sel-mitra-save');
+    const opt = document.createElement('option');
+    opt.value = newMitra.id;
+    opt.dataset.spbu = newMitra.spbu_id || '';
+    opt.textContent  = newMitra.nama_perusahaan;
+    sel.appendChild(opt);
+    sel.value = newMitra.id;
     sel.style.display = 'block';
 
-    // Jika hanya ada 1 mitra, auto-select
-    if (mitraList.length === 1) {
-      sel.value = mitraList[0].id;
-      // Auto-fill nama mitra di form jika kosong
-      const namaEl = document.getElementById('mitra-nama');
-      if (!namaEl.value) namaEl.value = mitraList[0].nama_perusahaan;
-    }
+    // Auto-fill form kontrak dengan data mitra baru
+    autoFillMitraForm(newMitra);
+
+    closeModalMitraBaru();
+
+    // Toast notifikasi
+    showKontrakToast(`✓ Mitra "${nama}" berhasil didaftarkan dan dipilih`);
+
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    lbl.textContent = 'Simpan & Pilih Mitra Ini';
   }
+}
+
+// Auto-fill form kontrak saat mitra dipilih dari dropdown
+function onMitraSelectChange() {
+  const sel = document.getElementById('sel-mitra-save');
+  const mitraId = sel.value;
+  if (!mitraId) return;
+  const mitra = mitraList.find(m => m.id === mitraId);
+  if (mitra) autoFillMitraForm(mitra);
+}
+
+function autoFillMitraForm(mitra) {
+  // Isi field Data Mitra di form kontrak
+  const fields = {
+    'mitra-nama':    mitra.nama_perusahaan || '',
+    'mitra-alamat':  mitra.alamat          || '',
+    'mitra-npwp':    mitra.npwp            || '',
+    'mitra-pic':     mitra.pic_nama        || '',
+    'mitra-jabatan': '',
+  };
+  Object.entries(fields).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = val;
+  });
+  // Set mekanisme bayar sesuai mitra
+  const mekEl = document.getElementById('mekanisme-bayar');
+  if (mekEl && mitra.mekanisme_bayar) {
+    mekEl.value = mitra.mekanisme_bayar === 'invoice_bulanan' ? 'invoice' : 'tunai';
+    // Trigger change event jika ada handler
+    mekEl.dispatchEvent(new Event('change'));
+  }
+}
+
+function showKontrakToast(msg) {
+  let toast = document.getElementById('kontrak-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'kontrak-toast';
+    toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(80px);'
+      + 'background:#00A651;color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;'
+      + 'font-weight:500;z-index:300;transition:transform .3s ease;box-shadow:0 4px 16px rgba(0,166,81,.35);'
+      + 'white-space:nowrap;max-width:90vw;text-align:center;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { toast.style.transform = 'translateX(-50%) translateY(80px)'; }, 3000);
 }
 
 async function saveToDb() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { alert('Anda belum login.'); return; }
   if (!sessionProfile) { alert('Profil tidak ditemukan. Refresh halaman.'); return; }
 
   // Ambil mitra dari dropdown
