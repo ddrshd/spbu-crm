@@ -741,6 +741,15 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
 
     <!-- SUB: KENDARAAN MITRA -->
     <div id="subview-kendaraan" style="display:none">
+      <!-- Info banner: kontrak dulu baru kendaraan -->
+      <div style="background:#EBF2FF;border:1px solid rgba(26,86,200,.15);border-radius:var(--radius);
+        padding:10px 14px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:16px;flex-shrink:0;">ℹ️</span>
+        <div style="font-size:12px;color:var(--blue);line-height:1.5;">
+          <strong>Kendaraan hanya bisa didaftarkan untuk mitra yang sudah memiliki kontrak aktif.</strong>
+          Jika mitra tidak muncul di dropdown, buat kontrak terlebih dahulu di tab <em>Kontrak Aktif</em>.
+        </div>
+      </div>
       <div class="toolbar">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span style="font-size:13px;font-weight:500">Kendaraan Mitra Terdaftar</span>
@@ -986,8 +995,8 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
           + Buat Baru
         </button>
       </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px);">
-        User ini akan bisa login ke portal mitra dan memonitor transaksi perusahaannya.
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">
+        Hanya menampilkan mitra yang sudah memiliki kontrak aktif. User ini akan bisa login ke portal mitra.
       </div>
 
       <!-- Form inline buat mitra baru -->
@@ -2195,12 +2204,46 @@ async function showAddUserModal() {
       `<option value="${s.id}">${s.nama} (${s.kode})</option>`
     ).join('');
 
-  // Load daftar mitra untuk dropdown mitra
-  const { data: mitras } = await sb.from('mitra')
-    .select('id, nama_perusahaan').eq('status', 'aktif').order('nama_perusahaan');
+  // Load daftar mitra untuk dropdown — hanya yang sudah punya kontrak
+  // Ini memastikan user mitra hanya dibuat untuk mitra yang sudah resmi berkontrak
+  let kontrakQ = sb.from('kontrak_mitra')
+    .select('mitra_id')
+    .in('status', ['aktif', 'draft']);
+  // Super admin lihat semua, manager hanya SPBU-nya
+  if (currentProfile.role === 'manager' && currentSpbu)
+    kontrakQ = kontrakQ.eq('spbu_id', currentSpbu.id);
+  const { data: kontraks } = await kontrakQ;
+  const mitraIdsWithKontrak = [...new Set((kontraks || []).map(k => k.mitra_id))];
+
+  let mitras = [];
+  if (mitraIdsWithKontrak.length) {
+    const { data } = await sb.from('mitra')
+      .select('id, nama_perusahaan')
+      .in('id', mitraIdsWithKontrak)
+      .eq('status', 'aktif')
+      .order('nama_perusahaan');
+    mitras = data || [];
+  }
+
   const mitraSel = document.getElementById('u-mitra-id');
-  mitraSel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
-    (mitras || []).map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+  if (mitras.length) {
+    mitraSel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+      mitras.map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+  } else {
+    mitraSel.innerHTML = '<option value="">— Belum ada mitra berkontrak —</option>';
+  }
+
+  // Tampilkan info helper jika belum ada mitra berkontrak
+  const mitraGroup = document.getElementById('u-mitra-group');
+  const existingInfo = document.getElementById('u-mitra-info');
+  if (existingInfo) existingInfo.remove();
+  if (!mitras.length) {
+    const info = document.createElement('div');
+    info.id = 'u-mitra-info';
+    info.style.cssText = 'font-size:11px;padding:8px 12px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:var(--radius);margin-top:8px;color:#92400E;line-height:1.5;';
+    info.innerHTML = '⚠️ Belum ada mitra yang memiliki kontrak aktif. Manager SPBU harus membuat kontrak terlebih dahulu sebelum user mitra bisa dibuat.';
+    mitraGroup.appendChild(info);
+  }
 
   if (currentProfile.role === 'manager' && currentSpbu) {
     spbuSel.value = currentSpbu.id;
@@ -2256,7 +2299,10 @@ async function submitAddUser() {
   if (!nama)     { showUError('Nama tidak boleh kosong'); return; }
   if (!email || !email.includes('@')) { showUError('Email tidak valid'); return; }
   if (password.length < 8) { showUError('Password minimal 8 karakter'); return; }
-  if (role === 'mitra' && !mitra_id) { showUError('Pilih perusahaan/mitra terlebih dahulu'); return; }
+  if (role === 'mitra' && !mitra_id) {
+    showUError('Pilih perusahaan/mitra terlebih dahulu. Pastikan mitra sudah memiliki kontrak aktif.');
+    return;
+  }
   if (role !== 'mitra' && role !== 'super_admin' && !spbu_id) { showUError('Pilih SPBU terlebih dahulu'); return; }
 
   const btn = document.getElementById('u-submit-btn');
@@ -2697,7 +2743,10 @@ function switchSubtab(tab, btn) {
   btn.classList.add('active');
   document.getElementById('subview-kontrak').style.display  = tab === 'kontrak'   ? '' : 'none';
   document.getElementById('subview-kendaraan').style.display = tab === 'kendaraan' ? '' : 'none';
-  if (tab === 'kendaraan') loadKendaraanMitra();
+  if (tab === 'kendaraan') {
+    mitraListKend = []; // reset cache — paksa reload dari DB agar data kontrak terbaru terefleksi
+    loadKendaraanMitra();
+  }
 }
 
 // ─── KENDARAAN MITRA CRUD ────────────────────────────────────
@@ -2707,14 +2756,48 @@ async function loadKendaraanMitra() {
   const tbody = document.getElementById('kendaraan-body');
   tbody.innerHTML = '<tr><td colspan="6" class="loading-msg">Memuat...</td></tr>';
 
-  // Load daftar mitra untuk dropdown filter & modal
+  // Load mitra yang sudah punya kontrak aktif/draft saja
+  // Manager: hanya mitra SPBU-nya | Super admin: semua
   if (!mitraListKend.length) {
-    let q = sb.from('mitra').select('id, nama_perusahaan').eq('status', 'aktif').order('nama_perusahaan');
-    if (currentProfile.role === 'manager' && currentSpbu) q = q.eq('spbu_id', currentSpbu.id);
-    const { data: mitras } = await q;
+    // Ambil mitra_id dari kontrak yang sudah ada
+    let kontrakQ = sb.from('kontrak_mitra')
+      .select('mitra_id')
+      .in('status', ['aktif','draft']);
+    if (currentProfile.role === 'manager' && currentSpbu)
+      kontrakQ = kontrakQ.eq('spbu_id', currentSpbu.id);
+    const { data: kontraks } = await kontrakQ;
+
+    const mitraIdsWithKontrak = [...new Set((kontraks || []).map(k => k.mitra_id))];
+
+    if (!mitraIdsWithKontrak.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
+        <div style="padding:20px 0;">
+          <div style="font-size:28px;margin-bottom:10px;">📋</div>
+          <div style="font-weight:600;color:var(--text);margin-bottom:6px;">Belum ada mitra berkontrak</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;max-width:280px;margin-left:auto;margin-right:auto;">
+            Kendaraan hanya bisa didaftarkan untuk mitra yang sudah memiliki kontrak aktif.
+          </div>
+          <button onclick="switchSubtab('kontrak', document.getElementById('subtab-kontrak-btn'))"
+            style="padding:9px 18px;background:var(--blue);color:#fff;border:none;
+            border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;
+            font-family:var(--ff);">
+            → Buat Kontrak Mitra Dulu
+          </button>
+        </div>
+      </td></tr>`;
+      return;
+    }
+
+    // Query mitra yang sudah berkontrak
+    let mitraQ = sb.from('mitra')
+      .select('id, nama_perusahaan')
+      .in('id', mitraIdsWithKontrak)
+      .eq('status', 'aktif')
+      .order('nama_perusahaan');
+    const { data: mitras } = await mitraQ;
     mitraListKend = mitras || [];
 
-    // Populate filter dropdown
+    // Populate dropdown filter
     const filterSel = document.getElementById('filter-mitra-kend');
     filterSel.innerHTML = '<option value="">Semua mitra</option>' +
       mitraListKend.map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
