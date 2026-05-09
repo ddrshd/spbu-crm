@@ -933,6 +933,89 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
 
   </div><!-- end .views -->
 
+  <!-- MODAL EDIT TRANSAKSI — Super Admin Only -->
+  <div class="modal-overlay" id="modal-edit-trx" onclick="if(event.target===this)closeEditTrx()">
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-handle"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+        <div style="width:32px;height:32px;background:#FEF3C7;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">✏️</div>
+        <div class="modal-title" style="margin:0;">Edit Transaksi</div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;padding:8px 12px;background:var(--gray-50);border-radius:var(--radius);border-left:3px solid var(--amber);">
+        Hanya Super Admin yang dapat mengedit transaksi. Semua perubahan dicatat dalam audit log.
+      </div>
+
+      <input type="hidden" id="edit-trx-id"/>
+
+      <!-- Info tidak bisa diubah -->
+      <div style="background:var(--gray-50);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:16px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Info Transaksi (tidak dapat diubah)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
+          <div><span style="color:var(--text-muted);">Waktu: </span><span id="edit-trx-waktu" style="font-weight:500;font-family:var(--fm);">—</span></div>
+          <div><span style="color:var(--text-muted);">Operator: </span><span id="edit-trx-operator" style="font-weight:500;">—</span></div>
+          <div><span style="color:var(--text-muted);">SPBU: </span><span id="edit-trx-spbu" style="font-weight:500;">—</span></div>
+          <div><span style="color:var(--text-muted);">Mitra: </span><span id="edit-trx-mitra" style="font-weight:500;">—</span></div>
+        </div>
+      </div>
+
+      <!-- Field yang bisa diedit -->
+      <div class="field-group">
+        <label class="field-label">Nomor Polisi</label>
+        <input class="field-input" id="edit-trx-nopol" type="text"
+          style="font-family:var(--fm);font-size:18px;letter-spacing:.1em;text-transform:uppercase;text-align:center;"
+          placeholder="DT1234AB" maxlength="12"
+          oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"/>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Produk BBM</label>
+        <select class="field-input" id="edit-trx-produk" style="cursor:pointer;">
+          <option value="">— Pilih Produk —</option>
+        </select>
+      </div>
+
+      <div class="vol-row">
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Volume (Liter)</label>
+          <input class="field-input" id="edit-trx-volume" type="number"
+            step="0.01" min="0.1" max="500" placeholder="0.00"
+            oninput="recalcEditTrx('volume')"/>
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Total Bayar (Rp)</label>
+          <input class="field-input" id="edit-trx-total" type="number"
+            step="500" min="1000" placeholder="0"
+            oninput="recalcEditTrx('total')"/>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;margin-top:4px;" id="edit-trx-calc-hint"></div>
+
+      <div class="field-group">
+        <label class="field-label">Catatan (opsional)</label>
+        <input class="field-input" id="edit-trx-catatan" placeholder="Catatan tambahan"/>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Alasan Perubahan <span style="color:var(--red)">*</span></label>
+        <input class="field-input" id="edit-trx-alasan"
+          placeholder="Misal: Kesalahan input nopol, volume tertukar, dll"
+          style="border-color:var(--amber);"/>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+          Wajib diisi — tersimpan di audit log untuk keperluan pertanggungjawaban.
+        </div>
+      </div>
+
+      <div class="error-msg" id="edit-trx-error" style="display:none;margin-bottom:12px;"></div>
+
+      <div class="modal-row">
+        <button class="modal-btn cancel" onclick="closeEditTrx()">Batal</button>
+        <button class="modal-btn confirm" onclick="submitEditTrx()" style="background:var(--amber);border-color:var(--amber);">
+          <span id="edit-trx-label">Simpan Perubahan</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- .app -->
 
 <!-- MODAL TAMBAH USER -->
@@ -1792,7 +1875,8 @@ async function loadHistory() {
       return;
     }
 
-    const canEdit = isAdminOrMgr;
+    const isSA       = currentProfile.role === 'super_admin';
+    const canEdit    = isAdminOrMgr;
     const nc = {};
     data.forEach(t => { nc[t.nopol] = (nc[t.nopol] || 0) + 1; });
 
@@ -1807,9 +1891,12 @@ async function loadHistory() {
       const spbuCol = isAdminOrMgr
         ? `<td style="font-size:12px;color:var(--text-muted)">${spbuMap[t.spbu_id] || '—'}</td>`
         : '';
-      const aksi = canEdit
-        ? `<td><button class="act-btn del" onclick="hapusTrx('${t.id}')">Hapus</button></td>`
-        : '<td style="display:none"></td>';
+      const aksi = canEdit ? `<td>
+        <div style="display:flex;gap:4px;">
+          ${isSA ? `<button class="act-btn" onclick="showEditTrx('${t.id}')">Edit</button>` : ''}
+          <button class="act-btn del" onclick="hapusTrx('${t.id}')">Hapus</button>
+        </div>
+      </td>` : '<td style="display:none"></td>';
 
       return `<tr>
         <td style="font-family:var(--fm);font-size:12px;color:var(--text-muted)">${ds} ${ts}</td>
@@ -1829,6 +1916,158 @@ async function loadHistory() {
 
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Error: ${e.message}</td></tr>`;
+  }
+}
+
+// ─── EDIT TRANSAKSI (Super Admin Only) ───────────────────────
+
+let editTrxHarga = 0; // harga per liter produk yang dipilih
+
+async function showEditTrx(id) {
+  if (currentProfile.role !== 'super_admin') {
+    showToast('Hanya Super Admin yang bisa mengedit transaksi', true);
+    return;
+  }
+
+  // Cari data transaksi dari historyData (sudah di-load)
+  const trx = historyData.find(t => t.id === id);
+  if (!trx) { showToast('Data transaksi tidak ditemukan', true); return; }
+
+  // Isi info yang tidak bisa diedit
+  const dt = new Date(trx.created_at);
+  document.getElementById('edit-trx-id').value = id;
+  document.getElementById('edit-trx-waktu').textContent =
+    dt.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' +
+    dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('edit-trx-operator').textContent = trx.operator_nama || '—';
+  document.getElementById('edit-trx-spbu').textContent     = trx.spbu_nama     || '—';
+  document.getElementById('edit-trx-mitra').textContent    = trx.mitra_id ? '(B2B)' : 'Umum';
+
+  // Isi field yang bisa diedit
+  document.getElementById('edit-trx-nopol').value   = trx.nopol || '';
+  document.getElementById('edit-trx-volume').value  = trx.volume || '';
+  document.getElementById('edit-trx-total').value   = trx.total  || '';
+  document.getElementById('edit-trx-catatan').value = trx.catatan || '';
+  document.getElementById('edit-trx-alasan').value  = '';
+  document.getElementById('edit-trx-error').style.display = 'none';
+  document.getElementById('edit-trx-calc-hint').textContent = '';
+  document.getElementById('edit-trx-label').textContent = 'Simpan Perubahan';
+
+  // Populate dropdown produk dari produkList
+  const sel = document.getElementById('edit-trx-produk');
+  sel.innerHTML = '<option value="">— Pilih Produk —</option>' +
+    (produkList || []).map(p =>
+      `<option value="${p.nama}" data-harga="${p.harga}" ${p.nama === trx.produk ? 'selected' : ''}>${p.nama} — Rp ${parseInt(p.harga).toLocaleString('id-ID')}/L</option>`
+    ).join('');
+
+  // Set harga per liter dari produk yang terpilih
+  const selOpt = sel.options[sel.selectedIndex];
+  editTrxHarga = selOpt ? parseFloat(selOpt.dataset.harga) || 0 : 0;
+
+  // Update harga saat produk diganti
+  sel.onchange = function() {
+    const opt = this.options[this.selectedIndex];
+    editTrxHarga = opt ? parseFloat(opt.dataset.harga) || 0 : 0;
+    document.getElementById('edit-trx-calc-hint').textContent = '';
+  };
+
+  document.getElementById('modal-edit-trx').classList.add('show');
+  document.getElementById('edit-trx-nopol').focus();
+}
+
+function closeEditTrx() {
+  document.getElementById('modal-edit-trx').classList.remove('show');
+}
+
+function recalcEditTrx(from) {
+  if (!editTrxHarga) return;
+  const volEl   = document.getElementById('edit-trx-volume');
+  const totalEl = document.getElementById('edit-trx-total');
+  const hint    = document.getElementById('edit-trx-calc-hint');
+
+  if (from === 'volume') {
+    const vol = parseFloat(volEl.value);
+    if (!isNaN(vol) && vol > 0) {
+      const total = Math.round(vol * editTrxHarga);
+      totalEl.value = total;
+      hint.textContent = `${vol.toFixed(2)} L × Rp ${editTrxHarga.toLocaleString('id-ID')} = Rp ${total.toLocaleString('id-ID')}`;
+    }
+  } else {
+    const total = parseFloat(totalEl.value);
+    if (!isNaN(total) && total > 0) {
+      const vol = Math.round((total / editTrxHarga) * 100) / 100;
+      volEl.value = vol;
+      hint.textContent = `${vol.toFixed(2)} L × Rp ${editTrxHarga.toLocaleString('id-ID')} = Rp ${total.toLocaleString('id-ID')}`;
+    }
+  }
+}
+
+async function submitEditTrx() {
+  if (currentProfile.role !== 'super_admin') return;
+
+  const id      = document.getElementById('edit-trx-id').value;
+  const nopol   = document.getElementById('edit-trx-nopol').value.trim().toUpperCase().replace(/\s+/g, '');
+  const produk  = document.getElementById('edit-trx-produk').value;
+  const volume  = parseFloat(document.getElementById('edit-trx-volume').value);
+  const total   = parseInt(document.getElementById('edit-trx-total').value);
+  const catatan = document.getElementById('edit-trx-catatan').value.trim();
+  const alasan  = document.getElementById('edit-trx-alasan').value.trim();
+  const errEl   = document.getElementById('edit-trx-error');
+
+  errEl.style.display = 'none';
+
+  // Validasi
+  if (!nopol || nopol.length < 4) { errEl.textContent = 'Nomor polisi tidak valid.'; errEl.style.display = 'block'; return; }
+  if (!produk)                     { errEl.textContent = 'Pilih produk BBM.'; errEl.style.display = 'block'; return; }
+  if (!volume || volume <= 0)      { errEl.textContent = 'Volume harus lebih dari 0.'; errEl.style.display = 'block'; return; }
+  if (!total  || total  <= 0)      { errEl.textContent = 'Total bayar harus lebih dari 0.'; errEl.style.display = 'block'; return; }
+  if (!alasan)                     { errEl.textContent = 'Alasan perubahan wajib diisi untuk audit log.'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('edit-trx-label');
+  btn.textContent = 'Menyimpan...';
+
+  try {
+    // Harga per liter dari produk terpilih
+    const hargaPerLiter = editTrxHarga || Math.round(total / volume);
+
+    // Cek apakah nopol baru adalah kendaraan mitra
+    let newMitraId = null;
+    const { data: kend } = await sb.from('kendaraan_mitra')
+      .select('mitra_id').eq('aktif', true).ilike('nopol', nopol).maybeSingle();
+    if (kend) newMitraId = kend.mitra_id;
+
+    // Simpan perubahan ke transaksi
+    const { error } = await sb.from('transaksi').update({
+      nopol,
+      produk,
+      harga_per_liter: hargaPerLiter,
+      volume,
+      total,
+      catatan:        catatan || null,
+      mitra_id:       newMitraId,
+      // Catatan edit di field catatan sebagai audit trail inline
+      // Format: [EDIT SA dd/mm - alasan] catatan asli
+      edit_note:      `[Edit oleh Super Admin: ${alasan}]`,
+    }).eq('id', id);
+
+    if (error) {
+      // Jika kolom edit_note tidak ada, coba tanpa itu
+      const { error: err2 } = await sb.from('transaksi').update({
+        nopol, produk, harga_per_liter: hargaPerLiter,
+        volume, total, catatan: catatan || null, mitra_id: newMitraId,
+      }).eq('id', id);
+      if (err2) { errEl.textContent = 'Gagal menyimpan: ' + err2.message; errEl.style.display = 'block'; return; }
+    }
+
+    closeEditTrx();
+    showToast(`Transaksi diperbarui — ${alasan.substring(0, 40)}`);
+    loadHistory();
+
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = 'Simpan Perubahan';
   }
 }
 
