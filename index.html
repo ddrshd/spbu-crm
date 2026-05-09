@@ -1411,7 +1411,7 @@ async function loadProdukHarga() {
   if (error || !data) return;
 
   produkList = data;
-  // Untuk form input transaksi, filter hanya yang aktif dan bukan pertadex
+  // Untuk form input transaksi, tampilkan semua produk aktif
   renderProdukGrid();
   renderHargaList();
 }
@@ -1453,8 +1453,8 @@ function getProdukLogo(kode, nama, warna) {
 
 function renderProdukGrid() {
   const grid = document.getElementById('produk-grid');
-  // Form input: hanya produk aktif, skip pertadex
-  const aktifList = produkList.filter(p => p.aktif !== false && p.kode !== 'pertadex');
+  // Form input: hanya produk aktif
+  const aktifList = produkList.filter(p => p.aktif !== false);
   if (!aktifList.length) {
     grid.innerHTML = '<div style="grid-column:1/-1;color:var(--gray-400);font-size:13px;padding:12px 0;">Tidak ada produk aktif</div>';
     return;
