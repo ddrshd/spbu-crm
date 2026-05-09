@@ -1485,16 +1485,32 @@ let detectedMitraId = null; // mitra yang terdeteksi dari nopol
 
 async function checkRepeat(nopol) {
   if (!currentSpbu && currentProfile.role !== 'super_admin') return;
-  detectedMitraId = null; // reset setiap kali nopol berubah
+  detectedMitraId = null;
+
+  // Normalize: hapus semua spasi, uppercase
+  // Input: "DT 1234 AB" atau "DT1234AB" → "DT1234AB"
+  const nopolNorm = nopol.replace(/\s+/g, '').toUpperCase();
+  if (nopolNorm.length < 4) return;
+
+  // Buat variasi nopol untuk match dengan data di DB
+  // yang mungkin disimpan dengan atau tanpa spasi
+  const nopolVariants = [
+    nopolNorm,                    // DT1234AB
+    nopol.trim().toUpperCase(),   // DT 1234 AB (seperti yang diketik)
+  ];
 
   try {
-    // Cek apakah nopol terdaftar sebagai kendaraan mitra
-    const { data: kend } = await sb
-      .from('kendaraan_mitra')
-      .select('mitra_id, jenis, produk_bbm, mitra:mitra_id(nama_perusahaan)')
-      .eq('aktif', true)
-      .ilike('nopol', nopol.trim())
-      .maybeSingle();
+    // Cek kendaraan mitra — coba kedua variasi
+    let kend = null;
+    for (const variant of nopolVariants) {
+      const { data } = await sb
+        .from('kendaraan_mitra')
+        .select('mitra_id, jenis, produk_bbm, mitra:mitra_id(nama_perusahaan)')
+        .eq('aktif', true)
+        .ilike('nopol', variant)
+        .maybeSingle();
+      if (data) { kend = data; break; }
+    }
 
     const hint = document.getElementById('nopol-hint');
 
@@ -1508,20 +1524,24 @@ async function checkRepeat(nopol) {
         ${kend.jenis ? `· ${kend.jenis}` : ''}
         ${kend.produk_bbm ? `· <span style="color:var(--blue)">${kend.produk_bbm}</span>` : ''}
       `;
-      return; // Sudah dapat info mitra, tidak perlu cek repeat biasa
+      return;
     }
 
-    // Bukan kendaraan mitra — cek riwayat repeat biasa
-    let q = sb.from('transaksi')
-      .select('produk,created_at')
-      .eq('nopol', nopol)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    if (currentSpbu) q = q.eq('spbu_id', currentSpbu.id);
-    const { data } = await q;
+    // Bukan kendaraan mitra — cek riwayat repeat (kedua variasi)
+    let data = null;
+    for (const variant of nopolVariants) {
+      let q = sb.from('transaksi')
+        .select('produk,created_at')
+        .ilike('nopol', variant)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (currentSpbu) q = q.eq('spbu_id', currentSpbu.id);
+      const res = await q;
+      if (res.data?.length) { data = res.data; break; }
+    }
 
-    if (data && data.length > 0) {
+    if (data?.length > 0) {
       const last = new Date(data[0].created_at);
       const lastStr = last.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
       hint.innerHTML = `<span class="repeat-badge">Pelanggan Repeat</span> Terakhir ${lastStr} · ${data.length}x kunjungan · Favorit: ${data[0].produk}`;
@@ -1601,8 +1621,11 @@ function selectProduk(el, nama, harga, kode) {
 
 
 function confirmTrx() {
-  const nopol = document.getElementById('nopol-input').value.trim().toUpperCase();
-  const catatan = document.getElementById('catatan-input').value.trim();
+  // Normalize nopol: uppercase + hapus semua spasi
+  // "DT 1234 AB" → "DT1234AB" — konsisten dengan data kendaraan mitra
+  const nopolRaw = document.getElementById('nopol-input').value.trim().toUpperCase();
+  const nopol    = nopolRaw.replace(/\s+/g, '');
+  const catatan  = document.getElementById('catatan-input').value.trim();
 
   // Ambil volume & total dari hidden input (sudah dihitung oleh calcFromVolume/calcFromHarga)
   const vol   = parseFloat(document.getElementById('volume-input-final').value);
@@ -1614,7 +1637,7 @@ function confirmTrx() {
   const saSpbu   = isSuperAdmin ? spbuList.find(s => s.id === saSpbuId) : null;
 
   // Validasi
-  if (!nopol || nopol.replace(/\s/g,'').length < 4) {
+  if (!nopol || nopol.length < 4) {
     showToast('Nomor polisi tidak valid!', true);
     document.getElementById('nopol-input').classList.add('error');
     return;
