@@ -1565,30 +1565,31 @@ function onNopolInput(val) {
 }
 
 let detectedMitraId = null; // mitra yang terdeteksi dari nopol
+let detectedMekanisme = null; // mekanisme bayar: tunai / invoice_bulanan / deposit
+let detectedMitraNama = null; // nama perusahaan mitra
 
 async function checkRepeat(nopol) {
   if (!currentSpbu && currentProfile.role !== 'super_admin') return;
   detectedMitraId = null;
+  detectedMekanisme = null;
+  detectedMitraNama = null;
 
   // Normalize: hapus semua spasi, uppercase
-  // Input: "DT 1234 AB" atau "DT1234AB" → "DT1234AB"
   const nopolNorm = nopol.replace(/\s+/g, '').toUpperCase();
   if (nopolNorm.length < 4) return;
 
-  // Buat variasi nopol untuk match dengan data di DB
-  // yang mungkin disimpan dengan atau tanpa spasi
   const nopolVariants = [
-    nopolNorm,                    // DT1234AB
-    nopol.trim().toUpperCase(),   // DT 1234 AB (seperti yang diketik)
+    nopolNorm,
+    nopol.trim().toUpperCase(),
   ];
 
   try {
-    // Cek kendaraan mitra — coba kedua variasi
+    // Cek kendaraan mitra — include mekanisme_bayar dari tabel mitra
     let kend = null;
     for (const variant of nopolVariants) {
       const { data } = await sb
         .from('kendaraan_mitra')
-        .select('mitra_id, jenis, produk_bbm, mitra:mitra_id(nama_perusahaan)')
+        .select('mitra_id, jenis, produk_bbm, mitra:mitra_id(nama_perusahaan, mekanisme_bayar)')
         .eq('aktif', true)
         .ilike('nopol', variant)
         .maybeSingle();
@@ -1598,15 +1599,64 @@ async function checkRepeat(nopol) {
     const hint = document.getElementById('nopol-hint');
 
     if (kend) {
-      detectedMitraId = kend.mitra_id;
-      const mitraNama = kend.mitra?.nama_perusahaan || 'Mitra';
-      hint.innerHTML = `
-        <span style="background:#d1fae5;color:#065f46;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600;">
-          🏢 Mitra: ${mitraNama}
-        </span>
-        ${kend.jenis ? `· ${kend.jenis}` : ''}
-        ${kend.produk_bbm ? `· <span style="color:var(--blue)">${kend.produk_bbm}</span>` : ''}
-      `;
+      detectedMitraId   = kend.mitra_id;
+      detectedMekanisme = kend.mitra?.mekanisme_bayar || 'tunai';
+      detectedMitraNama = kend.mitra?.nama_perusahaan || 'Mitra';
+      const mitraNama   = detectedMitraNama;
+      const mekanisme   = detectedMekanisme;
+
+      // Badge warna + instruksi berdasarkan mekanisme bayar
+      let badgeHTML = '';
+      if (mekanisme === 'invoice_bulanan') {
+        badgeHTML = `
+          <div style="background:#EBF2FF;border:1.5px solid rgba(26,86,200,.25);border-radius:8px;padding:8px 12px;margin-top:4px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+              <span style="background:#1A56C8;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">INVOICE</span>
+              <span style="font-size:13px;font-weight:600;color:#1A56C8;">${mitraNama}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              ${kend.jenis ? `<span style="font-size:11px;color:#475569;">${kend.jenis}</span>` : ''}
+              ${kend.produk_bbm ? `<span style="font-size:11px;color:var(--blue);font-weight:500;">${kend.produk_bbm}</span>` : ''}
+            </div>
+            <div style="font-size:11px;color:#C0101F;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:4px;">
+              <span style="font-size:13px;">⛔</span> Jangan terima bayar tunai — tagihan diinvoice ke perusahaan
+            </div>
+          </div>`;
+      } else if (mekanisme === 'deposit') {
+        // Phase 2: akan ditambah saldo real-time
+        badgeHTML = `
+          <div style="background:#FEF9E6;border:1.5px solid rgba(245,158,11,.25);border-radius:8px;padding:8px 12px;margin-top:4px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+              <span style="background:#F59E0B;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">DEPOSIT</span>
+              <span style="font-size:13px;font-weight:600;color:#B45309;">${mitraNama}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              ${kend.jenis ? `<span style="font-size:11px;color:#475569;">${kend.jenis}</span>` : ''}
+              ${kend.produk_bbm ? `<span style="font-size:11px;color:var(--blue);font-weight:500;">${kend.produk_bbm}</span>` : ''}
+            </div>
+            <div style="font-size:11px;color:#B45309;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:4px;">
+              <span style="font-size:13px;">💰</span> Jangan terima bayar tunai — dipotong dari saldo deposit
+            </div>
+          </div>`;
+      } else {
+        // tunai (default)
+        badgeHTML = `
+          <div style="background:#E6F7EE;border:1.5px solid rgba(0,166,81,.2);border-radius:8px;padding:8px 12px;margin-top:4px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+              <span style="background:#00A651;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">TUNAI</span>
+              <span style="font-size:13px;font-weight:600;color:#007A3C;">${mitraNama}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              ${kend.jenis ? `<span style="font-size:11px;color:#475569;">${kend.jenis}</span>` : ''}
+              ${kend.produk_bbm ? `<span style="font-size:11px;color:var(--blue);font-weight:500;">${kend.produk_bbm}</span>` : ''}
+            </div>
+            <div style="font-size:11px;color:#007A3C;font-weight:500;margin-top:6px;display:flex;align-items:center;gap:4px;">
+              <span style="font-size:13px;">✅</span> Terima bayar tunai — transaksi tercatat untuk monitoring mitra
+            </div>
+          </div>`;
+      }
+
+      hint.innerHTML = badgeHTML;
       return;
     }
 
@@ -1747,8 +1797,33 @@ function confirmTrx() {
     ? `<div><div class="label">SPBU</div><div class="val">${saSpbu?.nama || '—'}</div></div>`
     : '';
 
+  // Info mitra B2B jika terdeteksi
+  let mitraBadge = '';
+  if (detectedMitraId && detectedMekanisme) {
+    const mekLabel = detectedMekanisme === 'invoice_bulanan' ? 'INVOICE'
+                   : detectedMekanisme === 'deposit' ? 'DEPOSIT' : 'TUNAI';
+    const mekColor = detectedMekanisme === 'invoice_bulanan' ? '#1A56C8'
+                   : detectedMekanisme === 'deposit' ? '#F59E0B' : '#00A651';
+    const mekBg    = detectedMekanisme === 'invoice_bulanan' ? '#EBF2FF'
+                   : detectedMekanisme === 'deposit' ? '#FEF9E6' : '#E6F7EE';
+    const mekInstr = detectedMekanisme === 'invoice_bulanan'
+                   ? '⛔ Jangan terima bayar tunai'
+                   : detectedMekanisme === 'deposit'
+                   ? '💰 Dipotong dari saldo deposit'
+                   : '✅ Terima bayar tunai';
+    mitraBadge = `
+      <div style="grid-column:1/-1;background:${mekBg};border:1px solid ${mekColor}30;border-radius:8px;padding:8px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span style="background:${mekColor};color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;">${mekLabel}</span>
+          <span style="font-size:12px;font-weight:600;color:${mekColor};">${detectedMitraNama}</span>
+        </div>
+        <div style="font-size:11px;color:${mekColor};font-weight:500;">${mekInstr}</div>
+      </div>`;
+  }
+
   document.getElementById('modal-data').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      ${mitraBadge}
       <div><div class="label">Nopol</div><div class="val">${nopol}</div></div>
       <div><div class="label">Produk</div><div class="val">${selectedProduk.nama}</div></div>
       <div><div class="label">Volume</div><div class="val">${vol.toFixed(2)} L</div></div>
@@ -1815,6 +1890,9 @@ async function submitTrx() {
     document.querySelectorAll('.produk-btn').forEach(b => b.classList.remove('selected'));
     selectedProduk = null; selectedHarga = 0;
     detectedMitraId = null;
+    detectedMekanisme = null;
+    detectedMitraNama = null;
+    document.getElementById('nopol-hint').innerHTML = '';
   } finally {
     btn.disabled = false;
     btn.textContent = 'Simpan Transaksi';
