@@ -1305,15 +1305,40 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
 
 <!-- MODAL EDIT USER -->
 <div class="modal-overlay" id="modal-edit-user" onclick="if(event.target===this)closeEditUserModal()">
-  <div class="modal" style="max-width:400px;">
+  <div class="modal" style="max-width:420px;">
     <div class="modal-title">Edit User</div>
-    <div class="modal-body" id="edit-user-desc">Perbarui nama atau password user.</div>
+    <div class="modal-body" id="edit-user-desc">Perbarui nama, email, atau password user.</div>
 
     <input type="hidden" id="edit-user-id"/>
 
+    <!-- Email (readonly — informasi saja) -->
+    <div class="field-group">
+      <label class="field-label">Email Terdaftar</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input class="field-input" id="edit-email-display" type="text"
+          placeholder="Memuat..." readonly
+          style="background:var(--gray-50);color:var(--text-muted);font-family:var(--fm);font-size:13px;cursor:default;"/>
+        <button type="button" onclick="toggleEditEmail()"
+          style="padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);
+          font-size:11px;font-weight:500;cursor:pointer;font-family:var(--ff);color:var(--text-muted);white-space:nowrap;"
+          id="btn-edit-email">Ubah</button>
+      </div>
+    </div>
+
+    <!-- Email baru (tersembunyi, muncul saat klik Ubah) -->
+    <div id="edit-email-new-wrap" class="field-group" style="display:none;">
+      <label class="field-label">Email Baru <span style="color:var(--red)">*</span></label>
+      <input class="field-input" id="edit-email-new" type="email"
+        placeholder="emailbaru@domain.com"
+        style="font-family:var(--fm);"/>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+        User harus login ulang dengan email baru setelah diubah.
+      </div>
+    </div>
+
     <div class="field-group">
       <label class="field-label">Nama Lengkap</label>
-      <input class="field-input" id="edit-nama" type="text" placeholder="Nama baru (kosongkan jika tidak diubah)"/>
+      <input class="field-input" id="edit-nama" type="text" placeholder="Kosongkan jika tidak diubah"/>
     </div>
 
     <div class="field-group">
@@ -3412,15 +3437,51 @@ function showUError(msg) {
 }
 
 // ─── EDIT USER ───────────────────────────────────────────────
-function showEditUser(userId, namaSaat) {
-  document.getElementById('edit-user-id').value = userId;
-  document.getElementById('edit-nama').value = namaSaat || '';
-  document.getElementById('edit-password').value = '';
+async function showEditUser(userId, namaSaat) {
+  document.getElementById('edit-user-id').value    = userId;
+  document.getElementById('edit-nama').value       = namaSaat || '';
+  document.getElementById('edit-password').value   = '';
+  document.getElementById('edit-email-display').value = 'Memuat...';
+  document.getElementById('edit-email-new').value  = '';
+  document.getElementById('edit-email-new-wrap').style.display = 'none';
+  document.getElementById('btn-edit-email').textContent = 'Ubah';
   document.getElementById('edit-error').style.display = 'none';
   document.getElementById('edit-user-desc').textContent =
-    `Edit nama atau reset password untuk: ${namaSaat}`;
+    `Edit data untuk: ${namaSaat}`;
   document.getElementById('modal-edit-user').classList.add('show');
   document.getElementById('edit-nama').focus();
+
+  // Ambil email dari API (pakai service key via update-user endpoint)
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch('/api/update-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ target_user_id: userId, get_only: true })
+    });
+    const result = await res.json();
+    document.getElementById('edit-email-display').value =
+      result.email || result.data?.email || 'Tidak tersedia';
+  } catch(e) {
+    document.getElementById('edit-email-display').value = 'Tidak tersedia';
+  }
+}
+
+function toggleEditEmail() {
+  const wrap = document.getElementById('edit-email-new-wrap');
+  const btn  = document.getElementById('btn-edit-email');
+  if (wrap.style.display === 'none') {
+    wrap.style.display = '';
+    btn.textContent = 'Batal Ubah';
+    document.getElementById('edit-email-new').focus();
+  } else {
+    wrap.style.display = 'none';
+    btn.textContent = 'Ubah';
+    document.getElementById('edit-email-new').value = '';
+  }
 }
 
 function closeEditUserModal() {
@@ -3438,19 +3499,22 @@ async function submitEditUser() {
   const userId   = document.getElementById('edit-user-id').value;
   const nama     = document.getElementById('edit-nama').value.trim();
   const password = document.getElementById('edit-password').value;
+  const emailNew = document.getElementById('edit-email-new').value.trim().toLowerCase();
   const errEl    = document.getElementById('edit-error');
 
   errEl.style.display = 'none';
 
-  if (!nama && !password) {
-    errEl.textContent = 'Isi minimal nama baru atau password baru';
-    errEl.style.display = 'block';
-    return;
+  if (!nama && !password && !emailNew) {
+    errEl.textContent = 'Isi minimal satu field yang ingin diubah';
+    errEl.style.display = 'block'; return;
   }
   if (password && password.length < 8) {
     errEl.textContent = 'Password minimal 8 karakter';
-    errEl.style.display = 'block';
-    return;
+    errEl.style.display = 'block'; return;
+  }
+  if (emailNew && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNew)) {
+    errEl.textContent = 'Format email tidak valid';
+    errEl.style.display = 'block'; return;
   }
 
   const btn   = document.getElementById('edit-submit-btn');
@@ -3470,19 +3534,20 @@ async function submitEditUser() {
         target_user_id: userId,
         nama:     nama     || undefined,
         password: password || undefined,
+        email:    emailNew || undefined,
       })
     });
 
     const result = await res.json();
     if (!res.ok) {
       errEl.textContent = result.error || 'Gagal menyimpan';
-      errEl.style.display = 'block';
-      return;
+      errEl.style.display = 'block'; return;
     }
 
     closeEditUserModal();
     const msg = [];
     if (result.updated?.nama)     msg.push('nama diperbarui');
+    if (result.updated?.email)    msg.push('email diperbarui');
     if (result.updated?.password) msg.push('password direset');
     showToast('Berhasil: ' + msg.join(' & '));
     loadUsers();
