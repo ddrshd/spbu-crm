@@ -722,6 +722,7 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--gray-100);border-radius:8px;padding:3px;width:fit-content;">
       <button class="period-pill active" id="subtab-kontrak-btn" onclick="switchSubtab('kontrak',this)">Kontrak Aktif</button>
       <button class="period-pill" id="subtab-kendaraan-btn" onclick="switchSubtab('kendaraan',this)">Kendaraan Mitra</button>
+      <button class="period-pill" id="subtab-saldo-btn" onclick="switchSubtab('saldo',this)">Saldo Deposit</button>
     </div>
 
     <!-- SUB: KONTRAK LIST -->
@@ -832,6 +833,83 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       </div>
     </div>
   </div>
+
+    <!-- SUB: SALDO DEPOSIT -->
+    <div id="subview-saldo" style="display:none">
+      <div style="background:#FEF9E6;border:1px solid rgba(245,158,11,.15);border-radius:var(--radius);
+        padding:10px 14px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:16px;flex-shrink:0;">💰</span>
+        <div style="font-size:12px;color:#B45309;line-height:1.5;">
+          <strong>Saldo deposit untuk mitra dengan mekanisme pembayaran deposit.</strong>
+          Top-up dilakukan setelah mitra transfer ke rekening SPBU. BISON mencatat saldo, bukan memegang uang.
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Mitra</th>
+              <th>Mekanisme</th>
+              <th>Saldo</th>
+              <th>Update Terakhir</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="saldo-body">
+            <tr><td colspan="5" class="empty-state">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MODAL TOP-UP SALDO -->
+    <div class="modal-overlay" id="modal-topup" onclick="if(event.target===this)closeModalTopup()">
+      <div class="modal" style="max-width:420px;">
+        <div class="modal-handle"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <div style="width:32px;height:32px;background:#FEF9E6;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">💰</div>
+          <div class="modal-title" style="margin:0;">Top-up Saldo Deposit</div>
+        </div>
+
+        <input type="hidden" id="topup-mitra-id"/>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;" id="topup-mitra-nama"></div>
+
+        <div class="field-group">
+          <label class="field-label">Saldo Saat Ini</label>
+          <div id="topup-saldo-info" style="font-size:18px;font-weight:700;font-family:var(--fm);color:var(--green);margin-bottom:4px;">Rp 0</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Jumlah Top-up (Rp) <span style="color:var(--red)">*</span></label>
+          <input class="field-input" id="topup-jumlah" type="number" min="10000" step="10000"
+            placeholder="Contoh: 50000000" style="font-family:var(--fm);font-size:16px;"
+            oninput="updateTopupPreview()"/>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="topup-preview"></div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Referensi Transfer</label>
+          <input class="field-input" id="topup-referensi"
+            placeholder="No. rekening / tanggal transfer / bukti"/>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Catatan (opsional)</label>
+          <input class="field-input" id="topup-catatan"
+            placeholder="Misal: Transfer BCA 10 Mei 2026"/>
+        </div>
+
+        <div class="error-msg" id="topup-error" style="display:none;margin-bottom:12px;"></div>
+
+        <div class="modal-row">
+          <button class="modal-btn cancel" onclick="closeModalTopup()">Batal</button>
+          <button class="modal-btn confirm" onclick="submitTopup()" style="background:var(--green);border-color:var(--green);">
+            <span id="topup-label">Konfirmasi Top-up</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
   <!-- VIEW: TAGIHAN MITRA -->
   <div class="view" id="view-tagihan">
@@ -1567,6 +1645,7 @@ function onNopolInput(val) {
 let detectedMitraId = null; // mitra yang terdeteksi dari nopol
 let detectedMekanisme = null; // mekanisme bayar: tunai / invoice_bulanan / deposit
 let detectedMitraNama = null; // nama perusahaan mitra
+let detectedSaldo = 0;        // saldo deposit mitra saat ini
 
 async function checkRepeat(nopol) {
   if (!currentSpbu && currentProfile.role !== 'super_admin') return;
@@ -1623,19 +1702,51 @@ async function checkRepeat(nopol) {
             </div>
           </div>`;
       } else if (mekanisme === 'deposit') {
-        // Phase 2: akan ditambah saldo real-time
+        // Query saldo terpantau dari tabel saldo_mitra
+        let saldoInfo = 'Saldo belum diatur';
+        let saldoVal  = 0;
+        let saldoColor = '#B45309';
+        const spbuId = currentSpbu?.id || null;
+        if (spbuId) {
+          const { data: sal } = await sb.from('saldo_mitra')
+            .select('saldo')
+            .eq('mitra_id', kend.mitra_id)
+            .eq('spbu_id', spbuId)
+            .maybeSingle();
+          if (sal) {
+            saldoVal = sal.saldo;
+            const formatted = Math.abs(saldoVal).toLocaleString('id-ID');
+            if (saldoVal <= 0) {
+              saldoInfo = `Saldo: Rp 0 (habis)`;
+              saldoColor = '#DC2626';
+            } else if (saldoVal < 2000000) {
+              saldoInfo = `Saldo: Rp ${formatted} ⚠️ rendah`;
+              saldoColor = '#DC2626';
+            } else {
+              saldoInfo = `Saldo: Rp ${formatted}`;
+              saldoColor = '#B45309';
+            }
+          }
+        }
+        detectedSaldo = saldoVal;
+
+        const borderC = saldoVal <= 0 ? 'rgba(220,38,38,.3)' : saldoVal < 2000000 ? 'rgba(220,38,38,.25)' : 'rgba(245,158,11,.25)';
+        const bgC     = saldoVal <= 0 ? '#FEF2F2' : saldoVal < 2000000 ? '#FEF2F2' : '#FEF9E6';
+
         badgeHTML = `
-          <div style="background:#FEF9E6;border:1.5px solid rgba(245,158,11,.25);border-radius:8px;padding:8px 12px;margin-top:4px;">
+          <div style="background:${bgC};border:1.5px solid ${borderC};border-radius:8px;padding:8px 12px;margin-top:4px;">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
               <span style="background:#F59E0B;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">DEPOSIT</span>
               <span style="font-size:13px;font-weight:600;color:#B45309;">${mitraNama}</span>
             </div>
+            <div style="font-size:15px;font-weight:700;color:${saldoColor};margin:4px 0;">${saldoInfo}</div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               ${kend.jenis ? `<span style="font-size:11px;color:#475569;">${kend.jenis}</span>` : ''}
               ${kend.produk_bbm ? `<span style="font-size:11px;color:var(--blue);font-weight:500;">${kend.produk_bbm}</span>` : ''}
             </div>
-            <div style="font-size:11px;color:#B45309;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:4px;">
-              <span style="font-size:13px;">💰</span> Jangan terima bayar tunai — dipotong dari saldo deposit
+            <div style="font-size:11px;color:${saldoColor};font-weight:600;margin-top:6px;display:flex;align-items:center;gap:4px;">
+              <span style="font-size:13px;">${saldoVal <= 0 ? '🔴' : saldoVal < 2000000 ? '🟡' : '💰'}</span>
+              ${saldoVal <= 0 ? 'Saldo habis — hubungi manager sebelum isi BBM' : 'Jangan terima bayar tunai — dipotong dari saldo deposit'}
             </div>
           </div>`;
       } else {
@@ -1872,7 +1983,56 @@ async function submitTrx() {
     });
     if (error) throw error;
 
-    showToast('Tersimpan — ' + nopol);
+    // ── Auto-deduct saldo jika mekanisme deposit ──────────
+    if (detectedMitraId && detectedMekanisme === 'deposit' && spbuId) {
+      try {
+        // Ambil saldo terkini
+        const { data: salRow } = await sb.from('saldo_mitra')
+          .select('id, saldo')
+          .eq('mitra_id', detectedMitraId)
+          .eq('spbu_id', spbuId)
+          .maybeSingle();
+
+        if (salRow) {
+          const saldoLama = salRow.saldo;
+          const saldoBaru = saldoLama - total;
+
+          // Update saldo
+          await sb.from('saldo_mitra')
+            .update({ saldo: saldoBaru, updated_by: currentUser.id })
+            .eq('id', salRow.id);
+
+          // Catat mutasi
+          await sb.from('mutasi_saldo').insert({
+            mitra_id:      detectedMitraId,
+            spbu_id:       spbuId,
+            tipe:          'deduct',
+            jumlah:        -total,
+            saldo_sebelum: saldoLama,
+            saldo_sesudah: saldoBaru,
+            catatan:       `${nopol} · ${selectedProduk.nama} · ${vol.toFixed(2)}L`,
+            dibuat_oleh:   currentUser.id,
+          });
+
+          // Toast dengan info saldo terbaru
+          const saldoFormatted = Math.abs(saldoBaru).toLocaleString('id-ID');
+          if (saldoBaru <= 0) {
+            showToast(`Tersimpan — ${nopol} · ⚠️ Saldo habis (Rp ${saldoFormatted})`, true);
+          } else if (saldoBaru < 2000000) {
+            showToast(`Tersimpan — ${nopol} · ⚠️ Saldo rendah: Rp ${saldoFormatted}`);
+          } else {
+            showToast(`Tersimpan — ${nopol} · Sisa saldo: Rp ${saldoFormatted}`);
+          }
+        } else {
+          showToast(`Tersimpan — ${nopol} · ⚠️ Saldo deposit belum diatur`);
+        }
+      } catch (e) {
+        // Transaksi sudah tersimpan, hanya deduct gagal
+        showToast(`Tersimpan — ${nopol} · Gagal potong saldo: ${e.message}`, true);
+      }
+    } else {
+      showToast('Tersimpan — ' + nopol);
+    }
 
     // Reset form
     document.getElementById('nopol-input').value = '';
@@ -1892,6 +2052,7 @@ async function submitTrx() {
     detectedMitraId = null;
     detectedMekanisme = null;
     detectedMitraNama = null;
+    detectedSaldo = 0;
     document.getElementById('nopol-hint').innerHTML = '';
   } finally {
     btn.disabled = false;
@@ -1996,6 +2157,243 @@ async function loadHistory() {
     tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Error: ${e.message}</td></tr>`;
   }
 }
+
+// ─── SALDO DEPOSIT ───────────────────────────────────────────
+
+async function loadSaldoDeposit() {
+  const tbody = document.getElementById('saldo-body');
+  tbody.innerHTML = '<tr><td colspan="5" class="loading-msg">Memuat...</td></tr>';
+
+  try {
+    // Ambil semua mitra aktif yang punya kontrak di SPBU ini
+    let mitraQ = sb.from('mitra')
+      .select('id, nama_perusahaan, mekanisme_bayar')
+      .eq('status', 'aktif')
+      .order('nama_perusahaan');
+    if (currentProfile.role === 'manager' && currentSpbu)
+      mitraQ = mitraQ.eq('spbu_id', currentSpbu.id);
+    const { data: mitras } = await mitraQ;
+
+    if (!mitras?.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Belum ada mitra terdaftar</td></tr>';
+      return;
+    }
+
+    // Ambil saldo untuk semua mitra
+    const spbuId = currentSpbu?.id || null;
+    let saldoMap = {};
+    if (spbuId) {
+      const { data: saldos } = await sb.from('saldo_mitra')
+        .select('mitra_id, saldo, updated_at')
+        .eq('spbu_id', spbuId);
+      (saldos || []).forEach(s => { saldoMap[s.mitra_id] = s; });
+    }
+
+    const canManage = ['manager','super_admin'].includes(currentProfile.role);
+
+    tbody.innerHTML = mitras.map(m => {
+      const sal     = saldoMap[m.id];
+      const saldo   = sal?.saldo || 0;
+      const updated = sal?.updated_at ? new Date(sal.updated_at).toLocaleDateString('id-ID',
+        { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+      const mek     = m.mekanisme_bayar || 'tunai';
+      const mekLabel = mek === 'deposit' ? 'Deposit' : mek === 'invoice_bulanan' ? 'Invoice' : 'Tunai';
+      const mekColor = mek === 'deposit' ? '#F59E0B' : mek === 'invoice_bulanan' ? '#1A56C8' : '#00A651';
+      const isDeposit = mek === 'deposit';
+
+      let saldoHTML;
+      if (!isDeposit) {
+        saldoHTML = '<span style="font-size:12px;color:var(--text-muted);">—</span>';
+      } else if (saldo <= 0) {
+        saldoHTML = `<span style="font-size:14px;font-weight:700;font-family:var(--fm);color:#DC2626;">Rp 0</span>`;
+      } else if (saldo < 2000000) {
+        saldoHTML = `<span style="font-size:14px;font-weight:700;font-family:var(--fm);color:#DC2626;">Rp ${saldo.toLocaleString('id-ID')}</span> <span style="font-size:10px;color:#DC2626;">⚠️ rendah</span>`;
+      } else {
+        saldoHTML = `<span style="font-size:14px;font-weight:700;font-family:var(--fm);color:#00A651;">Rp ${saldo.toLocaleString('id-ID')}</span>`;
+      }
+
+      return `<tr>
+        <td style="font-size:13px;font-weight:500;">${m.nama_perusahaan}</td>
+        <td><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:${mekColor}20;color:${mekColor};">${mekLabel}</span></td>
+        <td>${saldoHTML}</td>
+        <td style="font-size:11px;color:var(--text-muted);">${updated}</td>
+        <td>
+          ${canManage && isDeposit ? `
+          <div style="display:flex;gap:4px;">
+            <button class="act-btn" onclick="showModalTopup('${m.id}','${m.nama_perusahaan.replace(/'/g,"\\'")}',${saldo})">+ Top-up</button>
+            <button class="act-btn" onclick="showMutasiSaldo('${m.id}','${m.nama_perusahaan.replace(/'/g,"\\'")}')">Mutasi</button>
+          </div>` : isDeposit ? '<span style="font-size:11px;color:var(--text-muted);">—</span>'
+           : '<span style="font-size:11px;color:var(--text-muted);">N/A</span>'}
+        </td>
+      </tr>`;
+    }).join('');
+
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function showModalTopup(mitraId, mitraNama, saldoSaatIni) {
+  document.getElementById('topup-mitra-id').value = mitraId;
+  document.getElementById('topup-mitra-nama').textContent = mitraNama;
+  document.getElementById('topup-saldo-info').textContent = `Rp ${saldoSaatIni.toLocaleString('id-ID')}`;
+  document.getElementById('topup-saldo-info').dataset.saldo = saldoSaatIni;
+  document.getElementById('topup-jumlah').value = '';
+  document.getElementById('topup-referensi').value = '';
+  document.getElementById('topup-catatan').value = '';
+  document.getElementById('topup-preview').textContent = '';
+  document.getElementById('topup-error').style.display = 'none';
+  document.getElementById('topup-label').textContent = 'Konfirmasi Top-up';
+  document.getElementById('modal-topup').classList.add('show');
+  document.getElementById('topup-jumlah').focus();
+}
+
+function closeModalTopup() {
+  document.getElementById('modal-topup').classList.remove('show');
+}
+
+function updateTopupPreview() {
+  const jumlah = parseInt(document.getElementById('topup-jumlah').value) || 0;
+  const saldoLama = parseInt(document.getElementById('topup-saldo-info').dataset.saldo) || 0;
+  const saldoBaru = saldoLama + jumlah;
+  const prev = document.getElementById('topup-preview');
+  if (jumlah > 0) {
+    prev.innerHTML = `Saldo setelah top-up: <strong style="color:var(--green)">Rp ${saldoBaru.toLocaleString('id-ID')}</strong>`;
+  } else {
+    prev.textContent = '';
+  }
+}
+
+async function submitTopup() {
+  const mitraId   = document.getElementById('topup-mitra-id').value;
+  const jumlah    = parseInt(document.getElementById('topup-jumlah').value);
+  const referensi = document.getElementById('topup-referensi').value.trim();
+  const catatan   = document.getElementById('topup-catatan').value.trim();
+  const errEl     = document.getElementById('topup-error');
+  const spbuId    = currentSpbu?.id || null;
+
+  errEl.style.display = 'none';
+  if (!jumlah || jumlah < 10000) { errEl.textContent = 'Jumlah minimal Rp 10.000'; errEl.style.display = 'block'; return; }
+  if (!spbuId) { errEl.textContent = 'SPBU tidak terdeteksi'; errEl.style.display = 'block'; return; }
+
+  document.getElementById('topup-label').textContent = 'Memproses...';
+
+  try {
+    // Cek apakah saldo row sudah ada
+    const { data: existing } = await sb.from('saldo_mitra')
+      .select('id, saldo')
+      .eq('mitra_id', mitraId)
+      .eq('spbu_id', spbuId)
+      .maybeSingle();
+
+    let saldoLama = 0;
+    let saldoBaru = jumlah;
+
+    if (existing) {
+      saldoLama = existing.saldo;
+      saldoBaru = saldoLama + jumlah;
+
+      // Update saldo
+      const { error } = await sb.from('saldo_mitra')
+        .update({ saldo: saldoBaru, updated_by: currentUser.id })
+        .eq('id', existing.id);
+      if (error) throw error;
+    } else {
+      // Insert baru
+      const { error } = await sb.from('saldo_mitra')
+        .insert({ mitra_id: mitraId, spbu_id: spbuId, saldo: saldoBaru, updated_by: currentUser.id });
+      if (error) throw error;
+    }
+
+    // Catat mutasi
+    const { error: mutErr } = await sb.from('mutasi_saldo').insert({
+      mitra_id:        mitraId,
+      spbu_id:         spbuId,
+      tipe:            'topup',
+      jumlah:          jumlah,
+      saldo_sebelum:   saldoLama,
+      saldo_sesudah:   saldoBaru,
+      bukti_transfer:  referensi || null,
+      catatan:         catatan || null,
+      dibuat_oleh:     currentUser.id,
+    });
+    if (mutErr) console.warn('Mutasi log error:', mutErr.message);
+
+    closeModalTopup();
+    showToast(`Top-up Rp ${jumlah.toLocaleString('id-ID')} berhasil — saldo baru: Rp ${saldoBaru.toLocaleString('id-ID')}`);
+    loadSaldoDeposit();
+
+  } catch(e) {
+    errEl.textContent = 'Gagal: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    document.getElementById('topup-label').textContent = 'Konfirmasi Top-up';
+  }
+}
+
+// Lihat mutasi saldo mitra (modal sederhana)
+async function showMutasiSaldo(mitraId, mitraNama) {
+  const spbuId = currentSpbu?.id || null;
+  if (!spbuId) return;
+
+  const { data: mutasi } = await sb.from('mutasi_saldo')
+    .select('*')
+    .eq('mitra_id', mitraId)
+    .eq('spbu_id', spbuId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (!mutasi?.length) {
+    showToast('Belum ada riwayat mutasi untuk mitra ini');
+    return;
+  }
+
+  // Tampilkan di modal sederhana
+  const rows = mutasi.map(m => {
+    const dt   = new Date(m.created_at);
+    const tgl  = dt.toLocaleDateString('id-ID', { day:'2-digit', month:'short' });
+    const waktu = dt.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    const isIn  = m.jumlah > 0;
+    const color = isIn ? '#00A651' : '#DC2626';
+    const sign  = isIn ? '+' : '';
+    const label = m.tipe === 'topup' ? 'Top-up' : m.tipe === 'deduct' ? 'Transaksi' : m.tipe === 'refund' ? 'Refund' : 'Penyesuaian';
+    return `<tr>
+      <td style="font-size:11px;color:var(--text-muted);">${tgl} ${waktu}</td>
+      <td><span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:${color}15;color:${color};">${label}</span></td>
+      <td style="font-family:var(--fm);font-size:12px;font-weight:600;color:${color};">${sign}Rp ${Math.abs(m.jumlah).toLocaleString('id-ID')}</td>
+      <td style="font-family:var(--fm);font-size:11px;color:var(--text);">Rp ${m.saldo_sesudah.toLocaleString('id-ID')}</td>
+      <td style="font-size:11px;color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.catatan || '—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Inject into a temporary overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay show';
+  overlay.style.zIndex = '250';
+  overlay.onclick = function(e) { if (e.target === this) this.remove(); };
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:600px;max-height:80vh;overflow-y:auto;">
+      <div class="modal-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div class="modal-title" style="margin:0;">Mutasi Saldo</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${mitraNama} · 50 transaksi terakhir</div>
+        </div>
+        <button onclick="this.closest('.modal-overlay').remove()"
+          style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:14px;">✕</button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Waktu</th><th>Tipe</th><th>Jumlah</th><th>Saldo</th><th>Catatan</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+
 
 // ─── EDIT TRANSAKSI (Super Admin Only) ───────────────────────
 
@@ -3081,11 +3479,15 @@ async function submitGenTagihan() {
 function switchSubtab(tab, btn) {
   document.querySelectorAll('#view-kontrak .period-pill').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('subview-kontrak').style.display  = tab === 'kontrak'   ? '' : 'none';
+  document.getElementById('subview-kontrak').style.display   = tab === 'kontrak'   ? '' : 'none';
   document.getElementById('subview-kendaraan').style.display = tab === 'kendaraan' ? '' : 'none';
+  document.getElementById('subview-saldo').style.display     = tab === 'saldo'     ? '' : 'none';
   if (tab === 'kendaraan') {
-    mitraListKend = []; // reset cache — paksa reload dari DB agar data kontrak terbaru terefleksi
+    mitraListKend = [];
     loadKendaraanMitra();
+  }
+  if (tab === 'saldo') {
+    loadSaldoDeposit();
   }
 }
 
