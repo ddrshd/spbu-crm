@@ -643,28 +643,109 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
 
   <!-- VIEW: DASHBOARD -->
   <div class="view" id="view-dashboard">
-    <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">Transaksi Hari Ini</div><div class="kpi-value" id="kpi-trx">—</div><div class="kpi-sub" id="kpi-trx-sub"></div></div>
-      <div class="kpi-card"><div class="kpi-label">Volume Total (L)</div><div class="kpi-value" id="kpi-vol">—</div><div class="kpi-sub" id="kpi-vol-sub"></div></div>
-      <div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub" id="kpi-rev-sub"></div></div>
-      <div class="kpi-card"><div class="kpi-label">Pelanggan Repeat</div><div class="kpi-value" id="kpi-repeat">—</div><div class="kpi-sub kpi-up" id="kpi-repeat-sub"></div></div>
+
+    <!-- Filter bar -->
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);flex-shrink:0;">Dashboard</div>
+      <div style="flex:1;"></div>
+      <!-- Filter bulan -->
+      <select id="dash-filter-bulan" class="refresh-btn" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;cursor:pointer;outline:none;"
+        onchange="loadDashboard()">
+      </select>
+      <!-- Filter mitra -->
+      <select id="dash-filter-mitra" class="refresh-btn" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;cursor:pointer;outline:none;max-width:160px;"
+        onchange="loadDashboard()">
+        <option value="">Semua Mitra</option>
+      </select>
+      <button class="refresh-btn" onclick="loadDashboard()" style="font-size:12px;">↻ Refresh</button>
     </div>
+
+    <!-- KPI 4 kartu -->
+    <div class="kpi-grid" id="dash-kpi-grid">
+      <div class="kpi-card accent-blue">
+        <div class="kpi-label">Total Transaksi</div>
+        <div class="kpi-value" id="kpi-trx">—</div>
+        <div class="kpi-sub" id="kpi-trx-sub"></div>
+      </div>
+      <div class="kpi-card accent-green">
+        <div class="kpi-label">Volume Total (L)</div>
+        <div class="kpi-value" id="kpi-vol">—</div>
+        <div class="kpi-sub" id="kpi-vol-sub"></div>
+      </div>
+      <div class="kpi-card accent-amber">
+        <div class="kpi-label">Revenue</div>
+        <div class="kpi-value" id="kpi-rev">—</div>
+        <div class="kpi-sub" id="kpi-rev-sub"></div>
+      </div>
+      <div class="kpi-card accent-red">
+        <div class="kpi-label">Transaksi B2B</div>
+        <div class="kpi-value" id="kpi-b2b">—</div>
+        <div class="kpi-sub" id="kpi-b2b-sub"></div>
+      </div>
+    </div>
+
+    <!-- Chart row: distribusi produk + transaksi per tanggal -->
     <div class="charts-row">
-      <div class="chart-card"><div class="section-title">Distribusi Produk (Hari Ini)</div><canvas id="chart-produk" height="180"></canvas></div>
-      <div class="chart-card"><div class="section-title">Transaksi per Jam</div><canvas id="chart-jam" height="180"></canvas></div>
+      <div class="chart-card" style="flex:0 0 260px;">
+        <div class="section-title">Distribusi Produk</div>
+        <canvas id="chart-produk" height="180"></canvas>
+      </div>
+      <div class="chart-card" style="flex:1;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div class="section-title" style="margin:0">Transaksi per Tanggal</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);">
+              <span style="width:10px;height:3px;background:#1A56C8;display:inline-block;border-radius:2px;"></span>Semua
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);">
+              <span style="width:10px;height:3px;background:#00A651;display:inline-block;border-radius:2px;"></span>B2B
+            </span>
+          </div>
+        </div>
+        <canvas id="chart-tanggal" height="160"></canvas>
+      </div>
     </div>
+
+    <!-- Rekap per mitra -->
+    <div class="loyal-wrap" id="dash-mitra-wrap">
+      <div class="loyal-header">
+        <span class="section-title" style="margin:0;">Rekap Mitra B2B</span>
+        <span style="font-size:11px;color:var(--text-muted);" id="dash-mitra-subtitle">Periode terpilih</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Mitra</th>
+              <th style="text-align:right;">Transaksi</th>
+              <th style="text-align:right;">Volume (L)</th>
+              <th style="text-align:right;">Total (Rp)</th>
+              <th style="text-align:right;">Avg/Trx</th>
+              <th>Top Produk</th>
+              <th>Kendaraan</th>
+              <th>Terakhir</th>
+            </tr>
+          </thead>
+          <tbody id="dash-mitra-body">
+            <tr><td colspan="8" class="loading-msg">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Top kendaraan umum -->
     <div class="loyal-wrap">
       <div class="loyal-header">
-        <span class="section-title" style="margin:0">Top Pelanggan — by Volume (30 hari)</span>
-        <button class="refresh-btn" onclick="loadDashboard()">Refresh</button>
+        <span class="section-title" style="margin:0">Top Kendaraan — by Volume</span>
       </div>
       <div style="overflow:auto;">
-        <table>
+        <table class="tbl">
           <thead><tr><th>#</th><th>Nopol</th><th>Kunjungan</th><th>Vol. Total</th><th>Produk Favorit</th><th>Terakhir</th></tr></thead>
           <tbody id="loyal-body"><tr><td colspan="6" class="loading-msg">Memuat...</td></tr></tbody>
         </table>
       </div>
     </div>
+
   </div>
 
   <!-- VIEW: PRODUK & HARGA (Super Admin + Manager bisa lihat aktif/nonaktif) -->
@@ -2586,72 +2667,227 @@ function exportCSV() {
 }
 
 // ─── DASHBOARD ───────────────────────────────────────────────
+// ─── DASHBOARD ───────────────────────────────────────────────
+
+function initDashboardFilters() {
+  // Isi dropdown bulan — 6 bulan ke belakang
+  const sel = document.getElementById('dash-filter-bulan');
+  if (!sel || sel.options.length > 1) return;
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const lbl = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = lbl;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
 async function loadDashboard() {
   if (!currentSpbu && currentProfile.role !== 'super_admin') return;
+
+  // Init filter bulan
+  initDashboardFilters();
+
+  // Ambil nilai filter
+  const bulanVal  = document.getElementById('dash-filter-bulan')?.value || '';
+  const mitraVal  = document.getElementById('dash-filter-mitra')?.value || '';
+  const isAdminOrMgr = ['manager','super_admin'].includes(currentProfile.role);
+
+  // Tentukan range tanggal dari filter bulan
+  let dateFrom, dateTo;
+  if (bulanVal) {
+    const [yr, mo] = bulanVal.split('-').map(Number);
+    dateFrom = new Date(yr, mo - 1, 1).toISOString().split('T')[0];
+    dateTo   = new Date(yr, mo, 0).toISOString().split('T')[0];
+  } else {
+    const now = new Date();
+    dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    dateTo   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  }
+
   try {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const d30 = new Date(Date.now() - 30 * 864e5).toISOString().split('T')[0];
-
-    let qToday = sb.from('transaksi')
-      .select('*')
-      .gte('created_at', todayStr + 'T00:00:00')
-      .is('deleted_at', null);
-    let qAll = sb.from('transaksi')
-      .select('nopol,produk,volume,total,created_at')
-      .gte('created_at', d30 + 'T00:00:00')
+    // Query transaksi periode
+    let q = sb.from('transaksi')
+      .select('id,nopol,produk,volume,total,mitra_id,created_at,mitra:mitra_id(nama_perusahaan)')
+      .gte('created_at', dateFrom + 'T00:00:00')
+      .lte('created_at', dateTo   + 'T23:59:59')
       .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(2000);
+      .order('created_at', { ascending: true })
+      .limit(5000);
 
-    if (currentSpbu) {
-      qToday = qToday.eq('spbu_id', currentSpbu.id);
-      qAll = qAll.eq('spbu_id', currentSpbu.id);
-    }
+    if (currentSpbu)  q = q.eq('spbu_id', currentSpbu.id);
+    if (mitraVal)     q = q.eq('mitra_id', mitraVal);
 
-    const [{ data: todayTrx }, { data: allData }] = await Promise.all([qToday, qAll]);
+    const { data: trxs } = await q;
+    const rows = trxs || [];
 
-    // KPI
-    const vol = (todayTrx || []).reduce((s, t) => s + parseFloat(t.volume), 0);
-    const rev = (todayTrx || []).reduce((s, t) => s + parseInt(t.total), 0);
-    const ns = new Set((todayTrx || []).map(t => t.nopol));
-    const today = new Date().toDateString();
-    const rc = [...ns].filter(n => (allData || []).some(t => t.nopol === n && new Date(t.created_at).toDateString() !== today)).length;
-    const rp = ns.size > 0 ? Math.round(rc / ns.size * 100) : 0;
+    // ── Update filter mitra dropdown (sekali saja saat kosong) ──
+    await refreshMitraFilter();
 
-    document.getElementById('kpi-trx').textContent = (todayTrx || []).length;
-    document.getElementById('kpi-trx-sub').textContent = ns.size + ' kendaraan unik';
-    document.getElementById('kpi-vol').textContent = vol.toFixed(0);
-    document.getElementById('kpi-vol-sub').textContent = todayTrx?.length ? 'avg ' + (vol / todayTrx.length).toFixed(1) + ' L/trx' : '';
-    document.getElementById('kpi-rev').textContent = (rev / 1e6).toFixed(1) + ' Jt';
-    document.getElementById('kpi-rev-sub').textContent = todayTrx?.length ? 'avg Rp ' + Math.round(rev / todayTrx.length).toLocaleString('id-ID') : '';
-    document.getElementById('kpi-repeat').textContent = rp + '%';
-    document.getElementById('kpi-repeat-sub').textContent = rc + ' dari ' + ns.size + ' kendaraan';
+    // ── KPI ──────────────────────────────────────────────────────
+    const totalTrx  = rows.length;
+    const totalVol  = rows.reduce((s, t) => s + parseFloat(t.volume), 0);
+    const totalRev  = rows.reduce((s, t) => s + parseInt(t.total), 0);
+    const b2bRows   = rows.filter(t => !!t.mitra_id);
+    const b2bTrx    = b2bRows.length;
+    const b2bVol    = b2bRows.reduce((s, t) => s + parseFloat(t.volume), 0);
+    const b2bPct    = totalTrx > 0 ? Math.round(b2bTrx / totalTrx * 100) : 0;
 
-    // Chart produk
-    const pc = {}; (todayTrx || []).forEach(t => { pc[t.produk] = (pc[t.produk] || 0) + 1; });
-    const pL = Object.keys(pc), pV = pL.map(l => pc[l]);
-    const pC = ['#f59e0b','#3b82f6','#8b5cf6','#10b981','#06b6d4'];
+    const bulanLabel = document.getElementById('dash-filter-bulan')?.selectedOptions[0]?.textContent || 'Bulan ini';
+
+    document.getElementById('kpi-trx').textContent     = totalTrx.toLocaleString('id-ID');
+    document.getElementById('kpi-trx-sub').textContent = new Set(rows.map(t => t.nopol)).size + ' kendaraan unik';
+    document.getElementById('kpi-vol').textContent     = totalVol >= 1000
+      ? (totalVol / 1000).toFixed(2) + ' KL'
+      : totalVol.toFixed(1) + ' L';
+    document.getElementById('kpi-vol-sub').textContent = totalTrx
+      ? 'avg ' + (totalVol / totalTrx).toFixed(1) + ' L/trx' : '';
+    document.getElementById('kpi-rev').textContent     = totalRev >= 1e9
+      ? (totalRev / 1e9).toFixed(2) + ' M'
+      : (totalRev / 1e6).toFixed(2) + ' Jt';
+    document.getElementById('kpi-rev-sub').textContent = totalTrx
+      ? 'avg Rp ' + Math.round(totalRev / totalTrx).toLocaleString('id-ID') : '';
+    document.getElementById('kpi-b2b').textContent     = b2bTrx + ' trx';
+    document.getElementById('kpi-b2b-sub').textContent = b2bPct + '% · ' + b2bVol.toFixed(0) + ' L';
+
+    // ── Chart: Distribusi Produk ─────────────────────────────────
+    const pc = {};
+    rows.forEach(t => { pc[t.produk] = (pc[t.produk] || 0) + parseFloat(t.volume); });
+    const pL = Object.keys(pc).sort((a, b) => pc[b] - pc[a]);
+    const pV = pL.map(l => Math.round(pc[l] * 10) / 10);
+    const pC = ['#1A56C8','#F59E0B','#00A651','#8b5cf6','#06b6d4','#E8182C','#10b981'];
     if (chartProduk) chartProduk.destroy();
     chartProduk = new Chart(document.getElementById('chart-produk').getContext('2d'), {
       type: 'doughnut',
-      data: { labels: pL, datasets: [{ data: pV, backgroundColor: pC.slice(0, pL.length), borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 10, padding: 10 } } } }
+      data: { labels: pL, datasets: [{ data: pV, backgroundColor: pC.slice(0, pL.length), borderWidth: 2, borderColor: '#fff' }] },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} L` } }
+        }
+      }
     });
 
-    // Chart per jam
-    const jc = Array(24).fill(0);
-    (todayTrx || []).forEach(t => { jc[new Date(t.created_at).getHours()]++; });
-    const hours = [...Array(24).keys()].filter(h => h >= 6 && h <= 21 || jc[h] > 0);
+    // ── Chart: Transaksi per Tanggal ─────────────────────────────
+    // Buat map per tanggal: semua trx & B2B
+    const daysInMonth = new Date(
+      parseInt(bulanVal.split('-')[0]),
+      parseInt(bulanVal.split('-')[1]), 0
+    ).getDate();
+    const dateLabels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    const trxPerTgl  = Array(daysInMonth).fill(0);
+    const b2bPerTgl  = Array(daysInMonth).fill(0);
+
+    rows.forEach(t => {
+      const tgl = new Date(t.created_at).getDate() - 1;
+      if (tgl >= 0 && tgl < daysInMonth) {
+        trxPerTgl[tgl]++;
+        if (t.mitra_id) b2bPerTgl[tgl]++;
+      }
+    });
+
     if (chartJam) chartJam.destroy();
-    chartJam = new Chart(document.getElementById('chart-jam').getContext('2d'), {
+    chartJam = new Chart(document.getElementById('chart-tanggal').getContext('2d'), {
       type: 'bar',
-      data: { labels: hours.map(h => h + ':00'), datasets: [{ data: hours.map(h => jc[h]), backgroundColor: '#1a56db22', borderColor: '#1a56db', borderWidth: 1.5, borderRadius: 4 }] },
-      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } } } }
+      data: {
+        labels: dateLabels,
+        datasets: [
+          {
+            label: 'Semua transaksi',
+            data: trxPerTgl,
+            backgroundColor: 'rgba(26,86,200,.15)',
+            borderColor: '#1A56C8',
+            borderWidth: 1.5,
+            borderRadius: 3,
+            order: 2,
+          },
+          {
+            label: 'B2B',
+            data: b2bPerTgl,
+            backgroundColor: 'rgba(0,166,81,.6)',
+            borderColor: '#00A651',
+            borderWidth: 1,
+            borderRadius: 3,
+            order: 1,
+          },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: ctx => `Tgl ${ctx[0].label} ${bulanLabel}`,
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.raw} transaksi`,
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 15 } },
+          y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: 'rgba(0,0,0,.05)' } }
+        }
+      }
     });
 
-    // Top pelanggan
+    // ── Rekap Mitra B2B ──────────────────────────────────────────
+    const mitraStats = {};
+    b2bRows.forEach(t => {
+      const mId   = t.mitra_id;
+      const mNama = t.mitra?.nama_perusahaan || mId;
+      if (!mitraStats[mId]) {
+        mitraStats[mId] = { nama: mNama, trx: 0, vol: 0, rev: 0, produk: {}, kendaraan: new Set(), last: null };
+      }
+      mitraStats[mId].trx++;
+      mitraStats[mId].vol += parseFloat(t.volume);
+      mitraStats[mId].rev += parseInt(t.total);
+      mitraStats[mId].produk[t.produk] = (mitraStats[mId].produk[t.produk] || 0) + 1;
+      mitraStats[mId].kendaraan.add(t.nopol);
+      const dt = new Date(t.created_at);
+      if (!mitraStats[mId].last || dt > mitraStats[mId].last) mitraStats[mId].last = dt;
+    });
+
+    const mitraSorted = Object.values(mitraStats).sort((a, b) => b.rev - a.rev);
+    const totalB2BRev = mitraSorted.reduce((s, m) => s + m.rev, 0);
+
+    document.getElementById('dash-mitra-subtitle').textContent =
+      `${bulanLabel} · ${mitraSorted.length} mitra · Rp ${totalB2BRev.toLocaleString('id-ID')}`;
+
+    document.getElementById('dash-mitra-body').innerHTML = mitraSorted.length
+      ? mitraSorted.map(m => {
+          const topProd = Object.entries(m.produk).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+          const pk = topProd.replace(/\s/g, '-');
+          const lastStr = m.last
+            ? m.last.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+            : '—';
+          const pct = totalB2BRev > 0 ? Math.round(m.rev / totalB2BRev * 100) : 0;
+          return `<tr>
+            <td>
+              <div style="font-size:13px;font-weight:600;color:var(--text);">${m.nama}</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${pct}% dari total B2B</div>
+            </td>
+            <td style="text-align:right;font-family:var(--fm);font-size:13px;">${m.trx}</td>
+            <td style="text-align:right;font-family:var(--fm);font-size:13px;">${m.vol.toFixed(0)} L</td>
+            <td style="text-align:right;font-family:var(--fm);font-size:13px;font-weight:600;color:var(--green);">
+              Rp ${m.rev.toLocaleString('id-ID')}
+            </td>
+            <td style="text-align:right;font-size:12px;color:var(--text-muted);">
+              Rp ${Math.round(m.rev / m.trx).toLocaleString('id-ID')}
+            </td>
+            <td><span class="produk-pill pill-${pk}">${topProd}</span></td>
+            <td style="font-size:12px;color:var(--text-muted);">${m.kendaraan.size} kendaraan</td>
+            <td style="font-size:12px;color:var(--text-muted);">${lastStr}</td>
+          </tr>`;
+        }).join('')
+      : `<tr><td colspan="8" class="empty-state">${mitraVal ? 'Tidak ada data B2B untuk mitra ini' : 'Belum ada transaksi B2B di periode ini'}</td></tr>`;
+
+    // ── Top kendaraan ────────────────────────────────────────────
     const stats = {};
-    (allData || []).forEach(t => {
+    rows.forEach(t => {
       if (!stats[t.nopol]) stats[t.nopol] = { visits: 0, vol: 0, pk: {}, last: null };
       stats[t.nopol].visits++;
       stats[t.nopol].vol += parseFloat(t.volume);
@@ -2660,13 +2896,13 @@ async function loadDashboard() {
       if (!stats[t.nopol].last || dt > stats[t.nopol].last) stats[t.nopol].last = dt;
     });
     const sorted = Object.entries(stats).sort((a, b) => b[1].vol - a[1].vol).slice(0, 8);
-    const maxV = sorted[0] ? sorted[0][1].vol : 1;
+    const maxV = sorted[0]?.[1].vol || 1;
     document.getElementById('loyal-body').innerHTML = sorted.length
       ? sorted.map(([nopol, s], i) => {
           const fav = Object.entries(s.pk).sort((a, b) => b[1] - a[1])[0][0];
-          const ls = s.last ? s.last.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '-';
-          const bw = Math.round(s.vol / maxV * 80);
-          const pk = fav.replace(/\s/g, '-');
+          const ls  = s.last ? s.last.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '-';
+          const bw  = Math.round(s.vol / maxV * 80);
+          const pk  = fav.replace(/\s/g, '-');
           return `<tr>
             <td><span class="rank-badge ${i < 3 ? 'rank-' + (i + 1) : ''}">${i + 1}</span></td>
             <td class="nopol-cell">${nopol}</td>
@@ -2681,6 +2917,27 @@ async function loadDashboard() {
   } catch (e) {
     showToast('Error dashboard: ' + e.message, true);
   }
+}
+
+// Refresh dropdown mitra di dashboard filter
+async function refreshMitraFilter() {
+  const sel = document.getElementById('dash-filter-mitra');
+  if (!sel || sel.options.length > 1) return; // sudah terisi
+
+  try {
+    let q = sb.from('mitra')
+      .select('id, nama_perusahaan')
+      .eq('status', 'aktif')
+      .order('nama_perusahaan');
+    if (currentProfile.role === 'manager' && currentSpbu)
+      q = q.eq('spbu_id', currentSpbu.id);
+    const { data: mitras } = await q;
+    (mitras || []).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id; opt.textContent = m.nama_perusahaan;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
 }
 
 // ─── HARGA BBM CONFIG (Super Admin) ──────────────────────────
