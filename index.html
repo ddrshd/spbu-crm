@@ -867,6 +867,23 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       </div>
     </div>
 
+
+    <!-- Modal Hapus Kontrak -->
+    <div class="modal-overlay" id="modal-hapus-kontrak" onclick="if(event.target===this)closeHapusKontrakModal()">
+      <div class="modal" style="max-width:420px;">
+        <div class="modal-title" style="color:var(--red);">🗑 Hapus Kontrak</div>
+        <div id="hapus-kontrak-warning" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#991b1b;"></div>
+        <div class="field-group">
+          <label class="field-label">Ketik ulang nomor kontrak untuk konfirmasi</label>
+          <input type="text" class="field-input" id="hapus-kontrak-input" placeholder="Contoh: KTR/2026/0001" oninput="checkHapusKontrakInput()" autocomplete="off"/>
+        </div>
+        <div id="hapus-kontrak-err" style="display:none;color:var(--red);font-size:12px;margin-top:-8px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button class="btn-secondary" style="flex:1;" onclick="closeHapusKontrakModal()">Batal</button>
+          <button id="hapus-kontrak-btn" class="btn-primary" style="flex:1;background:var(--red);border-color:var(--red);opacity:.4;cursor:not-allowed;" disabled onclick="eksekusiHapusKontrak()">Hapus Permanen</button>
+        </div>
+      </div>
+    </div>
     <!-- Modal Tambah/Edit Kendaraan -->
     <div class="modal-overlay" id="modal-kendaraan" onclick="if(event.target===this)closeModalKendaraan()">
       <div class="modal" style="max-width:420px;">
@@ -4166,6 +4183,14 @@ async function loadKontrakList() {
           ? `<button class="kontrak-btn" onclick="showToast('Tagihan bulan ini: Rp ${t.total.toLocaleString('id-ID')}')">Lihat Tagihan</button>`
           : ''}
         <a href="kontrak.html" style="text-decoration:none;"><button class="kontrak-btn">Buat Kontrak Baru</button></a>
+        ${currentProfile.role === 'super_admin' ? `
+          ${k.status === 'aktif'
+            ? `<button class="kontrak-btn" style="border-color:#d97706;color:#d97706;" onclick="stopKontrak('${k.id}','${k.nomor_kontrak}')">⏸ Stop</button>`
+            : k.status === 'suspended'
+            ? `<button class="kontrak-btn" style="border-color:var(--green);color:var(--green);" onclick="reaktivasiKontrak('${k.id}','${k.nomor_kontrak}')">▶ Reaktivasi</button>`
+            : ''}
+          <button class="kontrak-btn" style="border-color:var(--red);color:var(--red);" onclick="showHapusKontrakModal('${k.id}','${k.nomor_kontrak}')">🗑 Hapus</button>
+        ` : ''}
       </div>
     </div>`;
   }).join('');
@@ -4371,6 +4396,89 @@ async function toggleSpbu(id, aktif) {
   loadSpbu();
 }
 
+
+// ─── KONTRAK MANAGEMENT (super_admin) ────────────────────────
+
+async function stopKontrak(id, nomor) {
+  if (!confirm(`Stop kontrak ${nomor}? Status akan berubah ke Suspended. Transaksi berjalan tidak terganggu.`)) return;
+  const { error } = await sb.from("kontrak_mitra").update({ status: "suspended" }).eq("id", id);
+  if (error) { showToast("Gagal stop kontrak: " + error.message, true); return; }
+  showToast("Kontrak " + nomor + " distop.");
+  loadKontrakList();
+}
+
+async function reaktivasiKontrak(id, nomor) {
+  if (!confirm(`Reaktivasi kontrak ${nomor}?`)) return;
+  const { error } = await sb.from("kontrak_mitra").update({ status: "aktif" }).eq("id", id);
+  if (error) { showToast("Gagal reaktivasi: " + error.message, true); return; }
+  showToast("Kontrak " + nomor + " diaktifkan kembali.");
+  loadKontrakList();
+}
+
+let _hapusKontrakId = null;
+let _hapusKontrakNomor = null;
+
+async function showHapusKontrakModal(id, nomor) {
+  _hapusKontrakId = id;
+  _hapusKontrakNomor = nomor;
+  document.getElementById("hapus-kontrak-input").value = "";
+  document.getElementById("hapus-kontrak-err").style.display = "none";
+  const btn = document.getElementById("hapus-kontrak-btn");
+  btn.disabled = true; btn.style.opacity = ".4"; btn.style.cursor = "not-allowed";
+  document.getElementById("hapus-kontrak-warning").innerHTML =
+    `Anda akan menghapus kontrak <strong>${nomor}</strong> secara permanen.<br>Semua data terkait (kendaraan, tagihan, saldo) akan ikut terhapus. Tindakan ini <strong>tidak bisa diurungkan</strong>.`;
+  const { data: trx } = await sb.from("transaksi").select("id", { count: "exact", head: true }).eq("mitra_id",
+    (await sb.from("kontrak_mitra").select("mitra_id").eq("id", id).single()).data?.mitra_id
+  ).is("deleted_at", null);
+  document.getElementById("modal-hapus-kontrak").style.display = "flex";
+}
+
+function closeHapusKontrakModal() {
+  document.getElementById("modal-hapus-kontrak").style.display = "none";
+  _hapusKontrakId = null; _hapusKontrakNomor = null;
+}
+
+function checkHapusKontrakInput() {
+  const val = document.getElementById("hapus-kontrak-input").value.trim();
+  const btn = document.getElementById("hapus-kontrak-btn");
+  const match = val === _hapusKontrakNomor;
+  btn.disabled = !match;
+  btn.style.opacity = match ? "1" : ".4";
+  btn.style.cursor  = match ? "pointer" : "not-allowed";
+}
+
+async function eksekusiHapusKontrak() {
+  if (!_hapusKontrakId) return;
+  const btn = document.getElementById("hapus-kontrak-btn");
+  const errEl = document.getElementById("hapus-kontrak-err");
+  btn.disabled = true; btn.textContent = "Menghapus...";
+  try {
+    const { data: km } = await sb.from("kontrak_mitra").select("mitra_id, spbu_id").eq("id", _hapusKontrakId).single();
+    if (km) {
+      const mid = km.mitra_id, sid = km.spbu_id;
+      const { count: trxCount } = await sb.from("transaksi").select("id", { count: "exact", head: true }).eq("mitra_id", mid).is("deleted_at", null);
+      if (trxCount > 0) {
+        errEl.textContent = "Tidak bisa hapus: masih ada " + trxCount + " transaksi aktif untuk mitra ini.";
+        errEl.style.display = "block";
+        btn.disabled = false; btn.textContent = "Hapus Permanen";
+        return;
+      }
+      await sb.from("tagihan_mitra").delete().eq("mitra_id", mid);
+      await sb.from("mutasi_saldo").delete().eq("mitra_id", mid);
+      await sb.from("saldo_mitra").delete().eq("mitra_id", mid).eq("spbu_id", sid);
+      await sb.from("kendaraan_mitra").delete().eq("mitra_id", mid);
+    }
+    const { error } = await sb.from("kontrak_mitra").delete().eq("id", _hapusKontrakId);
+    if (error) throw error;
+    closeHapusKontrakModal();
+    showToast("Kontrak " + _hapusKontrakNomor + " berhasil dihapus.");
+    loadKontrakList();
+  } catch(e) {
+    errEl.textContent = "Error: " + e.message;
+    errEl.style.display = "block";
+    btn.disabled = false; btn.textContent = "Hapus Permanen";
+  }
+}
 // ─── START ───────────────────────────────────────────────────
 
 init();
