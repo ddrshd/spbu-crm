@@ -1090,6 +1090,46 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     </div>
   </div>
 
+  <!-- MODAL HAPUS KONTRAK — Super Admin Only -->
+  <div class="modal-overlay" id="modal-hapus-kontrak" onclick="if(event.target===this)closeHapusKontrakModal()">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-handle"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+        <div style="width:32px;height:32px;background:#FEF2F2;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🗑</div>
+        <div class="modal-title" style="margin:0;color:var(--red);">Hapus Kontrak</div>
+      </div>
+
+      <div style="background:#FEF2F2;border:1px solid rgba(220,38,38,.2);border-radius:var(--radius);padding:12px 14px;margin:14px 0;font-size:12px;color:#991B1B;line-height:1.6;">
+        <strong>Perhatian:</strong> Menghapus kontrak bersifat permanen. Kendaraan mitra yang terkait kontrak ini <strong>tidak akan terhapus</strong>, namun tidak lagi terhubung ke kontrak aktif. Data transaksi historis tetap tersimpan.
+      </div>
+
+      <div id="hapus-kontrak-info" style="font-size:13px;color:var(--text);margin-bottom:14px;line-height:1.6;"></div>
+
+      <input type="hidden" id="hapus-kontrak-id"/>
+
+      <div class="field-group">
+        <label class="field-label">Ketik nomor kontrak untuk konfirmasi <span style="color:var(--red)">*</span></label>
+        <input class="field-input" id="hapus-kontrak-confirm" type="text"
+          placeholder="KTR/2026/..." autocomplete="off"
+          style="font-family:var(--fm);letter-spacing:.04em;"
+          oninput="validateHapusInput()"/>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="hapus-confirm-hint">
+          Ketik nomor kontrak di atas untuk mengaktifkan tombol hapus.
+        </div>
+      </div>
+
+      <div class="error-msg" id="hapus-kontrak-error" style="display:none;margin-bottom:12px;"></div>
+
+      <div class="modal-row">
+        <button class="modal-btn cancel" onclick="closeHapusKontrakModal()">Batal</button>
+        <button class="modal-btn" id="hapus-kontrak-btn" onclick="submitHapusKontrak()"
+          disabled style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;cursor:not-allowed;">
+          <span id="hapus-kontrak-label">Hapus Kontrak</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   </div><!-- end .views -->
 
   <!-- MODAL EDIT TRANSAKSI — Super Admin Only -->
@@ -4166,46 +4206,198 @@ async function loadKontrakList() {
           ? `<button class="kontrak-btn" onclick="showToast('Tagihan bulan ini: Rp ${t.total.toLocaleString('id-ID')}')">Lihat Tagihan</button>`
           : ''}
         <a href="kontrak.html" style="text-decoration:none;"><button class="kontrak-btn">Buat Kontrak Baru</button></a>
+        ${currentProfile.role === 'super_admin' ? `
+          ${k.status === 'aktif'
+            ? `<button class="kontrak-btn" style="border-color:#d97706;color:#d97706;"
+                onclick="stopKontrak('${k.id}','${(k.nomor_kontrak).replace(/'/g,"\\'")}','${(k.mitra?.nama_perusahaan||'').replace(/'/g,"\\'")}')">
+                ⏸ Stop Kontrak
+              </button>`
+            : k.status === 'suspended'
+            ? `<button class="kontrak-btn" style="border-color:var(--green);color:var(--green);"
+                onclick="reaktivasiKontrak('${k.id}','${(k.nomor_kontrak).replace(/'/g,"\\'")}')">
+                ▶ Reaktivasi
+              </button>`
+            : ''}
+          <button class="kontrak-btn" style="border-color:var(--red);color:var(--red);"
+            onclick="showHapusKontrakModal('${k.id}','${(k.nomor_kontrak).replace(/'/g,"\\'")}','${(k.mitra?.nama_perusahaan||'').replace(/'/g,"\\'")}')">
+            🗑 Hapus
+          </button>
+        ` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
+// ─── MANAJEMEN KONTRAK (Super Admin) ─────────────────────────
+
 function previewKontrak(k) {
   document.getElementById('modal-kontrak-judul').textContent = k.nomor_kontrak;
   const fmtTgl = d => new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
   document.getElementById('modal-kontrak-body').innerHTML = `
-    <div style="text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #111;">
-      <div style="font-size:20px;font-weight:700;letter-spacing:.06em;">PERJANJIAN KERJASAMA</div>
-      <div style="font-size:16px;font-weight:700;margin-top:4px;">PENGADAAN BAHAN BAKAR MINYAK (BBM)</div>
-      <div style="margin-top:10px;display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:5px 14px;font-family:monospace;font-size:13px;font-weight:600;color:#1e40af;">${k.nomor_kontrak}</div>
+    <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #111;">
+      <div style="font-size:18px;font-weight:700;letter-spacing:.06em;">PERJANJIAN KERJASAMA</div>
+      <div style="font-size:14px;font-weight:700;margin-top:4px;">PENGADAAN BAHAN BAKAR MINYAK (BBM)</div>
+      <div style="font-size:12px;color:#555;margin-top:6px;">Nomor: ${k.nomor_kontrak}</div>
     </div>
-    <p>Perjanjian ini dibuat pada <strong>${fmtTgl(k.created_at)}</strong> antara:</p>
-    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin:16px 0;">
-      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:8px;">Pihak Pertama (SPBU)</div>
-      ${k.spbu ? `<strong>${k.spbu.nama}</strong> (${k.spbu.kode})` : '—'}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;margin-bottom:16px;">
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Pihak I (SPBU)</div><div style="font-weight:600;">${k.spbu?.nama || '—'}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Pihak II (Mitra)</div><div style="font-weight:600;">${k.mitra?.nama_perusahaan || '—'}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Tanggal Mulai</div><div>${fmtTgl(k.tanggal_mulai)}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Tanggal Selesai</div><div>${fmtTgl(k.tanggal_selesai)}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Estimasi Volume</div><div>${k.volume_estimasi ? k.volume_estimasi + ' L/bulan' : '—'}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Status</div><div style="font-weight:600;">${k.status}</div></div>
     </div>
-    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin:16px 0;">
-      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:8px;">Pihak Kedua (Mitra)</div>
-      <strong>${k.mitra?.nama_perusahaan || '—'}</strong><br/>
-      PIC: ${k.mitra?.pic_nama || '—'}
-    </div>
-    <div style="margin:20px 0;">
-      <div style="font-weight:700;margin-bottom:8px;font-size:14px;">KETENTUAN KONTRAK</div>
-      <table style="width:100%;font-size:13px;border-collapse:collapse;">
-        <tr><td style="padding:6px 0;color:#555;width:180px;">Periode</td><td><strong>${fmtTgl(k.tanggal_mulai)}</strong> s/d <strong>${fmtTgl(k.tanggal_selesai)}</strong></td></tr>
-        <tr><td style="padding:6px 0;color:#555;">Mekanisme Bayar</td><td>${k.syarat_pembayaran || '—'}</td></tr>
-        ${k.volume_estimasi ? `<tr><td style="padding:6px 0;color:#555;">Est. Volume/Bulan</td><td>${parseFloat(k.volume_estimasi).toLocaleString('id-ID')} Liter</td></tr>` : ''}
-        ${k.ketentuan_khusus ? `<tr><td style="padding:6px 0;color:#555;vertical-align:top;">Ketentuan Khusus</td><td>${k.ketentuan_khusus}</td></tr>` : ''}
-        ${k.disetujui_oleh ? `<tr><td style="padding:6px 0;color:#555;">Penandatangan Mitra</td><td>${k.disetujui_oleh} (${k.jabatan_penanda || '—'})</td></tr>` : ''}
-      </table>
-    </div>
-    <div style="text-align:center;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px;margin-top:30px;">
-      Preview ringkas — gunakan Generator Kontrak untuk dokumen lengkap dengan pasal-pasal
+    ${k.syarat_pembayaran ? `<div style="font-size:12px;margin-bottom:10px;"><span style="color:#888;font-size:10px;text-transform:uppercase;">Syarat Pembayaran: </span>${k.syarat_pembayaran}</div>` : ''}
+    ${k.ketentuan_khusus ? `<div style="font-size:12px;margin-bottom:10px;"><span style="color:#888;font-size:10px;text-transform:uppercase;">Ketentuan Khusus: </span>${k.ketentuan_khusus}</div>` : ''}
+    <div style="text-align:center;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px;margin-top:20px;">
+      Preview ringkas — gunakan Generator Kontrak untuk dokumen lengkap
     </div>`;
   document.getElementById('modal-preview-kontrak').style.display = 'block';
   document.body.style.overflow = 'hidden';
+}(kontrakId, nomorKontrak, namaMitra) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!confirm(`Stop kontrak ${nomorKontrak} — ${namaMitra}?\n\nStatus berubah menjadi "Suspended". Kendaraan mitra masih terdaftar. Kontrak bisa diaktifkan kembali kapanpun.`)) return;
+
+  const { error } = await sb.from('kontrak_mitra')
+    .update({ status: 'suspended', updated_at: new Date().toISOString() })
+    .eq('id', kontrakId);
+
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(`Kontrak ${nomorKontrak} dihentikan sementara`);
+
+  // Reload sub-tab kontrak
+  const btn = document.getElementById('subtab-kontrak-btn');
+  if (btn) switchSubtab('kontrak', btn);
+  else loadKontrak?.();
 }
+
+async function stopKontrak(kontrakId, nomorKontrak, namaMitra) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!confirm(`Stop kontrak ${nomorKontrak} — ${namaMitra}?\n\nStatus berubah menjadi "Suspended". Kendaraan mitra masih terdaftar. Kontrak bisa diaktifkan kembali kapanpun.`)) return;
+
+  const { error } = await sb.from('kontrak_mitra')
+    .update({ status: 'suspended', updated_at: new Date().toISOString() })
+    .eq('id', kontrakId);
+
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(`Kontrak ${nomorKontrak} dihentikan sementara`);
+
+  const btn = document.getElementById('subtab-kontrak-btn');
+  if (btn) switchSubtab('kontrak', btn);
+}
+
+async function reaktivasiKontrak(kontrakId, nomorKontrak) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!confirm(`Aktifkan kembali kontrak ${nomorKontrak}?`)) return;
+
+  const { error } = await sb.from('kontrak_mitra')
+    .update({ status: 'aktif', updated_at: new Date().toISOString() })
+    .eq('id', kontrakId);
+
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(`Kontrak ${nomorKontrak} diaktifkan kembali`);
+
+  const btn = document.getElementById('subtab-kontrak-btn');
+  if (btn) switchSubtab('kontrak', btn);
+  else loadKontrak?.();
+}
+
+let _hapusNomorKontrak = '';
+
+function showHapusKontrakModal(kontrakId, nomorKontrak, namaMitra) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  _hapusNomorKontrak = nomorKontrak;
+
+  document.getElementById('hapus-kontrak-id').value = kontrakId;
+  document.getElementById('hapus-kontrak-confirm').value = '';
+  document.getElementById('hapus-kontrak-error').style.display = 'none';
+  document.getElementById('hapus-kontrak-label').textContent = 'Hapus Kontrak';
+  document.getElementById('hapus-kontrak-info').innerHTML =
+    `Kontrak yang akan dihapus:<br>
+     <strong>${nomorKontrak}</strong> — ${namaMitra}`;
+
+  // Reset tombol hapus ke disabled
+  const btn = document.getElementById('hapus-kontrak-btn');
+  btn.disabled = true;
+  btn.style.cssText = 'background:#fee2e2;color:#991b1b;border-color:#fca5a5;cursor:not-allowed;';
+
+  document.getElementById('hapus-confirm-hint').textContent =
+    `Ketik "${nomorKontrak}" untuk mengaktifkan tombol hapus.`;
+
+  document.getElementById('modal-hapus-kontrak').classList.add('show');
+  setTimeout(() => document.getElementById('hapus-kontrak-confirm').focus(), 100);
+}
+
+function closeHapusKontrakModal() {
+  document.getElementById('modal-hapus-kontrak').classList.remove('show');
+  _hapusNomorKontrak = '';
+}
+
+function validateHapusInput() {
+  const val = document.getElementById('hapus-kontrak-confirm').value.trim();
+  const btn = document.getElementById('hapus-kontrak-btn');
+  const hint = document.getElementById('hapus-confirm-hint');
+
+  if (val === _hapusNomorKontrak) {
+    btn.disabled = false;
+    btn.style.cssText = 'background:var(--red);color:#fff;border-color:var(--red);cursor:pointer;';
+    hint.textContent = '✓ Nomor kontrak cocok — tombol hapus aktif';
+    hint.style.color = 'var(--green)';
+  } else {
+    btn.disabled = true;
+    btn.style.cssText = 'background:#fee2e2;color:#991b1b;border-color:#fca5a5;cursor:not-allowed;';
+    hint.textContent = `Ketik "${_hapusNomorKontrak}" untuk mengaktifkan tombol hapus.`;
+    hint.style.color = 'var(--text-muted)';
+  }
+}
+
+async function submitHapusKontrak() {
+  if (currentProfile.role !== 'super_admin') return;
+
+  const kontrakId = document.getElementById('hapus-kontrak-id').value;
+  const errEl     = document.getElementById('hapus-kontrak-error');
+  const btn       = document.getElementById('hapus-kontrak-btn');
+  const label     = document.getElementById('hapus-kontrak-label');
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  label.textContent = 'Menghapus...';
+
+  try {
+    // Cek apakah ada tagihan yang belum lunas
+    const { data: tagihanBelumLunas } = await sb.from('tagihan_mitra')
+      .select('id, nomor_invoice, status')
+      .eq('kontrak_id', kontrakId)
+      .neq('status', 'lunas')
+      .limit(3);
+
+    if (tagihanBelumLunas?.length) {
+      const daftar = tagihanBelumLunas.map(t => `${t.nomor_invoice} (${t.status})`).join(', ');
+      errEl.textContent = `Tidak bisa hapus: masih ada tagihan belum lunas — ${daftar}. Lunaskan dahulu sebelum menghapus kontrak.`;
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // Hapus kontrak (hard delete)
+    const { error } = await sb.from('kontrak_mitra').delete().eq('id', kontrakId);
+    if (error) throw error;
+
+    closeHapusKontrakModal();
+    showToast(`Kontrak ${_hapusNomorKontrak} berhasil dihapus`);
+
+    const subtabBtn = document.getElementById('subtab-kontrak-btn');
+    if (subtabBtn) switchSubtab('kontrak', subtabBtn);
+    else loadKontrak?.();
+
+  } catch(e) {
+    errEl.textContent = 'Gagal menghapus: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    label.textContent = 'Hapus Kontrak';
+  }
+}
+
 
 function closePreviewKontrak() {
   document.getElementById('modal-preview-kontrak').style.display = 'none';
