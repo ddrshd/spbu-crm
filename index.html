@@ -4430,11 +4430,11 @@ async function showHapusKontrakModal(id, nomor) {
   const { data: trx } = await sb.from("transaksi").select("id", { count: "exact", head: true }).eq("mitra_id",
     (await sb.from("kontrak_mitra").select("mitra_id").eq("id", id).single()).data?.mitra_id
   ).is("deleted_at", null);
-  document.getElementById("modal-hapus-kontrak").style.display = "flex";
+  document.getElementById("modal-hapus-kontrak").classList.add("show");
 }
 
 function closeHapusKontrakModal() {
-  document.getElementById("modal-hapus-kontrak").style.display = "none";
+  document.getElementById("modal-hapus-kontrak").classList.remove("show");
   _hapusKontrakId = null; _hapusKontrakNomor = null;
 }
 
