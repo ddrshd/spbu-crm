@@ -557,6 +557,29 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
           <div class="nopol-hint" id="nopol-hint"></div>
         </div>
 
+        <!-- Field kode kupon — alternatif B2B tanpa nopol terdaftar -->
+        <div class="field-group" id="kupon-field-group">
+          <label class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Kode Kupon <span style="font-size:10px;font-weight:400;color:var(--text-muted);">(opsional — untuk transaksi B2B via kupon)</span></span>
+            <button type="button" id="kupon-toggle-btn" onclick="toggleKuponField()"
+              style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;padding:0;font-family:var(--ff);">
+              Gunakan Kupon
+            </button>
+          </label>
+          <div id="kupon-input-wrap" style="display:none;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input class="field-input" id="kupon-input" type="text"
+                placeholder="Contoh: V4KM8A" maxlength="6" autocomplete="off"
+                style="font-family:var(--fm);font-size:20px;letter-spacing:.18em;text-transform:uppercase;text-align:center;flex:1;"
+                oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');onKuponInput(this.value)"/>
+              <button type="button" onclick="clearKuponInput()"
+                style="padding:8px 10px;background:transparent;border:1px solid var(--border);
+                border-radius:var(--radius);cursor:pointer;color:var(--text-muted);font-size:12px;">✕</button>
+            </div>
+            <div id="kupon-hint" style="margin-top:6px;"></div>
+          </div>
+        </div>
+
         <div class="field-group">
           <label class="field-label">Produk BBM</label>
           <div class="produk-grid" id="produk-grid">
@@ -628,7 +651,7 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Waktu</th><th>Nopol</th><th>Mitra</th><th>Produk</th>
+          <th>Waktu</th><th>Nopol</th><th>Produk</th>
           <th>Volume</th><th>Total (Rp)</th><th>Status</th>
           <th>Operator</th>
           <th id="th-spbu" style="display:none">SPBU</th>
@@ -804,6 +827,7 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       <button class="period-pill active" id="subtab-kontrak-btn" onclick="switchSubtab('kontrak',this)">Kontrak Aktif</button>
       <button class="period-pill" id="subtab-kendaraan-btn" onclick="switchSubtab('kendaraan',this)">Kendaraan Mitra</button>
       <button class="period-pill" id="subtab-saldo-btn" onclick="switchSubtab('saldo',this)">Saldo Deposit</button>
+      <button class="period-pill" id="subtab-kupon-btn" onclick="switchSubtab('kupon',this)">Kupon BBM</button>
     </div>
 
     <!-- SUB: KONTRAK LIST -->
@@ -867,23 +891,6 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       </div>
     </div>
 
-
-    <!-- Modal Hapus Kontrak -->
-    <div class="modal-overlay" id="modal-hapus-kontrak" onclick="if(event.target===this)closeHapusKontrakModal()">
-      <div class="modal" style="max-width:420px;">
-        <div class="modal-title" style="color:var(--red);">🗑 Hapus Kontrak</div>
-        <div id="hapus-kontrak-warning" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#991b1b;"></div>
-        <div class="field-group">
-          <label class="field-label">Ketik ulang nomor kontrak untuk konfirmasi</label>
-          <input type="text" class="field-input" id="hapus-kontrak-input" placeholder="Contoh: KTR/2026/0001" oninput="checkHapusKontrakInput()" autocomplete="off"/>
-        </div>
-        <div id="hapus-kontrak-err" style="display:none;color:var(--red);font-size:12px;margin-top:-8px;margin-bottom:8px;"></div>
-        <div style="display:flex;gap:8px;margin-top:4px;">
-          <button class="btn-secondary" style="flex:1;" onclick="closeHapusKontrakModal()">Batal</button>
-          <button id="hapus-kontrak-btn" class="btn-primary" style="flex:1;background:var(--red);border-color:var(--red);opacity:.4;cursor:not-allowed;" disabled onclick="eksekusiHapusKontrak()">Hapus Permanen</button>
-        </div>
-      </div>
-    </div>
     <!-- Modal Tambah/Edit Kendaraan -->
     <div class="modal-overlay" id="modal-kendaraan" onclick="if(event.target===this)closeModalKendaraan()">
       <div class="modal" style="max-width:420px;">
@@ -1009,6 +1016,127 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       </div>
     </div>
 
+    <!-- SUB: KUPON BBM -->
+    <div id="subview-kupon" style="display:none">
+
+      <!-- Info banner -->
+      <div style="background:#EBF2FF;border:1px solid rgba(26,86,200,.15);border-radius:var(--radius);
+        padding:10px 14px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:16px;flex-shrink:0;">🎫</span>
+        <div style="font-size:12px;color:var(--blue);line-height:1.5;">
+          <strong>Kupon BBM digital</strong> — Generate setelah mitra transfer deposit.
+          Kode kupon dikirim ke mitra untuk dibagikan ke driver. Operator input kode saat transaksi di SPBU.
+        </div>
+      </div>
+
+      <!-- Filter mitra + tombol generate -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <select id="kupon-filter-mitra" class="refresh-btn"
+          style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);
+          background:#fff;cursor:pointer;outline:none;max-width:200px;"
+          onchange="loadKuponBatch()">
+          <option value="">Semua Mitra</option>
+        </select>
+        <button class="refresh-btn" onclick="loadKuponBatch()" style="font-size:12px;">↻ Refresh</button>
+        <div style="flex:1;"></div>
+        <button class="add-btn" onclick="showModalGenerateKupon()"
+          style="font-size:12px;padding:8px 16px;">🎫 Generate Kupon Baru</button>
+      </div>
+
+      <!-- Ringkasan per mitra -->
+      <div id="kupon-ringkasan" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px;"></div>
+
+      <!-- Daftar batch -->
+      <div id="kupon-batch-list">
+        <div class="loading-msg">Pilih mitra atau klik Refresh</div>
+      </div>
+
+    </div>
+
+    <!-- MODAL: Generate Kupon Baru -->
+    <div class="modal-overlay" id="modal-generate-kupon" onclick="if(event.target===this)closeModalGenerateKupon()">
+      <div class="modal" style="max-width:480px;max-height:90vh;overflow-y:auto;">
+        <div class="modal-handle"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <div style="width:32px;height:32px;background:#EBF2FF;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🎫</div>
+          <div class="modal-title" style="margin:0;">Generate Kupon BBM</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Mitra <span style="color:var(--red)">*</span></label>
+          <select class="field-select" id="gen-kupon-mitra">
+            <option value="">— Pilih Mitra —</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Referensi Transfer</label>
+          <input class="field-input" id="gen-kupon-ref" placeholder="No. TRF / Tanggal / Bank"/>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Catatan (opsional)</label>
+          <input class="field-input" id="gen-kupon-catatan" placeholder="Misal: Deposit Mei 2026"/>
+        </div>
+
+        <!-- Pecahan kupon -->
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <label class="field-label" style="margin:0;">Pecahan Kupon <span style="color:var(--red)">*</span></label>
+            <button type="button" onclick="tambahBarisKupon()"
+              style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:var(--ff);">
+              + Tambah Pecahan
+            </button>
+          </div>
+          <div id="kupon-pecahan-list">
+            <!-- Baris pecahan diisi oleh JS -->
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;
+            padding:8px 12px;background:var(--gray-50);border-radius:var(--radius);
+            border:1px solid var(--border);margin-top:6px;">
+            <span style="font-size:12px;color:var(--text-muted);">Total nilai</span>
+            <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--fm);" id="gen-kupon-total">Rp 0</span>
+          </div>
+        </div>
+
+        <div class="error-msg" id="gen-kupon-error" style="display:none;margin-bottom:12px;"></div>
+
+        <div class="modal-row">
+          <button class="modal-btn cancel" onclick="closeModalGenerateKupon()">Batal</button>
+          <button class="modal-btn confirm" onclick="submitGenerateKupon()">
+            <span id="gen-kupon-label">🎫 Generate & Download PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Void Batch -->
+    <div class="modal-overlay" id="modal-void-batch" onclick="if(event.target===this)closeModalVoidBatch()">
+      <div class="modal" style="max-width:400px;">
+        <div class="modal-handle"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="width:32px;height:32px;background:#FEF2F2;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🗑</div>
+          <div class="modal-title" style="color:var(--red);margin:0;">Void Kupon</div>
+        </div>
+        <div id="void-batch-info" style="font-size:13px;color:var(--text);margin-bottom:14px;line-height:1.6;
+          background:#FEF2F2;border-radius:var(--radius);padding:10px 14px;"></div>
+        <input type="hidden" id="void-batch-id"/>
+        <input type="hidden" id="void-kupon-id"/>
+        <div class="field-group">
+          <label class="field-label">Catatan void (opsional)</label>
+          <input class="field-input" id="void-catatan" placeholder="Alasan void"/>
+        </div>
+        <div class="error-msg" id="void-error" style="display:none;margin-bottom:12px;"></div>
+        <div class="modal-row">
+          <button class="modal-btn cancel" onclick="closeModalVoidBatch()">Batal</button>
+          <button class="modal-btn" onclick="submitVoid()"
+            style="background:var(--red);color:#fff;border-color:var(--red);">
+            <span id="void-label">Void Kupon</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
   <!-- VIEW: TAGIHAN MITRA -->
   <div class="view" id="view-tagihan">
     <div class="toolbar">
@@ -1104,6 +1232,46 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
           <tr><td colspan="7" class="loading-msg">Memuat data SPBU...</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- MODAL HAPUS KONTRAK — Super Admin Only -->
+  <div class="modal-overlay" id="modal-hapus-kontrak" onclick="if(event.target===this)closeHapusKontrakModal()">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-handle"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+        <div style="width:32px;height:32px;background:#FEF2F2;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🗑</div>
+        <div class="modal-title" style="margin:0;color:var(--red);">Hapus Kontrak</div>
+      </div>
+
+      <div style="background:#FEF2F2;border:1px solid rgba(220,38,38,.2);border-radius:var(--radius);padding:12px 14px;margin:14px 0;font-size:12px;color:#991B1B;line-height:1.6;">
+        <strong>Perhatian:</strong> Menghapus kontrak bersifat permanen. Kendaraan mitra yang terkait kontrak ini <strong>tidak akan terhapus</strong>, namun tidak lagi terhubung ke kontrak aktif. Data transaksi historis tetap tersimpan.
+      </div>
+
+      <div id="hapus-kontrak-info" style="font-size:13px;color:var(--text);margin-bottom:14px;line-height:1.6;"></div>
+
+      <input type="hidden" id="hapus-kontrak-id"/>
+
+      <div class="field-group">
+        <label class="field-label">Ketik nomor kontrak untuk konfirmasi <span style="color:var(--red)">*</span></label>
+        <input class="field-input" id="hapus-kontrak-confirm" type="text"
+          placeholder="KTR/2026/..." autocomplete="off"
+          style="font-family:var(--fm);letter-spacing:.04em;"
+          oninput="validateHapusInput()"/>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="hapus-confirm-hint">
+          Ketik nomor kontrak di atas untuk mengaktifkan tombol hapus.
+        </div>
+      </div>
+
+      <div class="error-msg" id="hapus-kontrak-error" style="display:none;margin-bottom:12px;"></div>
+
+      <div class="modal-row">
+        <button class="modal-btn cancel" onclick="closeHapusKontrakModal()">Batal</button>
+        <button class="modal-btn" id="hapus-kontrak-btn" onclick="submitHapusKontrak()"
+          disabled style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;cursor:not-allowed;">
+          <span id="hapus-kontrak-label">Hapus Kontrak</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1988,22 +2156,66 @@ function selectProduk(el, nama, harga, kode) {
 
 
 function confirmTrx() {
+  // Cek apakah mode kupon aktif
+  const kuponWrap = document.getElementById('kupon-input-wrap');
+  const isKuponMode = kuponWrap && kuponWrap.style.display !== 'none' && detectedKupon;
+
   // Normalize nopol: uppercase + hapus semua spasi
-  // "DT 1234 AB" → "DT1234AB" — konsisten dengan data kendaraan mitra
   const nopolRaw = document.getElementById('nopol-input').value.trim().toUpperCase();
   const nopol    = nopolRaw.replace(/\s+/g, '');
   const catatan  = document.getElementById('catatan-input').value.trim();
 
-  // Ambil volume & total dari hidden input (sudah dihitung oleh calcFromVolume/calcFromHarga)
+  // Jika mode kupon: nopol opsional, nominal dari kupon
+  if (isKuponMode) {
+    if (!selectedProduk) {
+      showToast('Pilih produk BBM terlebih dahulu', true);
+      return;
+    }
+    // Hitung volume dari nominal kupon / harga produk saat ini
+    const nominal = parseFloat(detectedKupon.nominal_rupiah);
+    const harga   = selectedHarga;
+    if (!harga) { showToast('Harga produk tidak tersedia', true); return; }
+    const volume  = Math.round((nominal / harga) * 100) / 100;
+
+    // Set ke hidden input
+    document.getElementById('volume-input-final').value = volume;
+    document.getElementById('total-input-final').value  = nominal;
+
+    // Tampilkan modal konfirmasi dengan info kupon
+    const isSuperAdmin = currentProfile.role === 'super_admin';
+    const saSpbuId = isSuperAdmin ? document.getElementById('sa-spbu-select').value : null;
+    const saSpbu   = isSuperAdmin ? spbuList.find(s => s.id === saSpbuId) : null;
+    if (isSuperAdmin && !saSpbuId) { showToast('Pilih SPBU terlebih dahulu', true); return; }
+
+    document.getElementById('modal-data').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="grid-column:1/-1;background:#E6F7EE;border:1px solid rgba(0,166,81,.2);border-radius:8px;padding:8px 12px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+            <span style="background:#00A651;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;">KUPON BBM</span>
+            <span style="font-size:12px;font-weight:600;color:#007A3C;">${detectedKupon.mitra?.nama_perusahaan || '—'}</span>
+          </div>
+          <div style="font-size:11px;color:#007A3C;">Kode: <strong style="font-family:var(--fm);letter-spacing:.1em;">${detectedKupon.kode}</strong> · Nominal: <strong>Rp ${parseInt(detectedKupon.nominal_rupiah).toLocaleString('id-ID')}</strong></div>
+        </div>
+        <div><div class="label">Nopol</div><div class="val">${nopol || '—'}</div></div>
+        <div><div class="label">Produk</div><div class="val">${selectedProduk.nama}</div></div>
+        <div><div class="label">Harga/L</div><div class="val">Rp ${harga.toLocaleString('id-ID')}</div></div>
+        <div><div class="label">Volume</div><div class="val">${volume.toFixed(2)} L</div></div>
+        <div><div class="label">Total Bayar</div><div class="val">Rp ${nominal.toLocaleString('id-ID')}</div></div>
+        ${isSuperAdmin && saSpbu ? `<div style="grid-column:1/-1"><div class="label">SPBU</div><div class="val">${saSpbu.nama}</div></div>` : ''}
+        ${catatan ? `<div style="grid-column:1/-1"><div class="label">Catatan</div><div class="val">${catatan}</div></div>` : ''}
+      </div>`;
+    document.getElementById('modal-confirm').classList.add('show');
+    return;
+  }
+
+  // ── Flow normal (tanpa kupon) ──────────────────────────────
   const vol   = parseFloat(document.getElementById('volume-input-final').value);
   const total = parseInt(document.getElementById('total-input-final').value);
 
-  // Untuk super admin, ambil spbu dari dropdown
   const isSuperAdmin = currentProfile.role === 'super_admin';
   const saSpbuId = isSuperAdmin ? document.getElementById('sa-spbu-select').value : null;
   const saSpbu   = isSuperAdmin ? spbuList.find(s => s.id === saSpbuId) : null;
 
-  // Validasi
   if (!nopol || nopol.length < 4) {
     showToast('Nomor polisi tidak valid!', true);
     document.getElementById('nopol-input').classList.add('error');
@@ -2101,10 +2313,29 @@ async function submitTrx() {
       harga_per_liter: selectedHarga,
       total,
       catatan: catatan || null,
-      mitra_id: detectedMitraId || null,
-      nopol_mitra: detectedMitraId ? true : false
+      mitra_id: detectedMitraId || (detectedKupon ? detectedKupon.mitra_id : null),
+      nopol_mitra: (detectedMitraId || detectedKupon) ? true : false
     });
     if (error) throw error;
+
+    // ── Mark kupon dipakai jika mode kupon ───────────────────
+    if (detectedKupon) {
+      const trxId = insertedData?.[0]?.id || null;
+      await sb.from('kupon').update({
+        status:        'dipakai',
+        dipakai_at:    new Date().toISOString(),
+        dipakai_nopol: nopol || null,
+        transaksi_id:  trxId,
+      }).eq('id', detectedKupon.id).eq('status','tersedia');
+      // Sembunyikan field kupon
+      const kWrap = document.getElementById('kupon-input-wrap');
+      if (kWrap) kWrap.style.display = 'none';
+      const kBtn = document.getElementById('kupon-toggle-btn');
+      if (kBtn) kBtn.textContent = 'Gunakan Kupon';
+      detectedKupon = null;
+      document.getElementById('kupon-input').value = '';
+      document.getElementById('kupon-hint').innerHTML = '';
+    }
 
     // ── Auto-deduct saldo jika mekanisme deposit ──────────
     if (detectedMitraId && detectedMekanisme === 'deposit' && spbuId) {
@@ -2191,7 +2422,7 @@ async function loadHistory() {
 
   try {
     let q = sb.from('transaksi')
-      .select('id, spbu_id, operator_id, nopol, produk, volume, total, created_at, deleted_at, catatan, mitra_id, mitra:mitra_id(nama_perusahaan)')
+      .select('id, spbu_id, operator_id, nopol, produk, volume, total, created_at, deleted_at, catatan, mitra_id')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(200);
@@ -2228,8 +2459,7 @@ async function loadHistory() {
     historyData = data.map(t => ({
       ...t,
       operator_nama: operatorMap[t.operator_id] || '—',
-      spbu_nama: spbuMap[t.spbu_id] || '—',
-      mitra_nama: t.mitra?.nama_perusahaan || null
+      spbu_nama: spbuMap[t.spbu_id] || '—'
     }));
     document.getElementById('history-count').textContent = (data?.length || 0) + ' transaksi terbaru';
 
@@ -2267,7 +2497,6 @@ async function loadHistory() {
           ${t.nopol}
           ${isMitra ? '<span style="font-size:10px;background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:600;">B2B</span>' : ''}
         </td>
-        <td style="font-size:12px;color:var(--text-muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${isMitra && t.mitra?.nama_perusahaan ? t.mitra.nama_perusahaan : '—'}</td>
         <td><span class="produk-pill pill-${pk}">${t.produk}</span></td>
         <td style="font-family:var(--fm)">${parseFloat(t.volume).toFixed(1)} L</td>
         <td style="font-family:var(--fm)">${parseInt(t.total).toLocaleString('id-ID')}</td>
@@ -2283,7 +2512,560 @@ async function loadHistory() {
   }
 }
 
-// ─── SALDO DEPOSIT ───────────────────────────────────────────
+// ─── SISTEM KUPON BBM ────────────────────────────────────────
+
+let kuponMitraList = []; // cache mitra untuk dropdown kupon
+let detectedKupon  = null; // kupon yang terdeteksi di form operator
+
+// ── Init tab kupon ────────────────────────────────────────────
+async function initKuponTab() {
+  // Load mitra untuk filter dropdown
+  if (!kuponMitraList.length) {
+    let q = sb.from('mitra').select('id,nama_perusahaan')
+      .eq('status','aktif').order('nama_perusahaan');
+    if (currentProfile.role === 'manager' && currentSpbu)
+      q = q.eq('spbu_id', currentSpbu.id);
+    const { data } = await q;
+    kuponMitraList = data || [];
+
+    // Isi dropdown filter
+    const sel = document.getElementById('kupon-filter-mitra');
+    sel.innerHTML = '<option value="">Semua Mitra</option>' +
+      kuponMitraList.map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+
+    // Isi dropdown modal generate
+    const genSel = document.getElementById('gen-kupon-mitra');
+    genSel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+      kuponMitraList.map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+  }
+  loadKuponBatch();
+}
+
+// ── Load daftar batch + ringkasan ─────────────────────────────
+async function loadKuponBatch() {
+  const mitraFilter = document.getElementById('kupon-filter-mitra')?.value || '';
+  const spbuId      = currentSpbu?.id || null;
+  const listEl      = document.getElementById('kupon-batch-list');
+  const ringEl      = document.getElementById('kupon-ringkasan');
+  listEl.innerHTML  = '<div class="loading-msg">Memuat...</div>';
+  ringEl.innerHTML  = '';
+
+  try {
+    // Ambil batch
+    let q = sb.from('batch_kupon')
+      .select(`id, total_nilai, referensi_transfer, catatan, dibuat_at,
+               mitra:mitra_id(nama_perusahaan),
+               dibuat_oleh_profil:dibuat_oleh(nama)`)
+      .order('dibuat_at', { ascending: false });
+    if (spbuId)      q = q.eq('spbu_id', spbuId);
+    if (mitraFilter) q = q.eq('mitra_id', mitraFilter);
+    const { data: batches } = await q;
+    if (!batches?.length) {
+      listEl.innerHTML = `<div class="empty-state" style="padding:30px 0;">
+        <div style="font-size:28px;margin-bottom:10px;">🎫</div>
+        <div style="font-weight:600;">Belum ada kupon diterbitkan</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+          Klik "Generate Kupon Baru" setelah mitra konfirmasi transfer.
+        </div>
+      </div>`;
+      return;
+    }
+
+    // Ambil semua kupon dalam batch-batch tersebut
+    const batchIds = batches.map(b => b.id);
+    const { data: kupons } = await sb.from('kupon')
+      .select('id,kode,batch_id,nominal_rupiah,status,dibuat_at,dipakai_at,dipakai_nopol')
+      .in('batch_id', batchIds)
+      .order('dibuat_at', { ascending: true });
+
+    // Group kupon per batch
+    const kuponByBatch = {};
+    (kupons || []).forEach(k => {
+      if (!kuponByBatch[k.batch_id]) kuponByBatch[k.batch_id] = [];
+      kuponByBatch[k.batch_id].push(k);
+    });
+
+    // Ringkasan per mitra (jika filter semua)
+    if (!mitraFilter) {
+      const mitraRing = {};
+      (kupons || []).forEach(k => {
+        const b = batches.find(x => x.id === k.batch_id);
+        const nm = b?.mitra?.nama_perusahaan || '?';
+        if (!mitraRing[nm]) mitraRing[nm] = { tersedia: 0, dipakai: 0, void: 0 };
+        mitraRing[nm][k.status] += k.nominal_rupiah;
+      });
+      ringEl.innerHTML = Object.entries(mitraRing).map(([nm, s]) => `
+        <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">${nm}</div>
+          <div style="font-size:11px;display:flex;flex-direction:column;gap:3px;">
+            <div style="display:flex;justify-content:space-between;">
+              <span style="color:var(--blue);">Tersedia</span>
+              <span style="font-family:var(--fm);font-weight:600;">Rp ${s.tersedia.toLocaleString('id-ID')}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="color:var(--green);">Dipakai</span>
+              <span style="font-family:var(--fm);">Rp ${s.dipakai.toLocaleString('id-ID')}</span>
+            </div>
+            ${s.void > 0 ? `<div style="display:flex;justify-content:space-between;">
+              <span style="color:var(--text-muted);">Void</span>
+              <span style="font-family:var(--fm);color:var(--text-muted);">Rp ${s.void.toLocaleString('id-ID')}</span>
+            </div>` : ''}
+          </div>
+        </div>`).join('');
+    }
+
+    // Render batch list
+    listEl.innerHTML = batches.map(b => {
+      const ks = kuponByBatch[b.id] || [];
+      const ktCount = ks.filter(k => k.status === 'tersedia').length;
+      const kdCount = ks.filter(k => k.status === 'dipakai').length;
+      const kvCount = ks.filter(k => k.status === 'void').length;
+      const ktVal   = ks.filter(k => k.status === 'tersedia').reduce((s,k) => s + k.nominal_rupiah, 0);
+      const tgl     = new Date(b.dibuat_at).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+
+      const canManage = ['manager','super_admin'].includes(currentProfile.role);
+
+      return `
+      <div style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;">
+        <!-- Header batch -->
+        <div style="background:var(--gray-50);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);">${b.mitra?.nama_perusahaan || '—'}</div>
+            <div style="font-size:11px;color:var(--text-muted);">
+              ${tgl} · ${b.referensi_transfer ? 'Ref: ' + b.referensi_transfer + ' · ' : ''}
+              ${ks.length} kupon · Total Rp ${b.total_nilai.toLocaleString('id-ID')}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#DCFCE7;color:#166534;">${ktCount} tersedia</span>
+            <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#EBF2FF;color:#1A56C8;">${kdCount} dipakai</span>
+            ${kvCount ? `<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#6B7280;">${kvCount} void</span>` : ''}
+            ${canManage && ktCount > 0 ? `
+            <button class="act-btn"
+              onclick="downloadPdfBatch('${b.id}')"
+              style="font-size:11px;">⬇ PDF</button>
+            <button class="act-btn del"
+              onclick="showVoidBatch('${b.id}','${b.mitra?.nama_perusahaan?.replace(/'/g,"\\'") || ''}',${ktCount},${ktVal})"
+              style="font-size:11px;">Void Semua</button>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Daftar kupon dalam batch -->
+        <div style="overflow-x:auto;">
+          <table class="tbl" style="margin:0;">
+            <thead>
+              <tr>
+                <th>Kode</th>
+                <th style="text-align:right;">Nominal</th>
+                <th>Status</th>
+                <th>Dipakai</th>
+                <th>Nopol</th>
+                ${canManage ? '<th>Aksi</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${ks.map(k => {
+                const stBg = k.status === 'tersedia' ? '#DCFCE7' : k.status === 'dipakai' ? '#EBF2FF' : '#F3F4F6';
+                const stCl = k.status === 'tersedia' ? '#166534' : k.status === 'dipakai' ? '#1A56C8' : '#6B7280';
+                const tglPakai = k.dipakai_at
+                  ? new Date(k.dipakai_at).toLocaleDateString('id-ID',{day:'2-digit',month:'short'}) : '—';
+                return `<tr>
+                  <td style="font-family:var(--fm);font-size:16px;font-weight:700;letter-spacing:.1em;">${k.kode}</td>
+                  <td style="text-align:right;font-family:var(--fm);font-size:12px;font-weight:600;">Rp ${k.nominal_rupiah.toLocaleString('id-ID')}</td>
+                  <td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${stBg};color:${stCl};">${k.status}</span></td>
+                  <td style="font-size:11px;color:var(--text-muted);">${tglPakai}</td>
+                  <td style="font-size:11px;font-family:var(--fm);">${k.dipakai_nopol || '—'}</td>
+                  ${canManage ? `<td>
+                    ${k.status === 'tersedia' ? `
+                      <button class="act-btn del" style="font-size:10px;"
+                        onclick="showVoidSatu('${k.id}','${k.kode}',${k.nominal_rupiah})">
+                        Void
+                      </button>` : '—'}
+                  </td>` : ''}
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    listEl.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+// ── Generate kupon — modal ────────────────────────────────────
+let kuponPecahanCount = 0;
+
+function showModalGenerateKupon() {
+  kuponPecahanCount = 0;
+  document.getElementById('kupon-pecahan-list').innerHTML = '';
+  document.getElementById('gen-kupon-ref').value = '';
+  document.getElementById('gen-kupon-catatan').value = '';
+  document.getElementById('gen-kupon-error').style.display = 'none';
+  document.getElementById('gen-kupon-total').textContent = 'Rp 0';
+  document.getElementById('gen-kupon-label').textContent = '🎫 Generate & Download PDF';
+  tambahBarisKupon(); // mulai dengan 1 baris
+  document.getElementById('modal-generate-kupon').classList.add('show');
+}
+
+function closeModalGenerateKupon() {
+  document.getElementById('modal-generate-kupon').classList.remove('show');
+}
+
+function tambahBarisKupon() {
+  kuponPecahanCount++;
+  const id = kuponPecahanCount;
+  const wrap = document.getElementById('kupon-pecahan-list');
+  const div = document.createElement('div');
+  div.id = `pecahan-row-${id}`;
+  div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+  div.innerHTML = `
+    <div style="flex:1;">
+      <input class="field-input" type="number" id="pec-nominal-${id}"
+        placeholder="Nominal (Rp)" min="10000" step="10000"
+        style="font-family:var(--fm);" oninput="hitungTotalKupon()"/>
+    </div>
+    <div style="flex:0 0 90px;">
+      <input class="field-input" type="number" id="pec-jumlah-${id}"
+        placeholder="Lembar" min="1" max="100" step="1"
+        oninput="hitungTotalKupon()"/>
+    </div>
+    <button type="button" onclick="hapusBarisKupon(${id})"
+      style="padding:8px;background:transparent;border:1px solid var(--border);
+      border-radius:var(--radius);cursor:pointer;color:var(--text-muted);font-size:13px;flex-shrink:0;">✕</button>`;
+  wrap.appendChild(div);
+}
+
+function hapusBarisKupon(id) {
+  document.getElementById(`pecahan-row-${id}`)?.remove();
+  hitungTotalKupon();
+}
+
+function hitungTotalKupon() {
+  let total = 0;
+  for (let i = 1; i <= kuponPecahanCount; i++) {
+    const nominal = parseInt(document.getElementById(`pec-nominal-${i}`)?.value) || 0;
+    const jumlah  = parseInt(document.getElementById(`pec-jumlah-${i}`)?.value)  || 0;
+    total += nominal * jumlah;
+  }
+  document.getElementById('gen-kupon-total').textContent = 'Rp ' + total.toLocaleString('id-ID');
+}
+
+async function submitGenerateKupon() {
+  const mitraId  = document.getElementById('gen-kupon-mitra').value;
+  const ref      = document.getElementById('gen-kupon-ref').value.trim();
+  const catatan  = document.getElementById('gen-kupon-catatan').value.trim();
+  const errEl    = document.getElementById('gen-kupon-error');
+  const spbuId   = currentSpbu?.id;
+
+  errEl.style.display = 'none';
+  if (!mitraId) { errEl.textContent = 'Pilih mitra terlebih dahulu'; errEl.style.display = 'block'; return; }
+  if (!spbuId)  { errEl.textContent = 'SPBU tidak terdeteksi'; errEl.style.display = 'block'; return; }
+
+  // Kumpulkan pecahan
+  const pecahan = [];
+  for (let i = 1; i <= kuponPecahanCount; i++) {
+    const nomEl = document.getElementById(`pec-nominal-${i}`);
+    const jmEl  = document.getElementById(`pec-jumlah-${i}`);
+    if (!nomEl || !jmEl) continue;
+    const nominal = parseInt(nomEl.value);
+    const jumlah  = parseInt(jmEl.value);
+    if (nominal > 0 && jumlah > 0) pecahan.push({ nominal, jumlah });
+  }
+  if (!pecahan.length) {
+    errEl.textContent = 'Isi minimal satu baris pecahan kupon';
+    errEl.style.display = 'block'; return;
+  }
+
+  const btn = document.getElementById('gen-kupon-label');
+  btn.textContent = 'Memproses...';
+
+  try {
+    // Panggil fungsi Postgres via rpc
+    const { data: batchId, error } = await sb.rpc('generate_batch_kupon', {
+      p_mitra_id:    mitraId,
+      p_spbu_id:     spbuId,
+      p_dibuat_oleh: currentUser.id,
+      p_referensi:   ref || null,
+      p_catatan:     catatan || null,
+      p_pecahan:     JSON.stringify(pecahan),
+    });
+    if (error) throw error;
+
+    // Ambil kupon yang baru di-generate untuk PDF
+    const { data: kupons } = await sb.from('kupon')
+      .select('kode, nominal_rupiah')
+      .eq('batch_id', batchId)
+      .order('nominal_rupiah', { ascending: false });
+
+    const mitraNama = kuponMitraList.find(m => m.id === mitraId)?.nama_perusahaan || '';
+    const spbuNama  = currentSpbu?.nama || '';
+
+    closeModalGenerateKupon();
+    showToast(`${kupons?.length || 0} kupon berhasil digenerate — mengunduh PDF...`);
+    loadKuponBatch();
+
+    // Generate dan unduh PDF
+    cetakPdfKupon(kupons || [], mitraNama, spbuNama, ref);
+
+  } catch(e) {
+    errEl.textContent = 'Gagal generate: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = '🎫 Generate & Download PDF';
+  }
+}
+
+// ── PDF kupon ─────────────────────────────────────────────────
+function cetakPdfKupon(kupons, mitraNama, spbuNama, referensi) {
+  const tgl = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+  const perRow = 3; // 3 kolom per baris
+  const kuponCards = kupons.map(k => `
+    <div class="kupon-card">
+      <div class="kupon-header">
+        <div class="kupon-brand">BISON</div>
+        <div class="kupon-spbu">${spbuNama}</div>
+      </div>
+      <div class="kupon-kode">${k.kode}</div>
+      <div class="kupon-nominal">Rp ${parseInt(k.nominal_rupiah).toLocaleString('id-ID')}</div>
+      <div class="kupon-mitra">${mitraNama}</div>
+      <div class="kupon-footer">
+        Tunjukkan ke operator SPBU · Berlaku selama stok BBM ada
+      </div>
+    </div>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<title>Kupon BBM BISON — ${mitraNama}</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; }
+  .doc-header { text-align: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #0D1B3E; }
+  .doc-title { font-size: 18px; font-weight: 800; color: #0D1B3E; letter-spacing: .06em; }
+  .doc-meta { font-size: 11px; color: #666; margin-top: 4px; }
+  .kupon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kupon-card {
+    border: 1.5px solid #0D1B3E; border-radius: 8px; overflow: hidden;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .kupon-header {
+    background: #0D1B3E; padding: 6px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .kupon-brand { font-size: 13px; font-weight: 800; color: #fff; letter-spacing: .06em; }
+  .kupon-spbu { font-size: 9px; color: rgba(255,255,255,.7); text-align: right; max-width: 80px; }
+  .kupon-kode {
+    font-size: 28px; font-weight: 800; text-align: center;
+    letter-spacing: .18em; color: #0D1B3E;
+    padding: 10px 8px 4px; font-family: 'Courier New', monospace;
+  }
+  .kupon-nominal {
+    font-size: 14px; font-weight: 700; text-align: center;
+    color: #00A651; padding: 2px 8px 6px;
+  }
+  .kupon-mitra {
+    font-size: 9px; text-align: center; color: #666;
+    padding: 0 8px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .kupon-footer {
+    font-size: 8px; text-align: center; color: #999;
+    background: #F8FAFC; padding: 5px 8px;
+    border-top: 1px solid #E2E8F0;
+  }
+  .stripe { height: 3px; display: flex; margin-top: 16px; border-radius: 2px; overflow: hidden; }
+  .stripe div { flex: 1; }
+</style>
+</head>
+<body>
+<div class="doc-header">
+  <div class="doc-title">KUPON BBM — BISON</div>
+  <div class="doc-meta">
+    ${mitraNama} · ${spbuNama} · Diterbitkan ${tgl}
+    ${referensi ? ' · Ref: ' + referensi : ''}
+    · ${kupons.length} lembar kupon
+  </div>
+  <div class="stripe">
+    <div style="background:#E8182C"></div>
+    <div style="background:#1A56C8"></div>
+    <div style="background:#00A651"></div>
+  </div>
+</div>
+<div class="kupon-grid">${kuponCards}</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `Kupon-BISON-${mitraNama.replace(/\s/g,'-')}-${Date.now()}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('PDF kupon siap — buka file HTML yang terunduh lalu Ctrl+P untuk cetak');
+}
+
+// Download ulang PDF batch yang sudah ada
+async function downloadPdfBatch(batchId) {
+  const { data: batch } = await sb.from('batch_kupon')
+    .select('referensi_transfer, mitra:mitra_id(nama_perusahaan)')
+    .eq('id', batchId).single();
+  const { data: kupons } = await sb.from('kupon')
+    .select('kode, nominal_rupiah')
+    .eq('batch_id', batchId)
+    .eq('status', 'tersedia')
+    .order('nominal_rupiah', { ascending: false });
+  cetakPdfKupon(kupons || [], batch?.mitra?.nama_perusahaan || '', currentSpbu?.nama || '', batch?.referensi_transfer || '');
+}
+
+// ── Void kupon ────────────────────────────────────────────────
+function showVoidBatch(batchId, mitraNama, count, nilai) {
+  document.getElementById('void-batch-id').value  = batchId;
+  document.getElementById('void-kupon-id').value  = '';
+  document.getElementById('void-catatan').value   = '';
+  document.getElementById('void-error').style.display = 'none';
+  document.getElementById('void-label').textContent = 'Void Semua';
+  document.getElementById('void-batch-info').innerHTML =
+    `Void <strong>${count} kupon tersedia</strong> dari batch <strong>${mitraNama}</strong>.<br/>
+     Total nilai yang di-void: <strong>Rp ${nilai.toLocaleString('id-ID')}</strong><br/>
+     <span style="font-size:11px;color:#991B1B;">Kupon yang sudah dipakai tidak terpengaruh.</span>`;
+  document.getElementById('modal-void-batch').classList.add('show');
+}
+
+function showVoidSatu(kuponId, kode, nominal) {
+  document.getElementById('void-batch-id').value  = '';
+  document.getElementById('void-kupon-id').value  = kuponId;
+  document.getElementById('void-catatan').value   = '';
+  document.getElementById('void-error').style.display = 'none';
+  document.getElementById('void-label').textContent = 'Void Kupon';
+  document.getElementById('void-batch-info').innerHTML =
+    `Void kupon <strong style="font-family:var(--fm);letter-spacing:.1em;">${kode}</strong><br/>
+     Nominal: <strong>Rp ${parseInt(nominal).toLocaleString('id-ID')}</strong>`;
+  document.getElementById('modal-void-batch').classList.add('show');
+}
+
+function closeModalVoidBatch() {
+  document.getElementById('modal-void-batch').classList.remove('show');
+}
+
+async function submitVoid() {
+  const batchId  = document.getElementById('void-batch-id').value;
+  const kuponId  = document.getElementById('void-kupon-id').value;
+  const catatan  = document.getElementById('void-catatan').value.trim();
+  const errEl    = document.getElementById('void-error');
+  const btn      = document.getElementById('void-label');
+  errEl.style.display = 'none';
+  btn.textContent = 'Memproses...';
+
+  try {
+    const now  = new Date().toISOString();
+    const upd  = { status:'void', void_at: now, void_oleh: currentUser.id, void_catatan: catatan || null };
+
+    if (kuponId) {
+      // Void satu kupon
+      const { error } = await sb.from('kupon').update(upd).eq('id', kuponId).eq('status','tersedia');
+      if (error) throw error;
+      showToast('Kupon berhasil di-void');
+    } else if (batchId) {
+      // Void semua tersedia di batch
+      const { error } = await sb.from('kupon').update(upd)
+        .eq('batch_id', batchId).eq('status','tersedia');
+      if (error) throw error;
+      showToast('Semua kupon tersedia di batch berhasil di-void');
+    }
+
+    closeModalVoidBatch();
+    loadKuponBatch();
+  } catch(e) {
+    errEl.textContent = 'Gagal void: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = 'Void Kupon';
+  }
+}
+
+// ── Field kode kupon di form transaksi operator ───────────────
+let kuponTimer = null;
+
+function toggleKuponField() {
+  const wrap = document.getElementById('kupon-input-wrap');
+  const btn  = document.getElementById('kupon-toggle-btn');
+  const isHidden = wrap.style.display === 'none';
+  wrap.style.display = isHidden ? '' : 'none';
+  btn.textContent = isHidden ? 'Sembunyikan' : 'Gunakan Kupon';
+  if (!isHidden) { clearKuponInput(); }
+  if (isHidden)  { document.getElementById('kupon-input').focus(); }
+}
+
+function clearKuponInput() {
+  document.getElementById('kupon-input').value = '';
+  document.getElementById('kupon-hint').innerHTML = '';
+  detectedKupon = null;
+  clearTimeout(kuponTimer);
+}
+
+function onKuponInput(val) {
+  clearTimeout(kuponTimer);
+  document.getElementById('kupon-hint').innerHTML = '';
+  detectedKupon = null;
+  if (val.length < 6) return;
+  kuponTimer = setTimeout(() => checkKode(val), 400);
+}
+
+async function checkKode(kode) {
+  const hint = document.getElementById('kupon-hint');
+  hint.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">Memeriksa kode...</span>';
+
+  try {
+    const { data: k, error } = await sb.from('kupon')
+      .select('id, kode, nominal_rupiah, status, mitra:mitra_id(nama_perusahaan)')
+      .eq('kode', kode.toUpperCase())
+      .maybeSingle();
+
+    if (!k) {
+      hint.innerHTML = `<div style="background:#FEF2F2;border:1px solid rgba(220,38,38,.2);border-radius:6px;
+        padding:7px 12px;font-size:12px;color:#DC2626;">❌ Kode tidak ditemukan — periksa kembali</div>`;
+      return;
+    }
+
+    if (k.status === 'dipakai') {
+      hint.innerHTML = `<div style="background:#FEF2F2;border:1px solid rgba(220,38,38,.2);border-radius:6px;
+        padding:7px 12px;font-size:12px;color:#DC2626;">⛔ Kupon ini sudah dipakai sebelumnya</div>`;
+      return;
+    }
+
+    if (k.status === 'void') {
+      hint.innerHTML = `<div style="background:#FEF2F2;border:1px solid rgba(220,38,38,.2);border-radius:6px;
+        padding:7px 12px;font-size:12px;color:#DC2626;">⛔ Kupon ini sudah di-void</div>`;
+      return;
+    }
+
+    // Valid — tersedia
+    detectedKupon = k;
+    hint.innerHTML = `
+      <div style="background:#E6F7EE;border:1.5px solid rgba(0,166,81,.25);border-radius:8px;padding:8px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span style="background:#00A651;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">KUPON VALID</span>
+          <span style="font-size:13px;font-weight:600;color:#007A3C;">${k.mitra?.nama_perusahaan || '—'}</span>
+        </div>
+        <div style="font-size:18px;font-weight:800;color:#00A651;font-family:var(--fm);margin:4px 0;">
+          Rp ${parseInt(k.nominal_rupiah).toLocaleString('id-ID')}
+        </div>
+        <div style="font-size:11px;color:#007A3C;">
+          ✅ Pilih produk BBM — volume akan dihitung otomatis dari nominal kupon
+        </div>
+      </div>`;
+  } catch(e) {
+    hint.innerHTML = `<div style="font-size:12px;color:var(--red);">Error: ${e.message}</div>`;
+  }
+}
+
+
 
 async function loadSaldoDeposit() {
   const tbody = document.getElementById('saldo-body');
@@ -3823,13 +4605,10 @@ function switchSubtab(tab, btn) {
   document.getElementById('subview-kontrak').style.display   = tab === 'kontrak'   ? '' : 'none';
   document.getElementById('subview-kendaraan').style.display = tab === 'kendaraan' ? '' : 'none';
   document.getElementById('subview-saldo').style.display     = tab === 'saldo'     ? '' : 'none';
-  if (tab === 'kendaraan') {
-    mitraListKend = [];
-    loadKendaraanMitra();
-  }
-  if (tab === 'saldo') {
-    loadSaldoDeposit();
-  }
+  document.getElementById('subview-kupon').style.display     = tab === 'kupon'     ? '' : 'none';
+  if (tab === 'kendaraan') { mitraListKend = []; loadKendaraanMitra(); }
+  if (tab === 'saldo')     { loadSaldoDeposit(); }
+  if (tab === 'kupon')     { initKuponTab(); }
 }
 
 // ─── KENDARAAN MITRA CRUD ────────────────────────────────────
@@ -4187,52 +4966,196 @@ async function loadKontrakList() {
         <a href="kontrak.html" style="text-decoration:none;"><button class="kontrak-btn">Buat Kontrak Baru</button></a>
         ${currentProfile.role === 'super_admin' ? `
           ${k.status === 'aktif'
-            ? `<button class="kontrak-btn" style="border-color:#d97706;color:#d97706;" onclick="stopKontrak('${k.id}','${k.nomor_kontrak}')">⏸ Stop</button>`
+            ? `<button class="kontrak-btn" style="border-color:#d97706;color:#d97706;"
+                onclick="stopKontrak('${k.id}','${(k.nomor_kontrak).replace(/'/g,"\\'")}','${(k.mitra?.nama_perusahaan||'').replace(/'/g,"\\'")}')">
+                ⏸ Stop Kontrak
+              </button>`
             : k.status === 'suspended'
-            ? `<button class="kontrak-btn" style="border-color:var(--green);color:var(--green);" onclick="reaktivasiKontrak('${k.id}','${k.nomor_kontrak}')">▶ Reaktivasi</button>`
+            ? `<button class="kontrak-btn" style="border-color:var(--green);color:var(--green);"
+                onclick="reaktivasiKontrak('${k.id}','${(k.nomor_kontrak).replace(/'/g,"\\'")}')">
+                ▶ Reaktivasi
+              </button>`
             : ''}
-          <button class="kontrak-btn" style="border-color:var(--red);color:var(--red);" onclick="showHapusKontrakModal('${k.id}','${k.nomor_kontrak}')">🗑 Hapus</button>
+          <button class="kontrak-btn" style="border-color:var(--red);color:var(--red);"
+            onclick="showHapusKontrakModal('${k.id}','${(k.nomor_kontrak).replace(/'/g,"\\'")}','${(k.mitra?.nama_perusahaan||'').replace(/'/g,"\\'")}')">
+            🗑 Hapus
+          </button>
         ` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
+// ─── MANAJEMEN KONTRAK (Super Admin) ─────────────────────────
+
 function previewKontrak(k) {
   document.getElementById('modal-kontrak-judul').textContent = k.nomor_kontrak;
   const fmtTgl = d => new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
   document.getElementById('modal-kontrak-body').innerHTML = `
-    <div style="text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #111;">
-      <div style="font-size:20px;font-weight:700;letter-spacing:.06em;">PERJANJIAN KERJASAMA</div>
-      <div style="font-size:16px;font-weight:700;margin-top:4px;">PENGADAAN BAHAN BAKAR MINYAK (BBM)</div>
-      <div style="margin-top:10px;display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:5px 14px;font-family:monospace;font-size:13px;font-weight:600;color:#1e40af;">${k.nomor_kontrak}</div>
+    <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #111;">
+      <div style="font-size:18px;font-weight:700;letter-spacing:.06em;">PERJANJIAN KERJASAMA</div>
+      <div style="font-size:14px;font-weight:700;margin-top:4px;">PENGADAAN BAHAN BAKAR MINYAK (BBM)</div>
+      <div style="font-size:12px;color:#555;margin-top:6px;">Nomor: ${k.nomor_kontrak}</div>
     </div>
-    <p>Perjanjian ini dibuat pada <strong>${fmtTgl(k.created_at)}</strong> antara:</p>
-    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin:16px 0;">
-      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:8px;">Pihak Pertama (SPBU)</div>
-      ${k.spbu ? `<strong>${k.spbu.nama}</strong> (${k.spbu.kode})` : '—'}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;margin-bottom:16px;">
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Pihak I (SPBU)</div><div style="font-weight:600;">${k.spbu?.nama || '—'}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Pihak II (Mitra)</div><div style="font-weight:600;">${k.mitra?.nama_perusahaan || '—'}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Tanggal Mulai</div><div>${fmtTgl(k.tanggal_mulai)}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Tanggal Selesai</div><div>${fmtTgl(k.tanggal_selesai)}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Estimasi Volume</div><div>${k.volume_estimasi ? k.volume_estimasi + ' L/bulan' : '—'}</div></div>
+      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Status</div><div style="font-weight:600;">${k.status}</div></div>
     </div>
-    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin:16px 0;">
-      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#666;margin-bottom:8px;">Pihak Kedua (Mitra)</div>
-      <strong>${k.mitra?.nama_perusahaan || '—'}</strong><br/>
-      PIC: ${k.mitra?.pic_nama || '—'}
-    </div>
-    <div style="margin:20px 0;">
-      <div style="font-weight:700;margin-bottom:8px;font-size:14px;">KETENTUAN KONTRAK</div>
-      <table style="width:100%;font-size:13px;border-collapse:collapse;">
-        <tr><td style="padding:6px 0;color:#555;width:180px;">Periode</td><td><strong>${fmtTgl(k.tanggal_mulai)}</strong> s/d <strong>${fmtTgl(k.tanggal_selesai)}</strong></td></tr>
-        <tr><td style="padding:6px 0;color:#555;">Mekanisme Bayar</td><td>${k.syarat_pembayaran || '—'}</td></tr>
-        ${k.volume_estimasi ? `<tr><td style="padding:6px 0;color:#555;">Est. Volume/Bulan</td><td>${parseFloat(k.volume_estimasi).toLocaleString('id-ID')} Liter</td></tr>` : ''}
-        ${k.ketentuan_khusus ? `<tr><td style="padding:6px 0;color:#555;vertical-align:top;">Ketentuan Khusus</td><td>${k.ketentuan_khusus}</td></tr>` : ''}
-        ${k.disetujui_oleh ? `<tr><td style="padding:6px 0;color:#555;">Penandatangan Mitra</td><td>${k.disetujui_oleh} (${k.jabatan_penanda || '—'})</td></tr>` : ''}
-      </table>
-    </div>
-    <div style="text-align:center;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px;margin-top:30px;">
-      Preview ringkas — gunakan Generator Kontrak untuk dokumen lengkap dengan pasal-pasal
+    ${k.syarat_pembayaran ? `<div style="font-size:12px;margin-bottom:10px;"><span style="color:#888;font-size:10px;text-transform:uppercase;">Syarat Pembayaran: </span>${k.syarat_pembayaran}</div>` : ''}
+    ${k.ketentuan_khusus ? `<div style="font-size:12px;margin-bottom:10px;"><span style="color:#888;font-size:10px;text-transform:uppercase;">Ketentuan Khusus: </span>${k.ketentuan_khusus}</div>` : ''}
+    <div style="text-align:center;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px;margin-top:20px;">
+      Preview ringkas — gunakan Generator Kontrak untuk dokumen lengkap
     </div>`;
   document.getElementById('modal-preview-kontrak').style.display = 'block';
   document.body.style.overflow = 'hidden';
+}(kontrakId, nomorKontrak, namaMitra) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!confirm(`Stop kontrak ${nomorKontrak} — ${namaMitra}?\n\nStatus berubah menjadi "Suspended". Kendaraan mitra masih terdaftar. Kontrak bisa diaktifkan kembali kapanpun.`)) return;
+
+  const { error } = await sb.from('kontrak_mitra')
+    .update({ status: 'suspended', updated_at: new Date().toISOString() })
+    .eq('id', kontrakId);
+
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(`Kontrak ${nomorKontrak} dihentikan sementara`);
+
+  // Reload sub-tab kontrak
+  const btn = document.getElementById('subtab-kontrak-btn');
+  if (btn) switchSubtab('kontrak', btn);
+  else loadKontrak?.();
 }
+
+async function stopKontrak(kontrakId, nomorKontrak, namaMitra) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!confirm(`Stop kontrak ${nomorKontrak} — ${namaMitra}?\n\nStatus berubah menjadi "Suspended". Kendaraan mitra masih terdaftar. Kontrak bisa diaktifkan kembali kapanpun.`)) return;
+
+  const { error } = await sb.from('kontrak_mitra')
+    .update({ status: 'suspended', updated_at: new Date().toISOString() })
+    .eq('id', kontrakId);
+
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(`Kontrak ${nomorKontrak} dihentikan sementara`);
+
+  const btn = document.getElementById('subtab-kontrak-btn');
+  if (btn) switchSubtab('kontrak', btn);
+}
+
+async function reaktivasiKontrak(kontrakId, nomorKontrak) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!confirm(`Aktifkan kembali kontrak ${nomorKontrak}?`)) return;
+
+  const { error } = await sb.from('kontrak_mitra')
+    .update({ status: 'aktif', updated_at: new Date().toISOString() })
+    .eq('id', kontrakId);
+
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(`Kontrak ${nomorKontrak} diaktifkan kembali`);
+
+  const btn = document.getElementById('subtab-kontrak-btn');
+  if (btn) switchSubtab('kontrak', btn);
+  else loadKontrak?.();
+}
+
+let _hapusNomorKontrak = '';
+
+function showHapusKontrakModal(kontrakId, nomorKontrak, namaMitra) {
+  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  _hapusNomorKontrak = nomorKontrak;
+
+  document.getElementById('hapus-kontrak-id').value = kontrakId;
+  document.getElementById('hapus-kontrak-confirm').value = '';
+  document.getElementById('hapus-kontrak-error').style.display = 'none';
+  document.getElementById('hapus-kontrak-label').textContent = 'Hapus Kontrak';
+  document.getElementById('hapus-kontrak-info').innerHTML =
+    `Kontrak yang akan dihapus:<br>
+     <strong>${nomorKontrak}</strong> — ${namaMitra}`;
+
+  // Reset tombol hapus ke disabled
+  const btn = document.getElementById('hapus-kontrak-btn');
+  btn.disabled = true;
+  btn.style.cssText = 'background:#fee2e2;color:#991b1b;border-color:#fca5a5;cursor:not-allowed;';
+
+  document.getElementById('hapus-confirm-hint').textContent =
+    `Ketik "${nomorKontrak}" untuk mengaktifkan tombol hapus.`;
+
+  document.getElementById('modal-hapus-kontrak').classList.add('show');
+  setTimeout(() => document.getElementById('hapus-kontrak-confirm').focus(), 100);
+}
+
+function closeHapusKontrakModal() {
+  document.getElementById('modal-hapus-kontrak').classList.remove('show');
+  _hapusNomorKontrak = '';
+}
+
+function validateHapusInput() {
+  const val = document.getElementById('hapus-kontrak-confirm').value.trim();
+  const btn = document.getElementById('hapus-kontrak-btn');
+  const hint = document.getElementById('hapus-confirm-hint');
+
+  if (val === _hapusNomorKontrak) {
+    btn.disabled = false;
+    btn.style.cssText = 'background:var(--red);color:#fff;border-color:var(--red);cursor:pointer;';
+    hint.textContent = '✓ Nomor kontrak cocok — tombol hapus aktif';
+    hint.style.color = 'var(--green)';
+  } else {
+    btn.disabled = true;
+    btn.style.cssText = 'background:#fee2e2;color:#991b1b;border-color:#fca5a5;cursor:not-allowed;';
+    hint.textContent = `Ketik "${_hapusNomorKontrak}" untuk mengaktifkan tombol hapus.`;
+    hint.style.color = 'var(--text-muted)';
+  }
+}
+
+async function submitHapusKontrak() {
+  if (currentProfile.role !== 'super_admin') return;
+
+  const kontrakId = document.getElementById('hapus-kontrak-id').value;
+  const errEl     = document.getElementById('hapus-kontrak-error');
+  const btn       = document.getElementById('hapus-kontrak-btn');
+  const label     = document.getElementById('hapus-kontrak-label');
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  label.textContent = 'Menghapus...';
+
+  try {
+    // Cek apakah ada tagihan yang belum lunas
+    const { data: tagihanBelumLunas } = await sb.from('tagihan_mitra')
+      .select('id, nomor_invoice, status')
+      .eq('kontrak_id', kontrakId)
+      .neq('status', 'lunas')
+      .limit(3);
+
+    if (tagihanBelumLunas?.length) {
+      const daftar = tagihanBelumLunas.map(t => `${t.nomor_invoice} (${t.status})`).join(', ');
+      errEl.textContent = `Tidak bisa hapus: masih ada tagihan belum lunas — ${daftar}. Lunaskan dahulu sebelum menghapus kontrak.`;
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // Hapus kontrak (hard delete)
+    const { error } = await sb.from('kontrak_mitra').delete().eq('id', kontrakId);
+    if (error) throw error;
+
+    closeHapusKontrakModal();
+    showToast(`Kontrak ${_hapusNomorKontrak} berhasil dihapus`);
+
+    const subtabBtn = document.getElementById('subtab-kontrak-btn');
+    if (subtabBtn) switchSubtab('kontrak', subtabBtn);
+    else loadKontrak?.();
+
+  } catch(e) {
+    errEl.textContent = 'Gagal menghapus: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    label.textContent = 'Hapus Kontrak';
+  }
+}
+
 
 function closePreviewKontrak() {
   document.getElementById('modal-preview-kontrak').style.display = 'none';
@@ -4398,89 +5321,6 @@ async function toggleSpbu(id, aktif) {
   loadSpbu();
 }
 
-
-// ─── KONTRAK MANAGEMENT (super_admin) ────────────────────────
-
-async function stopKontrak(id, nomor) {
-  if (!confirm(`Stop kontrak ${nomor}? Status akan berubah ke Suspended. Transaksi berjalan tidak terganggu.`)) return;
-  const { error } = await sb.from("kontrak_mitra").update({ status: "suspended" }).eq("id", id);
-  if (error) { showToast("Gagal stop kontrak: " + error.message, true); return; }
-  showToast("Kontrak " + nomor + " distop.");
-  loadKontrakList();
-}
-
-async function reaktivasiKontrak(id, nomor) {
-  if (!confirm(`Reaktivasi kontrak ${nomor}?`)) return;
-  const { error } = await sb.from("kontrak_mitra").update({ status: "aktif" }).eq("id", id);
-  if (error) { showToast("Gagal reaktivasi: " + error.message, true); return; }
-  showToast("Kontrak " + nomor + " diaktifkan kembali.");
-  loadKontrakList();
-}
-
-let _hapusKontrakId = null;
-let _hapusKontrakNomor = null;
-
-async function showHapusKontrakModal(id, nomor) {
-  _hapusKontrakId = id;
-  _hapusKontrakNomor = nomor;
-  document.getElementById("hapus-kontrak-input").value = "";
-  document.getElementById("hapus-kontrak-err").style.display = "none";
-  const btn = document.getElementById("hapus-kontrak-btn");
-  btn.disabled = true; btn.style.opacity = ".4"; btn.style.cursor = "not-allowed";
-  document.getElementById("hapus-kontrak-warning").innerHTML =
-    `Anda akan menghapus kontrak <strong>${nomor}</strong> secara permanen.<br>Semua data terkait (kendaraan, tagihan, saldo) akan ikut terhapus. Tindakan ini <strong>tidak bisa diurungkan</strong>.`;
-  const { data: trx } = await sb.from("transaksi").select("id", { count: "exact", head: true }).eq("mitra_id",
-    (await sb.from("kontrak_mitra").select("mitra_id").eq("id", id).single()).data?.mitra_id
-  ).is("deleted_at", null);
-  document.getElementById("modal-hapus-kontrak").classList.add("show");
-}
-
-function closeHapusKontrakModal() {
-  document.getElementById("modal-hapus-kontrak").classList.remove("show");
-  _hapusKontrakId = null; _hapusKontrakNomor = null;
-}
-
-function checkHapusKontrakInput() {
-  const val = document.getElementById("hapus-kontrak-input").value.trim();
-  const btn = document.getElementById("hapus-kontrak-btn");
-  const match = val === _hapusKontrakNomor;
-  btn.disabled = !match;
-  btn.style.opacity = match ? "1" : ".4";
-  btn.style.cursor  = match ? "pointer" : "not-allowed";
-}
-
-async function eksekusiHapusKontrak() {
-  if (!_hapusKontrakId) return;
-  const btn = document.getElementById("hapus-kontrak-btn");
-  const errEl = document.getElementById("hapus-kontrak-err");
-  btn.disabled = true; btn.textContent = "Menghapus...";
-  try {
-    const { data: km } = await sb.from("kontrak_mitra").select("mitra_id, spbu_id").eq("id", _hapusKontrakId).single();
-    if (km) {
-      const mid = km.mitra_id, sid = km.spbu_id;
-      const { count: trxCount } = await sb.from("transaksi").select("id", { count: "exact", head: true }).eq("mitra_id", mid).is("deleted_at", null);
-      if (trxCount > 0) {
-        errEl.textContent = "Tidak bisa hapus: masih ada " + trxCount + " transaksi aktif untuk mitra ini.";
-        errEl.style.display = "block";
-        btn.disabled = false; btn.textContent = "Hapus Permanen";
-        return;
-      }
-      await sb.from("tagihan_mitra").delete().eq("mitra_id", mid);
-      await sb.from("mutasi_saldo").delete().eq("mitra_id", mid);
-      await sb.from("saldo_mitra").delete().eq("mitra_id", mid).eq("spbu_id", sid);
-      await sb.from("kendaraan_mitra").delete().eq("mitra_id", mid);
-    }
-    const { error } = await sb.from("kontrak_mitra").delete().eq("id", _hapusKontrakId);
-    if (error) throw error;
-    closeHapusKontrakModal();
-    showToast("Kontrak " + _hapusKontrakNomor + " berhasil dihapus.");
-    loadKontrakList();
-  } catch(e) {
-    errEl.textContent = "Error: " + e.message;
-    errEl.style.display = "block";
-    btn.disabled = false; btn.textContent = "Hapus Permanen";
-  }
-}
 // ─── START ───────────────────────────────────────────────────
 
 init();
