@@ -2785,13 +2785,14 @@ async function submitGenerateKupon() {
 
   try {
     // Panggil fungsi Postgres via rpc
+    // p_pecahan dikirim sebagai array JS langsung — Supabase akan serialize ke JSONB
     const { data: batchId, error } = await sb.rpc('generate_batch_kupon', {
       p_mitra_id:    mitraId,
       p_spbu_id:     spbuId,
       p_dibuat_oleh: currentUser.id,
       p_referensi:   ref || null,
       p_catatan:     catatan || null,
-      p_pecahan:     JSON.stringify(pecahan),
+      p_pecahan:     pecahan,   // kirim array JS langsung, bukan JSON.stringify
     });
     if (error) throw error;
 
