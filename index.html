@@ -2331,22 +2331,31 @@ async function submitTrx() {
     if (error) throw error;
 
     // ── Mark kupon dipakai jika mode kupon ───────────────────
-    if (detectedKupon) {
-      const trxId = insertedData?.[0]?.id || null;
-      await sb.from('kupon').update({
+    if (isKuponMode && detectedKupon) {
+      const kuponId = detectedKupon.id;
+      const trxId   = insertedData?.[0]?.id || null;
+
+      const { error: kuponErr, data: kuponUpd } = await sb.from('kupon').update({
         status:        'dipakai',
         dipakai_at:    new Date().toISOString(),
         dipakai_nopol: nopol || null,
         transaksi_id:  trxId,
-      }).eq('id', detectedKupon.id).eq('status','tersedia');
-      // Sembunyikan field kupon
-      const kWrap = document.getElementById('kupon-input-wrap');
-      if (kWrap) kWrap.style.display = 'none';
-      const kBtn = document.getElementById('kupon-toggle-btn');
-      if (kBtn) kBtn.textContent = 'Gunakan Kupon';
-      detectedKupon = null;
-      document.getElementById('kupon-input').value = '';
-      document.getElementById('kupon-hint').innerHTML = '';
+      }).eq('id', kuponId).select();
+
+      if (kuponErr) {
+        // Transaksi sudah berhasil, tapi kupon gagal di-mark
+        console.error('Kupon update error:', kuponErr);
+        showToast(`Transaksi tersimpan tapi kupon gagal di-update: ${kuponErr.message}`, true);
+      } else {
+        // Reset field kupon
+        detectedKupon = null;
+        document.getElementById('kupon-input').value = '';
+        document.getElementById('kupon-hint').innerHTML = '';
+        const kWrap = document.getElementById('kupon-input-wrap');
+        if (kWrap) kWrap.style.display = 'none';
+        const kBtn = document.getElementById('kupon-toggle-btn');
+        if (kBtn) kBtn.textContent = 'Gunakan Kupon';
+      }
     }
 
     // ── Auto-deduct saldo jika mekanisme deposit ──────────
