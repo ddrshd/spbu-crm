@@ -5012,21 +5012,6 @@ function previewKontrak(k) {
     </div>`;
   document.getElementById('modal-preview-kontrak').style.display = 'block';
   document.body.style.overflow = 'hidden';
-}(kontrakId, nomorKontrak, namaMitra) {
-  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
-  if (!confirm(`Stop kontrak ${nomorKontrak} — ${namaMitra}?\n\nStatus berubah menjadi "Suspended". Kendaraan mitra masih terdaftar. Kontrak bisa diaktifkan kembali kapanpun.`)) return;
-
-  const { error } = await sb.from('kontrak_mitra')
-    .update({ status: 'suspended', updated_at: new Date().toISOString() })
-    .eq('id', kontrakId);
-
-  if (error) { showToast('Gagal: ' + error.message, true); return; }
-  showToast(`Kontrak ${nomorKontrak} dihentikan sementara`);
-
-  // Reload sub-tab kontrak
-  const btn = document.getElementById('subtab-kontrak-btn');
-  if (btn) switchSubtab('kontrak', btn);
-  else loadKontrak?.();
 }
 
 async function stopKontrak(kontrakId, nomorKontrak, namaMitra) {
