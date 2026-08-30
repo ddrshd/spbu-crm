@@ -2204,7 +2204,7 @@ function confirmTrx() {
         ${isSuperAdmin && saSpbu ? `<div style="grid-column:1/-1"><div class="label">SPBU</div><div class="val">${saSpbu.nama}</div></div>` : ''}
         ${catatan ? `<div style="grid-column:1/-1"><div class="label">Catatan</div><div class="val">${catatan}</div></div>` : ''}
       </div>`;
-    document.getElementById('modal-confirm').classList.add('show');
+    document.getElementById('modal-overlay').classList.add('show');
     return;
   }
 
@@ -2288,9 +2288,21 @@ function closeModal() {
 
 async function submitTrx() {
   closeModal();
-  const nopol   = document.getElementById('nopol-input').value.trim().toUpperCase();
-  const vol     = parseFloat(document.getElementById('volume-input-final').value);
-  const total   = parseInt(document.getElementById('total-input-final').value);
+
+  // Mode kupon: ambil vol/total dari detectedKupon + selectedHarga
+  const isKuponMode = detectedKupon !== null;
+  let nopol, vol, total;
+
+  if (isKuponMode) {
+    nopol = document.getElementById('nopol-input').value.trim().toUpperCase().replace(/\s+/g,'') || null;
+    total = parseFloat(detectedKupon.nominal_rupiah);
+    vol   = selectedHarga > 0 ? Math.round((total / selectedHarga) * 100) / 100 : 0;
+  } else {
+    nopol = document.getElementById('nopol-input').value.trim().toUpperCase().replace(/\s+/g,'');
+    vol   = parseFloat(document.getElementById('volume-input-final').value);
+    total = parseInt(document.getElementById('total-input-final').value);
+  }
+
   const catatan = document.getElementById('catatan-input').value.trim();
 
   const isSuperAdmin = currentProfile.role === 'super_admin';
@@ -2302,20 +2314,20 @@ async function submitTrx() {
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
   try {
-    const { error } = await sb.from('transaksi').insert({
+    const { data: insertedData, error } = await sb.from('transaksi').insert({
       spbu_id: spbuId,
       operator_id: currentUser.id,
       shift_id: currentShift?.id || null,
-      nopol,
+      nopol: nopol || (isKuponMode ? 'KUPON' : ''),
       produk: selectedProduk.nama,
       produk_kode: selectedProduk.kode,
       volume: vol,
       harga_per_liter: selectedHarga,
       total,
       catatan: catatan || null,
-      mitra_id: detectedMitraId || (detectedKupon ? detectedKupon.mitra_id : null),
-      nopol_mitra: (detectedMitraId || detectedKupon) ? true : false
-    });
+      mitra_id: isKuponMode ? detectedKupon.mitra_id : (detectedMitraId || null),
+      nopol_mitra: (isKuponMode || detectedMitraId) ? true : false
+    }).select('id');
     if (error) throw error;
 
     // ── Mark kupon dipakai jika mode kupon ───────────────────
