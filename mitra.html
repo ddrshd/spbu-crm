@@ -224,6 +224,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     <div class="tab" onclick="switchTab('transaksi')">Riwayat Transaksi</div>
     <div class="tab" onclick="switchTab('kendaraan')">Kendaraan</div>
     <div class="tab" onclick="switchTab('tagihan')">Tagihan</div>
+    <div class="tab" onclick="switchTab('kupon')">Kupon BBM</div>
     <div class="tab" onclick="switchTab('kontrak')">Kontrak</div>
   </div>
 
@@ -261,6 +262,47 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
             <div class="breakdown-label">Kendaraan aktif</div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Kupon Card — hanya tampil jika mitra punya kupon -->
+    <div id="kupon-card" style="display:none;background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px 18px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:18px;">🎫</span>
+          <span style="font-size:14px;font-weight:600;color:#0D1B3E;">Kupon BBM</span>
+        </div>
+        <button onclick="switchTab('kupon')"
+          style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:inherit;">
+          Lihat semua →
+        </button>
+      </div>
+
+      <!-- 3 angka utama -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div style="text-align:center;padding:10px 6px;background:#F8FAFC;border-radius:8px;">
+          <div style="font-size:11px;color:#64748B;margin-bottom:4px;">Diterbitkan</div>
+          <div style="font-size:14px;font-weight:700;color:#0D1B3E;font-family:monospace;" id="kupon-total-val">—</div>
+          <div style="font-size:10px;color:#94A3B8;margin-top:2px;" id="kupon-total-count"></div>
+        </div>
+        <div style="text-align:center;padding:10px 6px;background:#EBF2FF;border-radius:8px;">
+          <div style="font-size:11px;color:#1A56C8;margin-bottom:4px;">Sisa Aktif</div>
+          <div style="font-size:14px;font-weight:700;color:#1A56C8;font-family:monospace;" id="kupon-sisa-val">—</div>
+          <div style="font-size:10px;color:#93C5FD;margin-top:2px;" id="kupon-sisa-count"></div>
+        </div>
+        <div style="text-align:center;padding:10px 6px;background:#F0FDF4;border-radius:8px;">
+          <div style="font-size:11px;color:#16A34A;margin-bottom:4px;">Terpakai</div>
+          <div style="font-size:14px;font-weight:700;color:#16A34A;font-family:monospace;" id="kupon-pakai-val">—</div>
+          <div style="font-size:10px;color:#86EFAC;margin-top:2px;" id="kupon-pakai-count"></div>
+        </div>
+      </div>
+
+      <!-- Kupon aktif terbaru -->
+      <div style="font-size:11px;font-weight:600;color:#64748B;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;">
+        Kupon aktif terbaru
+      </div>
+      <div id="kupon-aktif-list" style="display:flex;flex-wrap:wrap;gap:6px;">
+        <span style="font-size:12px;color:#94A3B8;">Memuat...</span>
       </div>
     </div>
 
@@ -352,6 +394,43 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;" id="tagihan-mitra-summary"></div>
     <div id="tagihan-mitra-list"><div class="loading-msg">Memuat...</div></div>
+  </div>
+
+  <!-- VIEW: KUPON BBM -->
+  <div class="view" id="view-kupon">
+    <div class="toolbar" style="margin-bottom:12px;">
+      <span style="font-size:14px;font-weight:600;">Kupon BBM Saya</span>
+      <button class="refresh-btn" onclick="loadKuponMitra()">↻ Refresh</button>
+    </div>
+
+    <!-- Ringkasan 3 angka -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;" id="kupon-view-summary"></div>
+
+    <!-- Filter status -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="period-pill active" id="kf-all"    onclick="filterKuponView('all',this)">Semua</button>
+      <button class="period-pill"        id="kf-aktif"  onclick="filterKuponView('tersedia',this)">Aktif</button>
+      <button class="period-pill"        id="kf-pakai"  onclick="filterKuponView('dipakai',this)">Dipakai</button>
+      <button class="period-pill"        id="kf-void"   onclick="filterKuponView('void',this)">Void</button>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Kode</th>
+            <th style="text-align:right;">Nominal</th>
+            <th>Status</th>
+            <th>Diterbitkan</th>
+            <th>Dipakai</th>
+            <th>Nopol</th>
+          </tr>
+        </thead>
+        <tbody id="kupon-view-body">
+          <tr><td colspan="6" class="loading-msg">Memuat...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <div class="view" id="view-kontrak">
@@ -526,6 +605,8 @@ async function loadDashboard() {
       <td style="color:var(--text-muted)">${ls}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="7" class="empty-state">Belum ada transaksi</td></tr>';
+  // Load kupon mitra untuk kupon card di dashboard
+  loadKuponMitra();
 }
 
 async function loadTransaksiMitra() {
@@ -814,12 +895,139 @@ function switchTab(tab) {
   document.getElementById('view-'+tab).classList.add('active');
   if (tab === 'transaksi') loadTransaksiMitra();
   if (tab === 'tagihan')   loadTagihanMitra();
+  if (tab === 'kupon')     loadKuponMitra();
   if (tab === 'kontrak')   loadKontrak();
 }
 
-async function doLogout() {
-  await sb.auth.signOut();
-  window.location.href = 'login.html';
+// ─── KUPON BBM ────────────────────────────────────────────────
+
+let allKupons = []; // cache semua kupon mitra
+
+async function loadKuponMitra() {
+  const tbody   = document.getElementById('kupon-view-body');
+  const summEl  = document.getElementById('kupon-view-summary');
+  if (tbody)  tbody.innerHTML  = '<tr><td colspan="6" class="loading-msg">Memuat...</td></tr>';
+  if (summEl) summEl.innerHTML = '';
+
+  try {
+    const { data } = await sb.from('kupon')
+      .select('id, kode, nominal_rupiah, status, dibuat_at, dipakai_at, dipakai_nopol')
+      .eq('mitra_id', currentMitra.id)
+      .order('dibuat_at', { ascending: false });
+
+    allKupons = data || [];
+
+    // Hitung ringkasan
+    const nilaiTotal   = allKupons.reduce((s,k) => s + k.nominal_rupiah, 0);
+    const nilaiTersedia = allKupons.filter(k => k.status === 'tersedia').reduce((s,k) => s + k.nominal_rupiah, 0);
+    const nilaiDipakai  = allKupons.filter(k => k.status === 'dipakai').reduce((s,k) => s + k.nominal_rupiah, 0);
+    const ctTotal    = allKupons.length;
+    const ctTersedia = allKupons.filter(k => k.status === 'tersedia').length;
+    const ctDipakai  = allKupons.filter(k => k.status === 'dipakai').length;
+
+    // Update summary di view kupon
+    if (summEl) summEl.innerHTML = `
+      <div style="text-align:center;padding:12px 8px;background:#F8FAFC;border-radius:8px;border:1px solid #E2E8F0;">
+        <div style="font-size:10px;color:#64748B;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Diterbitkan</div>
+        <div style="font-size:15px;font-weight:700;color:#0D1B3E;">Rp ${nilaiTotal.toLocaleString('id-ID')}</div>
+        <div style="font-size:10px;color:#94A3B8;margin-top:2px;">${ctTotal} lembar</div>
+      </div>
+      <div style="text-align:center;padding:12px 8px;background:#EBF2FF;border-radius:8px;border:1px solid #BFDBFE;">
+        <div style="font-size:10px;color:#1A56C8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Sisa Aktif</div>
+        <div style="font-size:15px;font-weight:700;color:#1A56C8;">Rp ${nilaiTersedia.toLocaleString('id-ID')}</div>
+        <div style="font-size:10px;color:#93C5FD;margin-top:2px;">${ctTersedia} lembar</div>
+      </div>
+      <div style="text-align:center;padding:12px 8px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;">
+        <div style="font-size:10px;color:#16A34A;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Terpakai</div>
+        <div style="font-size:15px;font-weight:700;color:#16A34A;">Rp ${nilaiDipakai.toLocaleString('id-ID')}</div>
+        <div style="font-size:10px;color:#86EFAC;margin-top:2px;">${ctDipakai} lembar</div>
+      </div>`;
+
+    // Update kupon card di dashboard
+    updateKuponCard(allKupons, nilaiTotal, nilaiTersedia, nilaiDipakai, ctTotal, ctTersedia, ctDipakai);
+
+    // Render tabel
+    renderKuponTable(allKupons);
+
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function updateKuponCard(kupons, nilaiTotal, nilaiTersedia, nilaiDipakai, ctTotal, ctTersedia, ctDipakai) {
+  const card = document.getElementById('kupon-card');
+  if (!card) return;
+
+  if (!kupons.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  document.getElementById('kupon-total-val').textContent = 'Rp ' + nilaiTotal.toLocaleString('id-ID');
+  document.getElementById('kupon-total-count').textContent = ctTotal + ' lembar';
+  document.getElementById('kupon-sisa-val').textContent = 'Rp ' + nilaiTersedia.toLocaleString('id-ID');
+  document.getElementById('kupon-sisa-count').textContent = ctTersedia + ' aktif';
+  document.getElementById('kupon-pakai-val').textContent = 'Rp ' + nilaiDipakai.toLocaleString('id-ID');
+  document.getElementById('kupon-pakai-count').textContent = ctDipakai + ' dipakai';
+
+  // Tampilkan 6 kupon tersedia terbaru sebagai chip kode
+  const aktif = kupons.filter(k => k.status === 'tersedia').slice(0, 8);
+  const listEl = document.getElementById('kupon-aktif-list');
+  if (listEl) {
+    if (!aktif.length) {
+      listEl.innerHTML = '<span style="font-size:12px;color:#94A3B8;">Semua kupon sudah dipakai</span>';
+    } else {
+      listEl.innerHTML = aktif.map(k => `
+        <div style="display:inline-flex;align-items:center;gap:6px;
+          background:#F8FAFC;border:1px solid #CBD5E1;border-radius:6px;
+          padding:5px 10px;">
+          <span style="font-family:monospace;font-size:14px;font-weight:700;
+            letter-spacing:.1em;color:#0D1B3E;">${k.kode}</span>
+          <span style="font-size:10px;color:#16A34A;font-weight:600;">
+            Rp ${parseInt(k.nominal_rupiah).toLocaleString('id-ID')}
+          </span>
+        </div>`).join('') +
+        (ctTersedia > 8 ? `<span style="font-size:11px;color:#94A3B8;align-self:center;">+${ctTersedia-8} lainnya</span>` : '');
+    }
+  }
+}
+
+function renderKuponTable(kupons) {
+  const tbody = document.getElementById('kupon-view-body');
+  if (!tbody) return;
+
+  if (!kupons.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state" style="padding:30px 0;">Belum ada kupon</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = kupons.map(k => {
+    const stBg  = k.status === 'tersedia' ? '#DCFCE7' : k.status === 'dipakai' ? '#DBEAFE' : '#F3F4F6';
+    const stCol = k.status === 'tersedia' ? '#166534' : k.status === 'dipakai' ? '#1E40AF' : '#6B7280';
+    const tglBuat  = new Date(k.dibuat_at).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+    const tglPakai = k.dipakai_at
+      ? new Date(k.dipakai_at).toLocaleDateString('id-ID', { day:'2-digit', month:'short' }) : '—';
+    return `<tr>
+      <td style="font-family:monospace;font-size:15px;font-weight:700;letter-spacing:.1em;">${k.kode}</td>
+      <td style="text-align:right;font-weight:600;font-size:12px;">Rp ${parseInt(k.nominal_rupiah).toLocaleString('id-ID')}</td>
+      <td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+        background:${stBg};color:${stCol};">${k.status}</span></td>
+      <td style="font-size:11px;color:#64748B;">${tglBuat}</td>
+      <td style="font-size:11px;color:#64748B;">${tglPakai}</td>
+      <td style="font-size:11px;font-family:monospace;">${k.dipakai_nopol || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+let kuponViewFilter = 'all';
+function filterKuponView(status, btn) {
+  kuponViewFilter = status;
+  document.querySelectorAll('[id^="kf-"]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = status === 'all' ? allKupons : allKupons.filter(k => k.status === status);
+  renderKuponTable(filtered);
+}
+
+function doLogout() {
+  sb.auth.signOut().then(() => { window.location.href = 'login.html'; });
 }
 
 function showToast(msg, isErr=false) {
