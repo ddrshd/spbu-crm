@@ -845,9 +845,15 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
           <div style="font-size:13px;font-weight:500">Kontrak Kerjasama Mitra</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="kontrak-desc"></div>
         </div>
-        <a href="kontrak.html" style="text-decoration:none;">
-          <button class="add-btn">+ Buat Kontrak Baru</button>
-        </a>
+        <div style="display:flex;gap:8px;">
+          <button class="add-btn" onclick="showModalKontrakCepat()"
+            style="background:var(--green);border-color:var(--green);font-size:12px;white-space:nowrap;">
+            ⚡ Kontrak Cepat
+          </button>
+          <a href="kontrak.html" style="text-decoration:none;">
+            <button class="add-btn" style="font-size:12px;white-space:nowrap;">+ Lengkap</button>
+          </a>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;" id="kontrak-summary"></div>
       <div id="kontrak-list-wrap"><div class="loading-msg">Memuat kontrak...</div></div>
@@ -1241,6 +1247,62 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
           <tr><td colspan="7" class="loading-msg">Memuat data SPBU...</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- MODAL KONTRAK CEPAT ─ Quick onboard tanpa buka kontrak.html -->
+  <div class="modal-overlay" id="modal-kontrak-cepat" onclick="if(event.target===this)closeModalKontrakCepat()">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-handle"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div style="width:32px;height:32px;background:#F0FDF4;border-radius:8px;
+          display:flex;align-items:center;justify-content:center;font-size:16px;">⚡</div>
+        <div>
+          <div class="modal-title" style="margin:0;">Kontrak Cepat</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+            3 field — langsung aktif. Kontrak lengkap bisa dibuat menyusul.
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Mitra <span style="color:var(--red)">*</span></label>
+        <select class="field-select" id="kc-mitra-id" onchange="onKcMitraChange()">
+          <option value="">— Pilih Mitra —</option>
+        </select>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+          Belum terdaftar?
+          <button type="button" onclick="closeModalKontrakCepat();showModalMitraBaru?.()"
+            style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;
+            padding:0;font-family:var(--ff);">+ Tambah mitra baru dulu</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field-group">
+          <label class="field-label">Tanggal Mulai</label>
+          <input class="field-input" id="kc-tgl-mulai" type="date"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Tanggal Selesai</label>
+          <input class="field-input" id="kc-tgl-selesai" type="date"/>
+        </div>
+      </div>
+
+      <div style="background:#F0FDF4;border:1px solid rgba(0,166,81,.15);border-radius:var(--radius);
+        padding:10px 14px;margin-bottom:14px;font-size:12px;color:#007A3C;line-height:1.6;">
+        ✅ Kontrak akan langsung berstatus <strong>Aktif</strong> dengan ketentuan kupon BBM standar.
+        Untuk tambahkan detail (pasal, penandatangan, PDF), buka <strong>Buat Kontrak Lengkap</strong>.
+      </div>
+
+      <div class="error-msg" id="kc-error" style="display:none;margin-bottom:12px;"></div>
+
+      <div class="modal-row">
+        <button class="modal-btn cancel" onclick="closeModalKontrakCepat()">Batal</button>
+        <button class="modal-btn confirm" onclick="submitKontrakCepat()">
+          <span id="kc-label">⚡ Buat Kontrak</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -3950,46 +4012,21 @@ async function showAddUserModal() {
       `<option value="${s.id}">${s.nama} (${s.kode})</option>`
     ).join('');
 
-  // Load daftar mitra untuk dropdown — hanya yang sudah punya kontrak
-  // Ini memastikan user mitra hanya dibuat untuk mitra yang sudah resmi berkontrak
-  let kontrakQ = sb.from('kontrak_mitra')
-    .select('mitra_id')
-    .in('status', ['aktif', 'draft']);
-  // Super admin lihat semua, manager hanya SPBU-nya
+  // Load semua mitra aktif untuk dropdown — kontrak bukan lagi syarat
+  let mitraQ = sb.from('mitra')
+    .select('id, nama_perusahaan')
+    .eq('status', 'aktif')
+    .order('nama_perusahaan');
   if (currentProfile.role === 'manager' && currentSpbu)
-    kontrakQ = kontrakQ.eq('spbu_id', currentSpbu.id);
-  const { data: kontraks } = await kontrakQ;
-  const mitraIdsWithKontrak = [...new Set((kontraks || []).map(k => k.mitra_id))];
-
-  let mitras = [];
-  if (mitraIdsWithKontrak.length) {
-    const { data } = await sb.from('mitra')
-      .select('id, nama_perusahaan')
-      .in('id', mitraIdsWithKontrak)
-      .eq('status', 'aktif')
-      .order('nama_perusahaan');
-    mitras = data || [];
-  }
+    mitraQ = mitraQ.eq('spbu_id', currentSpbu.id);
+  const { data: mitras } = await mitraQ;
 
   const mitraSel = document.getElementById('u-mitra-id');
-  if (mitras.length) {
-    mitraSel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
-      mitras.map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
-  } else {
-    mitraSel.innerHTML = '<option value="">— Belum ada mitra berkontrak —</option>';
-  }
+  mitraSel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+    (mitras || []).map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
 
-  // Tampilkan info helper jika belum ada mitra berkontrak
-  const mitraGroup = document.getElementById('u-mitra-group');
-  const existingInfo = document.getElementById('u-mitra-info');
-  if (existingInfo) existingInfo.remove();
-  if (!mitras.length) {
-    const info = document.createElement('div');
-    info.id = 'u-mitra-info';
-    info.style.cssText = 'font-size:11px;padding:8px 12px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:var(--radius);margin-top:8px;color:#92400E;line-height:1.5;';
-    info.innerHTML = '⚠️ Belum ada mitra yang memiliki kontrak aktif. Manager SPBU harus membuat kontrak terlebih dahulu sebelum user mitra bisa dibuat.';
-    mitraGroup.appendChild(info);
-  }
+  // Hapus info helper lama jika ada
+  document.getElementById('u-mitra-info')?.remove();
 
   if (currentProfile.role === 'manager' && currentSpbu) {
     spbuSel.value = currentSpbu.id;
@@ -4543,46 +4580,29 @@ async function loadKendaraanMitra() {
   const tbody = document.getElementById('kendaraan-body');
   tbody.innerHTML = '<tr><td colspan="6" class="loading-msg">Memuat...</td></tr>';
 
-  // Load mitra yang sudah punya kontrak aktif/draft saja
-  // Manager: hanya mitra SPBU-nya | Super admin: semua
+  // Load semua mitra aktif — kontrak bukan lagi syarat untuk daftarkan kendaraan
   if (!mitraListKend.length) {
-    // Ambil mitra_id dari kontrak yang sudah ada
-    let kontrakQ = sb.from('kontrak_mitra')
-      .select('mitra_id')
-      .in('status', ['aktif','draft']);
+    let mitraQ = sb.from('mitra')
+      .select('id, nama_perusahaan')
+      .eq('status', 'aktif')
+      .order('nama_perusahaan');
     if (currentProfile.role === 'manager' && currentSpbu)
-      kontrakQ = kontrakQ.eq('spbu_id', currentSpbu.id);
-    const { data: kontraks } = await kontrakQ;
+      mitraQ = mitraQ.eq('spbu_id', currentSpbu.id);
+    const { data: mitras } = await mitraQ;
+    mitraListKend = mitras || [];
 
-    const mitraIdsWithKontrak = [...new Set((kontraks || []).map(k => k.mitra_id))];
-
-    if (!mitraIdsWithKontrak.length) {
+    if (!mitraListKend.length) {
       tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
         <div style="padding:20px 0;">
-          <div style="font-size:28px;margin-bottom:10px;">📋</div>
-          <div style="font-weight:600;color:var(--text);margin-bottom:6px;">Belum ada mitra berkontrak</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;max-width:280px;margin-left:auto;margin-right:auto;">
-            Kendaraan hanya bisa didaftarkan untuk mitra yang sudah memiliki kontrak aktif.
+          <div style="font-size:28px;margin-bottom:10px;">🏢</div>
+          <div style="font-weight:600;color:var(--text);margin-bottom:6px;">Belum ada mitra terdaftar</div>
+          <div style="font-size:12px;color:var(--text-muted);">
+            Tambahkan mitra baru terlebih dahulu.
           </div>
-          <button onclick="switchSubtab('kontrak', document.getElementById('subtab-kontrak-btn'))"
-            style="padding:9px 18px;background:var(--blue);color:#fff;border:none;
-            border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;
-            font-family:var(--ff);">
-            → Buat Kontrak Mitra Dulu
-          </button>
         </div>
       </td></tr>`;
       return;
     }
-
-    // Query mitra yang sudah berkontrak
-    let mitraQ = sb.from('mitra')
-      .select('id, nama_perusahaan')
-      .in('id', mitraIdsWithKontrak)
-      .eq('status', 'aktif')
-      .order('nama_perusahaan');
-    const { data: mitras } = await mitraQ;
-    mitraListKend = mitras || [];
 
     // Populate dropdown filter
     const filterSel = document.getElementById('filter-mitra-kend');
@@ -4911,7 +4931,99 @@ async function loadKontrakList() {
   }).join('');
 }
 
-// ─── MANAJEMEN KONTRAK (Super Admin) ─────────────────────────
+// ─── KONTRAK CEPAT ───────────────────────────────────────────
+
+async function showModalKontrakCepat() {
+  const errEl = document.getElementById('kc-error');
+  errEl.style.display = 'none';
+  document.getElementById('kc-label').textContent = '⚡ Buat Kontrak';
+
+  // Default tanggal: mulai hari ini, selesai 1 tahun
+  const today    = new Date().toISOString().split('T')[0];
+  const nextYear = new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+    .toISOString().split('T')[0];
+  document.getElementById('kc-tgl-mulai').value   = today;
+  document.getElementById('kc-tgl-selesai').value = nextYear;
+
+  // Load mitra aktif untuk dropdown
+  const sel = document.getElementById('kc-mitra-id');
+  sel.innerHTML = '<option value="">Memuat...</option>';
+
+  let q = sb.from('mitra').select('id,nama_perusahaan')
+    .eq('status','aktif').order('nama_perusahaan');
+  if (currentProfile.role === 'manager' && currentSpbu)
+    q = q.eq('spbu_id', currentSpbu.id);
+  const { data: mitras } = await q;
+
+  sel.innerHTML = '<option value="">— Pilih Mitra —</option>' +
+    (mitras || []).map(m => `<option value="${m.id}">${m.nama_perusahaan}</option>`).join('');
+
+  document.getElementById('modal-kontrak-cepat').classList.add('show');
+  setTimeout(() => sel.focus(), 100);
+}
+
+function closeModalKontrakCepat() {
+  document.getElementById('modal-kontrak-cepat').classList.remove('show');
+}
+
+function onKcMitraChange() {
+  // Bisa tambah logika auto-fill jika perlu
+}
+
+async function submitKontrakCepat() {
+  const mitraId    = document.getElementById('kc-mitra-id').value;
+  const tglMulai   = document.getElementById('kc-tgl-mulai').value;
+  const tglSelesai = document.getElementById('kc-tgl-selesai').value;
+  const errEl      = document.getElementById('kc-error');
+  const spbuId     = currentSpbu?.id;
+
+  errEl.style.display = 'none';
+  if (!mitraId)    { errEl.textContent = 'Pilih mitra terlebih dahulu'; errEl.style.display = 'block'; return; }
+  if (!tglMulai)   { errEl.textContent = 'Tanggal mulai wajib diisi'; errEl.style.display = 'block'; return; }
+  if (!tglSelesai) { errEl.textContent = 'Tanggal selesai wajib diisi'; errEl.style.display = 'block'; return; }
+  if (!spbuId)     { errEl.textContent = 'SPBU tidak terdeteksi'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('kc-label');
+  btn.textContent = 'Menyimpan...';
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+
+    const res = await fetch('/api/save-kontrak', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        mitra_id:          mitraId,
+        spbu_id:           spbuId,
+        tanggal_mulai:     tglMulai,
+        tanggal_selesai:   tglSelesai,
+        syarat_pembayaran: 'Pembayaran deposit di awal. Pihak Pertama menerbitkan kupon BBM digital melalui sistem BISON.',
+        status:            'aktif',
+      }),
+    });
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Gagal menyimpan kontrak');
+
+    closeModalKontrakCepat();
+    showToast(`Kontrak ${result.kontrak?.nomor_kontrak || ''} berhasil dibuat`);
+
+    // Reload sub-tab kontrak
+    const subtabBtn = document.getElementById('subtab-kontrak-btn');
+    if (subtabBtn) switchSubtab('kontrak', subtabBtn);
+
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = '⚡ Buat Kontrak';
+  }
+}
+
+
 
 function previewKontrak(k) {
   document.getElementById('modal-kontrak-judul').textContent = k.nomor_kontrak;
