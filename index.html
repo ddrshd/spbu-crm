@@ -5523,256 +5523,362 @@ async function submitKontrakCepat() {
 function showDetailKontrak(k) {
   const fmtTgl = d => new Date(d).toLocaleDateString('id-ID',
     { day:'numeric', month:'long', year:'numeric' });
-  const tglMulai   = fmtTgl(k.tanggal_mulai);
-  const tglSelesai = fmtTgl(k.tanggal_selesai);
-  const tglCetak   = fmtTgl(new Date());
-  const spbuNama   = k.spbu?.nama  || '—';
-  const mitraNama  = k.mitra?.nama_perusahaan || '—';
-  const mitraPIC   = k.mitra?.pic_nama  || '—';
-  const mitraAlamat= k.mitra?.alamat || '—';
-  const vol        = k.volume_estimasi
+  const tglMulai    = fmtTgl(k.tanggal_mulai);
+  const tglSelesai  = fmtTgl(k.tanggal_selesai);
+  const tglCetak    = fmtTgl(new Date());
+  const spbuNama    = k.spbu?.nama  || '—';
+  const mitraNama   = k.mitra?.nama_perusahaan || '—';
+  const mitraPIC    = k.mitra?.pic_nama  || '—';
+  const mitraAlamat = k.mitra?.alamat || '—';
+  const vol         = k.volume_estimasi
     ? parseInt(k.volume_estimasi).toLocaleString('id-ID') + ' liter/bulan' : '—';
-  const ketentuan  = k.ketentuan_khusus || '';
-  const penanda    = k.disetujui_oleh   || '—';
-  const jabatan    = k.jabatan_penanda  || '—';
+  const ketentuan   = k.ketentuan_khusus || '';
+  const penanda     = k.disetujui_oleh   || '................................';
+  const jabatan     = k.jabatan_penanda  || '................................';
 
   const html = `<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Kontrak ${k.nomor_kontrak}</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
   @page { size: A4; margin: 20mm 18mm; }
   @media print {
     .no-print { display:none!important; }
-    body { margin:0; }
+    body { padding: 0; }
+    .doc-wrap { box-shadow: none; border-radius: 0; padding: 0; }
   }
-  * { box-sizing:border-box; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
   body {
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 12pt;
-    color: #111;
-    line-height: 1.6;
-    background: #fff;
-    max-width: 210mm;
-    margin: 0 auto;
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 11pt;
+    color: #1a1a1a;
+    line-height: 1.7;
+    background: #f5f5f5;
     padding: 20px;
   }
-  .print-btn {
-    position: fixed; top: 16px; right: 16px; z-index: 99;
-    padding: 10px 22px; background: #1A56C8; color: #fff;
-    border: none; border-radius: 6px; font-size: 13px;
-    cursor: pointer; font-family: Arial, sans-serif;
-    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+
+  /* Action bar atas */
+  .action-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #0D1B3E;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
   }
+  .action-bar-left {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .btn-close {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px;
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'Inter', Arial, sans-serif;
+    text-decoration: none;
+    transition: background .15s;
+  }
+  .btn-close:hover { background: rgba(255,255,255,.2); }
+  .btn-print {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 16px;
+    background: #1A56C8;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', Arial, sans-serif;
+  }
+  .btn-print:hover { background: #1547aa; }
+  .action-title {
+    font-size: 12px;
+    color: rgba(255,255,255,.7);
+    font-weight: 500;
+  }
+
+  /* Dokumen */
+  .doc-wrap {
+    background: #fff;
+    max-width: 210mm;
+    margin: 60px auto 40px;
+    padding: 20mm 18mm;
+    box-shadow: 0 4px 24px rgba(0,0,0,.12);
+    border-radius: 4px;
+  }
+
   /* Header */
   .doc-header {
     text-align: center;
-    padding-bottom: 14px;
-    border-bottom: 2px solid #111;
-    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2.5px solid #0D1B3E;
+    margin-bottom: 24px;
   }
   .logo-row {
     display: flex; align-items: center; justify-content: center;
-    gap: 14px; margin-bottom: 10px;
+    gap: 12px; margin-bottom: 14px;
   }
   .logo-badge {
     background: #0D1B3E; color: #fff;
-    font-size: 18px; font-weight: 800;
-    padding: 6px 14px; border-radius: 6px;
-    letter-spacing: .06em;
+    font-size: 16px; font-weight: 800;
+    padding: 5px 13px; border-radius: 5px;
+    letter-spacing: .08em;
   }
+  .logo-info { text-align: left; }
+  .logo-info .org { font-size: 11px; font-weight: 600; color: #222; }
+  .logo-info .sub { font-size: 10px; color: #666; }
   .stripe {
     height: 4px; display: flex; border-radius: 2px;
-    overflow: hidden; margin: 10px auto; width: 80%;
+    overflow: hidden; margin: 0 auto 14px; width: 100%;
   }
-  .stripe div { flex:1; }
-  h1 { font-size: 14pt; margin: 8px 0 4px; letter-spacing: .04em; }
-  .nomor { font-size: 11pt; color: #444; margin: 0; }
-  /* Sections */
-  h2 {
-    font-size: 11pt; text-decoration: underline;
-    margin: 18px 0 6px; text-transform: uppercase;
-    letter-spacing: .04em;
+  .stripe div { flex: 1; }
+  .doc-title {
+    font-size: 14pt; font-weight: 700;
+    letter-spacing: .04em; margin-bottom: 4px;
+    text-transform: uppercase;
   }
-  p { margin: 4px 0; text-align: justify; }
+  .doc-nomor { font-size: 11pt; color: #444; font-weight: 500; }
+
+  /* Body */
+  p { margin-bottom: 10px; text-align: justify; }
+
+  /* Section titles */
+  .section-title {
+    font-size: 10pt; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #0D1B3E;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 4px;
+    margin: 20px 0 10px;
+  }
+
+  /* Pihak grid */
+  .pihak-block { margin-bottom: 14px; }
+  .pihak-name { font-size: 12pt; font-weight: 700; margin-bottom: 6px; }
   .pihak-row {
-    display: grid; grid-template-columns: 140px 8px 1fr;
-    gap: 2px 0; margin: 4px 0; font-size: 11pt;
+    display: grid;
+    grid-template-columns: 110px 12px 1fr;
+    gap: 1px 0;
+    font-size: 10.5pt;
+    color: #333;
+    margin-bottom: 2px;
   }
+  .pihak-key { color: #666; }
+
   /* Pasal */
-  .pasal { margin: 16px 0 4px; }
+  .pasal { margin: 20px 0; }
   .pasal-title {
-    font-weight: bold; text-align: center;
-    font-size: 11pt; margin-bottom: 4px;
+    font-size: 11pt; font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 10px;
+    color: #0D1B3E;
   }
-  ol { margin: 4px 0 4px 20px; padding:0; }
-  ol li { margin-bottom: 3px; }
+  ol { padding-left: 20px; margin-bottom: 8px; }
+  ol li { margin-bottom: 5px; font-size: 11pt; }
+
   /* TTD */
   .ttd-wrap {
     display: grid; grid-template-columns: 1fr 1fr;
-    gap: 30px; margin-top: 40px;
+    gap: 40px; margin-top: 44px;
   }
   .ttd-box { text-align: center; }
-  .ttd-label { font-size: 11pt; margin-bottom: 60px; }
+  .ttd-label { font-size: 11pt; margin-bottom: 56px; line-height: 1.5; }
   .ttd-line {
-    border-top: 1px solid #111;
-    padding-top: 6px; font-size: 11pt;
+    border-top: 1px solid #222;
+    padding-top: 6px;
+    font-size: 11pt; font-weight: 600;
   }
-  .ttd-jabatan { font-size: 10pt; color: #444; }
-  .footer-note {
-    margin-top: 30px; font-size: 9pt; color: #666;
-    text-align: center; border-top: 1px solid #ddd; padding-top: 8px;
+  .ttd-jabatan { font-size: 10pt; color: #555; margin-top: 2px; }
+
+  /* Footer */
+  .doc-footer {
+    margin-top: 30px;
+    font-size: 9pt;
+    color: #888;
+    text-align: center;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 10px;
+    font-style: italic;
   }
 </style>
 </head>
 <body>
 
-<button class="print-btn no-print" onclick="window.print()">🖨 Cetak / Simpan PDF</button>
+<!-- Action bar -->
+<div class="action-bar no-print">
+  <div class="action-bar-left">
+    <button class="btn-close" onclick="window.close()">✕ Tutup</button>
+    <span class="action-title">${k.nomor_kontrak} · ${mitraNama}</span>
+  </div>
+  <button class="btn-print" onclick="window.print()">🖨 Cetak / Simpan PDF</button>
+</div>
 
-<!-- HEADER -->
-<div class="doc-header">
-  <div class="logo-row">
-    <div class="logo-badge">BISON</div>
-    <div style="text-align:left;">
-      <div style="font-size:10pt;font-family:Arial;">PT Pertamina Patra Niaga</div>
-      <div style="font-size:9pt;font-family:Arial;color:#555;">Sulawesi Tenggara · ${spbuNama}</div>
+<!-- Dokumen -->
+<div class="doc-wrap">
+
+  <!-- HEADER -->
+  <div class="doc-header">
+    <div class="logo-row">
+      <div class="logo-badge">BISON</div>
+      <div class="logo-info">
+        <div class="org">PT Pertamina Patra Niaga</div>
+        <div class="sub">Sulawesi Tenggara · ${spbuNama}</div>
+      </div>
+    </div>
+    <div class="stripe">
+      <div style="background:#E8182C;"></div>
+      <div style="background:#1A56C8;"></div>
+      <div style="background:#00A651;"></div>
+    </div>
+    <div class="doc-title">Perjanjian Kerjasama Pengadaan BBM</div>
+    <div class="doc-nomor">Nomor: <strong>${k.nomor_kontrak}</strong></div>
+  </div>
+
+  <!-- PEMBUKA -->
+  <p>
+    Perjanjian Kerjasama ini dibuat dan ditandatangani pada tanggal
+    <strong>${tglMulai}</strong>, oleh dan antara:
+  </p>
+
+  <!-- PARA PIHAK -->
+  <div class="section-title">Para Pihak</div>
+
+  <div class="pihak-block">
+    <div class="pihak-name">Pihak Pertama</div>
+    <div class="pihak-row"><span class="pihak-key">Nama SPBU</span><span>:</span><span>${spbuNama}</span></div>
+    <div class="pihak-row"><span class="pihak-key">Pengelola</span><span>:</span><span>PT Pertamina Patra Niaga – Sultra</span></div>
+    <div class="pihak-row"><span class="pihak-key">Selanjutnya</span><span>:</span><span>"<strong>SPBU</strong>"</span></div>
+  </div>
+
+  <div class="pihak-block">
+    <div class="pihak-name">Pihak Kedua</div>
+    <div class="pihak-row"><span class="pihak-key">Nama</span><span>:</span><span>${mitraNama}</span></div>
+    <div class="pihak-row"><span class="pihak-key">PIC</span><span>:</span><span>${mitraPIC}</span></div>
+    ${mitraAlamat !== '—' ? `<div class="pihak-row"><span class="pihak-key">Alamat</span><span>:</span><span>${mitraAlamat}</span></div>` : ''}
+    <div class="pihak-row"><span class="pihak-key">Selanjutnya</span><span>:</span><span>"<strong>Mitra</strong>"</span></div>
+  </div>
+
+  <p>Para Pihak sepakat untuk mengadakan Perjanjian Kerjasama dengan ketentuan sebagai berikut:</p>
+
+  <!-- PASAL 1 -->
+  <div class="pasal">
+    <div class="pasal-title">Pasal 1 — Maksud dan Tujuan</div>
+    <p>
+      Perjanjian ini mengatur kerjasama pengadaan Bahan Bakar Minyak (BBM) antara SPBU dan Mitra
+      untuk keperluan operasional kendaraan armada Mitra melalui mekanisme kupon BBM digital
+      berbasis sistem BISON (Business Integrated System for Oil Network).
+    </p>
+  </div>
+
+  <!-- PASAL 2 -->
+  <div class="pasal">
+    <div class="pasal-title">Pasal 2 — Jangka Waktu</div>
+    <ol>
+      <li>Perjanjian ini berlaku sejak tanggal <strong>${tglMulai}</strong> sampai dengan <strong>${tglSelesai}</strong>.</li>
+      <li>Perjanjian dapat diperpanjang atas kesepakatan tertulis kedua pihak sebelum masa berlaku berakhir.</li>
+    </ol>
+  </div>
+
+  <!-- PASAL 3 -->
+  <div class="pasal">
+    <div class="pasal-title">Pasal 3 — Ruang Lingkup</div>
+    <ol>
+      <li>SPBU menyediakan BBM untuk kendaraan armada Mitra sesuai ketersediaan produk.</li>
+      ${vol !== '—' ? `<li>Estimasi kebutuhan BBM Mitra: <strong>${vol}</strong>.</li>` : ''}
+      <li>Jenis BBM yang dilayani mengacu pada produk yang tersedia dan disepakati para pihak.</li>
+      <li>Transaksi pengisian BBM dilakukan di lokasi SPBU <strong>${spbuNama}</strong>.</li>
+    </ol>
+  </div>
+
+  <!-- PASAL 4 -->
+  <div class="pasal">
+    <div class="pasal-title">Pasal 4 — Mekanisme Kupon dan Pembayaran</div>
+    <ol>
+      <li>Mitra melakukan pembayaran deposit di muka ke rekening SPBU sebelum BBM dapat diambil.</li>
+      <li>SPBU menerbitkan kupon BBM digital melalui sistem BISON senilai jumlah yang dibayarkan.</li>
+      <li>Setiap kupon memiliki kode unik 6 karakter dan bernilai nominal Rupiah.</li>
+      <li>Volume BBM yang diterima menyesuaikan harga BBM yang berlaku pada saat pengambilan.</li>
+      <li>Satu kupon hanya dapat digunakan untuk satu kali transaksi secara penuh.</li>
+      <li>Kupon yang hilang dapat diterbitkan ulang dengan prosedur verifikasi kepada SPBU.</li>
+      <li>Kupon tidak dapat diperjualbelikan kepada pihak ketiga di luar armada Mitra.</li>
+    </ol>
+  </div>
+
+  <!-- PASAL 5 -->
+  <div class="pasal">
+    <div class="pasal-title">Pasal 5 — Hak dan Kewajiban</div>
+    <ol>
+      <li>SPBU wajib melayani pengisian BBM kepada setiap kendaraan Mitra yang menunjukkan kupon valid.</li>
+      <li>SPBU berhak menolak kupon yang tidak valid, sudah dipakai, atau telah di-void.</li>
+      <li>Mitra wajib memastikan kupon hanya digunakan oleh armada kendaraan yang sah.</li>
+      <li>Mitra berhak memantau riwayat penggunaan kupon melalui portal BISON.</li>
+      <li>Segala penyalahgunaan kupon oleh pihak yang tidak berwenang menjadi tanggung jawab Mitra.</li>
+    </ol>
+  </div>
+
+  ${ketentuan ? `
+  <div class="pasal">
+    <div class="pasal-title">Pasal 6 — Ketentuan Khusus</div>
+    <p>${ketentuan}</p>
+  </div>` : ''}
+
+  <!-- PASAL PENUTUP -->
+  <div class="pasal">
+    <div class="pasal-title">Pasal ${ketentuan ? '7' : '6'} — Penutup</div>
+    <ol>
+      <li>Perjanjian ini dibuat dalam 2 (dua) rangkap asli yang masing-masing bermaterai cukup
+        dan mempunyai kekuatan hukum yang sama.</li>
+      <li>Hal-hal yang belum diatur dalam perjanjian ini akan diselesaikan secara musyawarah untuk mufakat.</li>
+    </ol>
+  </div>
+
+  <!-- TANDA TANGAN -->
+  <div class="ttd-wrap">
+    <div class="ttd-box">
+      <div class="ttd-label">Pihak Pertama<br/><strong>${spbuNama}</strong></div>
+      <div class="ttd-line">Pengelola SPBU</div>
+      <div class="ttd-jabatan">PT Pertamina Patra Niaga Sultra</div>
+    </div>
+    <div class="ttd-box">
+      <div class="ttd-label">Pihak Kedua<br/><strong>${mitraNama}</strong></div>
+      <div class="ttd-line">${penanda}</div>
+      <div class="ttd-jabatan">${jabatan}</div>
     </div>
   </div>
-  <div class="stripe">
-    <div style="background:#E8182C;"></div>
-    <div style="background:#1A56C8;"></div>
-    <div style="background:#00A651;"></div>
+
+  <!-- FOOTER -->
+  <div class="doc-footer">
+    Digenerate oleh sistem BISON · ${tglCetak} · ${k.nomor_kontrak}
   </div>
-  <h1>PERJANJIAN KERJASAMA PENGADAAN BBM</h1>
-  <p class="nomor">Nomor: <strong>${k.nomor_kontrak}</strong></p>
-</div>
 
-<!-- PEMBUKA -->
-<p>
-  Perjanjian Kerjasama ini dibuat dan ditandatangani pada tanggal
-  <strong>${tglMulai}</strong>, oleh dan antara:
-</p>
-
-<!-- PIHAK I -->
-<h2>Para Pihak</h2>
-
-<p><strong>Pihak Pertama</strong></p>
-<div class="pihak-row"><span>Nama SPBU</span><span>:</span><span>${spbuNama}</span></div>
-<div class="pihak-row"><span>Pengelola</span><span>:</span><span>PT Pertamina Patra Niaga – Sultra</span></div>
-<div class="pihak-row"><span>Selanjutnya</span><span>:</span><span>"<strong>SPBU</strong>"</span></div>
-
-<p style="margin-top:12px;"><strong>Pihak Kedua</strong></p>
-<div class="pihak-row"><span>Nama</span><span>:</span><span>${mitraNama}</span></div>
-<div class="pihak-row"><span>PIC</span><span>:</span><span>${mitraPIC}</span></div>
-<div class="pihak-row"><span>Alamat</span><span>:</span><span>${mitraAlamat}</span></div>
-<div class="pihak-row"><span>Selanjutnya</span><span>:</span><span>"<strong>Mitra</strong>"</span></div>
-
-<p style="margin-top:10px;">
-  Para Pihak sepakat untuk mengadakan Perjanjian Kerjasama dengan ketentuan sebagai berikut:
-</p>
-
-<!-- PASAL 1 -->
-<div class="pasal">
-  <p class="pasal-title">PASAL 1 — MAKSUD DAN TUJUAN</p>
-  <p>
-    Perjanjian ini mengatur kerjasama pengadaan Bahan Bakar Minyak (BBM) antara SPBU dan Mitra
-    untuk keperluan operasional kendaraan armada Mitra melalui mekanisme kupon BBM digital
-    berbasis sistem BISON (Business Integrated System for Oil Network).
-  </p>
-</div>
-
-<!-- PASAL 2 -->
-<div class="pasal">
-  <p class="pasal-title">PASAL 2 — JANGKA WAKTU</p>
-  <ol>
-    <li>Perjanjian ini berlaku selama <strong>1 (satu) tahun</strong>, terhitung sejak tanggal
-      <strong>${tglMulai}</strong> sampai dengan <strong>${tglSelesai}</strong>.</li>
-    <li>Perjanjian dapat diperpanjang atas kesepakatan tertulis kedua pihak sebelum masa berlaku berakhir.</li>
-  </ol>
-</div>
-
-<!-- PASAL 3 -->
-<div class="pasal">
-  <p class="pasal-title">PASAL 3 — RUANG LINGKUP</p>
-  <ol>
-    <li>SPBU menyediakan BBM untuk kendaraan armada Mitra sesuai ketersediaan produk.</li>
-    ${vol !== '—' ? `<li>Estimasi kebutuhan BBM Mitra: <strong>${vol}</strong>.</li>` : ''}
-    <li>Jenis BBM yang dilayani mengacu pada produk yang tersedia dan disepakati para pihak.</li>
-    <li>Transaksi pengisian BBM dilakukan di lokasi SPBU <strong>${spbuNama}</strong>.</li>
-  </ol>
-</div>
-
-<!-- PASAL 4 -->
-<div class="pasal">
-  <p class="pasal-title">PASAL 4 — MEKANISME KUPON DAN PEMBAYARAN</p>
-  <ol>
-    <li>Mitra melakukan pembayaran deposit di muka ke rekening SPBU sebelum BBM dapat diambil.</li>
-    <li>SPBU menerbitkan kupon BBM digital melalui sistem BISON senilai jumlah yang dibayarkan.</li>
-    <li>Setiap kupon memiliki kode unik 6 karakter dan bernilai nominal Rupiah.</li>
-    <li>Volume BBM yang diterima menyesuaikan harga BBM yang berlaku pada saat pengambilan.</li>
-    <li>Satu kupon hanya dapat digunakan untuk satu kali transaksi secara penuh.</li>
-    <li>Kupon yang hilang dapat diterbitkan ulang dengan prosedur verifikasi kepada SPBU.</li>
-    <li>Kupon tidak dapat diperjualbelikan kepada pihak ketiga di luar armada Mitra.</li>
-  </ol>
-</div>
-
-<!-- PASAL 5 -->
-<div class="pasal">
-  <p class="pasal-title">PASAL 5 — HAK DAN KEWAJIBAN</p>
-  <ol>
-    <li>SPBU wajib melayani pengisian BBM kepada setiap kendaraan Mitra yang menunjukkan kupon valid.</li>
-    <li>SPBU berhak menolak kupon yang tidak valid, sudah dipakai, atau telah di-void.</li>
-    <li>Mitra wajib memastikan kupon hanya digunakan oleh armada kendaraan yang sah.</li>
-    <li>Mitra berhak memantau riwayat penggunaan kupon melalui portal BISON.</li>
-    <li>Segala penyalahgunaan kupon oleh pihak yang tidak berwenang menjadi tanggung jawab Mitra.</li>
-  </ol>
-</div>
-
-<!-- PASAL 6 (ketentuan khusus jika ada) -->
-${ketentuan ? `<div class="pasal">
-  <p class="pasal-title">PASAL 6 — KETENTUAN KHUSUS</p>
-  <p>${ketentuan}</p>
-</div>` : ''}
-
-<!-- PASAL PENUTUP -->
-<div class="pasal">
-  <p class="pasal-title">PASAL ${ketentuan ? '7' : '6'} — PENUTUP</p>
-  <ol>
-    <li>Perjanjian ini dibuat dalam 2 (dua) rangkap asli yang masing-masing bermaterai cukup dan
-      mempunyai kekuatan hukum yang sama.</li>
-    <li>Hal-hal yang belum diatur dalam perjanjian ini akan diselesaikan secara musyawarah
-      untuk mufakat.</li>
-  </ol>
-</div>
-
-<!-- TANDA TANGAN -->
-<div class="ttd-wrap">
-  <div class="ttd-box">
-    <div class="ttd-label">Pihak Pertama<br/><strong>${spbuNama}</strong></div>
-    <div class="ttd-line">Pengelola SPBU</div>
-    <div class="ttd-jabatan">PT Pertamina Patra Niaga Sultra</div>
-  </div>
-  <div class="ttd-box">
-    <div class="ttd-label">Pihak Kedua<br/><strong>${mitraNama}</strong></div>
-    <div class="ttd-line">${penanda}</div>
-    <div class="ttd-jabatan">${jabatan}</div>
-  </div>
-</div>
-
-<div class="footer-note">
-  Dokumen ini digenerate oleh sistem BISON · ${tglCetak} · ${k.nomor_kontrak}
-</div>
-
+</div><!-- end .doc-wrap -->
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=900,height=800');
+  const win = window.open('', '_blank', 'width=960,height=860');
   if (win) {
     win.document.write(html);
     win.document.close();
   } else {
-    showToast('Popup diblokir browser — izinkan popup untuk tab ini', true);
+    showToast('Popup diblokir browser — izinkan popup untuk membuka dokumen kontrak', true);
   }
 }
 
