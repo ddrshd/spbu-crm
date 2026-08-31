@@ -837,7 +837,7 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
         <div style="font-size:16px;font-weight:700;color:var(--text);">Daftar Mitra B2B</div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="mitra-view-desc">Kelola mitra, kupon, dan kendaraan</div>
       </div>
-      <button onclick="showModalMitraViewBaru()"
+      <button onclick="showModalTambahMitra()"
         style="display:flex;align-items:center;gap:8px;padding:10px 20px;
         background:var(--green);color:#fff;border:none;border-radius:var(--radius);
         font-size:13px;font-weight:700;cursor:pointer;font-family:var(--ff);">
@@ -876,16 +876,11 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       <div class="toolbar">
         <div>
           <div style="font-size:13px;font-weight:500">Kontrak Kerjasama Mitra</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="kontrak-desc"></div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="add-btn" onclick="showModalKontrakCepat()"
-            style="background:var(--green);border-color:var(--green);font-size:12px;white-space:nowrap;">
-            ⚡ Kontrak Cepat
-          </button>
-          <a href="kontrak.html" style="text-decoration:none;">
-            <button class="add-btn" style="font-size:12px;white-space:nowrap;">+ Lengkap</button>
-          </a>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="kontrak-desc">
+            Buat kontrak dari <button onclick="switchTab('mitra')"
+              style="font-size:12px;color:var(--blue);background:none;border:none;
+              cursor:pointer;padding:0;font-family:var(--ff);font-weight:500;">tab Mitra →</button>
+          </div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;" id="kontrak-summary"></div>
@@ -1280,6 +1275,61 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
           <tr><td colspan="7" class="loading-msg">Memuat data SPBU...</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- MODAL TAMBAH / EDIT MITRA -->
+  <div class="modal-overlay" id="modal-mitra-form" onclick="if(event.target===this)closeModalMitraForm()">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-handle"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div style="width:32px;height:32px;background:#EBF2FF;border-radius:8px;
+          display:flex;align-items:center;justify-content:center;font-size:16px;">🏢</div>
+        <div class="modal-title" style="margin:0;" id="modal-mitra-form-title">Tambah Mitra Baru</div>
+      </div>
+
+      <input type="hidden" id="mf-mitra-id"/>
+
+      <!-- Nama perusahaan — WAJIB -->
+      <div class="field-group">
+        <label class="field-label">Nama Perusahaan / Instansi <span style="color:var(--red)">*</span></label>
+        <input class="field-input" id="mf-nama" type="text"
+          placeholder="PT. Contoh Perusahaan" autocomplete="off"/>
+      </div>
+
+      <!-- Nama PIC — WAJIB -->
+      <div class="field-group">
+        <label class="field-label">Nama PIC <span style="color:var(--red)">*</span></label>
+        <input class="field-input" id="mf-pic" type="text"
+          placeholder="Nama kontak penanggung jawab"/>
+      </div>
+
+      <!-- No HP & Email — opsional -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field-group">
+          <label class="field-label">No. HP <span style="font-size:10px;font-weight:400;color:var(--text-muted);">(opsional)</span></label>
+          <input class="field-input" id="mf-telp" type="tel" placeholder="08xxxxxxxxxx"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Email <span style="font-size:10px;font-weight:400;color:var(--text-muted);">(opsional)</span></label>
+          <input class="field-input" id="mf-email" type="email" placeholder="pic@perusahaan.com"/>
+        </div>
+      </div>
+
+      <!-- Alamat — opsional -->
+      <div class="field-group">
+        <label class="field-label">Alamat <span style="font-size:10px;font-weight:400;color:var(--text-muted);">(opsional)</span></label>
+        <input class="field-input" id="mf-alamat" type="text" placeholder="Alamat perusahaan"/>
+      </div>
+
+      <div class="error-msg" id="mf-error" style="display:none;margin-bottom:12px;"></div>
+
+      <div class="modal-row">
+        <button class="modal-btn cancel" onclick="closeModalMitraForm()">Batal</button>
+        <button class="modal-btn confirm" onclick="submitMitraForm()">
+          <span id="mf-submit-label">Simpan Mitra</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1814,50 +1864,70 @@ function renderUserTopbar() {
 function applyRoleTabs() {
   const role = currentProfile.role;
 
-  // Manajemen User — manager & super_admin
+  // ── Sembunyikan semua tab opsional dulu ──────────────────
+  ['tab-mitra','tab-kontrak','tab-users','tab-harga','tab-spbu','tab-tagihan']
+    .forEach(id => document.getElementById(id)?.classList.add('hidden'));
+
+  // ── Kolom tabel riwayat ───────────────────────────────────
   if (role === 'manager' || role === 'super_admin') {
-    document.getElementById('tab-users').classList.remove('hidden');
-    document.getElementById('th-aksi').style.display = '';
-    document.getElementById('th-spbu').style.display = ''; // kolom SPBU di riwayat
+    document.getElementById('th-aksi').style.display  = '';
+    document.getElementById('th-spbu').style.display  = '';
   }
 
-  // Tab Tagihan — takeout sementara (fitur invoice bulanan disederhanakan)
-  // if (role === 'manager' || role === 'super_admin') {
-  //   document.getElementById('tab-tagihan').classList.remove('hidden');
-  // }
-
-  // Tab Mitra — hub utama onboarding (manager & super_admin)
-  if (role === 'manager' || role === 'super_admin') {
-    document.getElementById('tab-mitra').classList.remove('hidden');
+  // ── Tab per role ──────────────────────────────────────────
+  if (role === 'operator') {
+    // Operator: INPUT | RIWAYAT | DASHBOARD (sudah visible by default)
+    // Tidak ada tab tambahan
   }
 
-  // Kontrak Mitra + Kendaraan — manager & super_admin
   if (role === 'manager' || role === 'super_admin') {
-    document.getElementById('tab-kontrak').classList.remove('hidden');
-    // Tombol tambah kendaraan: hanya super_admin
-    // Manager: tracking opsional, tidak perlu akses tambah kendaraan dari flow kontrak
+    // Manager/SA: DASHBOARD | MITRA | KONTRAK | INPUT | RIWAYAT | USERS | PRODUK
+    ['tab-mitra','tab-kontrak','tab-users','tab-harga'].forEach(id =>
+      document.getElementById(id)?.classList.remove('hidden')
+    );
+
+    // Kendaraan: super_admin bisa tambah, manager tidak
     const btnKend = document.getElementById('btn-tambah-kendaraan');
     if (btnKend) btnKend.style.display = role === 'super_admin' ? '' : 'none';
-  }
-  if (role === 'manager' || role === 'super_admin') {
-    document.getElementById('tab-harga').classList.remove('hidden');
+
+    // Produk label
     if (role === 'manager') {
-      document.getElementById('harga-subtitle').textContent = 'Produk aktif yang tersedia di SPBU Anda';
+      const el = document.getElementById('harga-subtitle');
+      if (el) el.textContent = 'Produk aktif yang tersedia di SPBU Anda';
     }
   }
 
-  // Data SPBU — super_admin only
   if (role === 'super_admin') {
-    document.getElementById('tab-spbu').classList.remove('hidden');
+    document.getElementById('tab-spbu')?.classList.remove('hidden');
     document.getElementById('filter-manager-btn')?.classList.remove('hidden');
-    // Tombol tambah/edit kendaraan mitra: manager & super_admin
     const btnKend = document.getElementById('btn-tambah-kendaraan');
     if (btnKend) btnKend.style.display = '';
   } else {
     document.getElementById('filter-manager-btn')?.classList.add('hidden');
   }
 
-  // Update deskripsi manajemen user
+  // ── Reorder tab secara visual per role ────────────────────
+  const tabBar = document.querySelector('.tabs');
+  if (tabBar && (role === 'manager' || role === 'super_admin')) {
+    // Urutan: dashboard → mitra → kontrak → input → history → users → harga → spbu
+    const order = ['tab-dashboard','tab-mitra','tab-kontrak','tab-input',
+                   'tab-history','tab-users','tab-harga','tab-spbu','tab-tagihan'];
+    order.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) tabBar.appendChild(el);
+    });
+    // Default tab manager: Dashboard
+    switchTab('dashboard');
+  }
+
+  // ── Deskripsi user management ─────────────────────────────
+  const userSubtitle = document.getElementById('user-subtitle');
+  if (userSubtitle) {
+    userSubtitle.textContent = role === 'manager'
+      ? 'Kelola operator SPBU Anda'
+      : 'Kelola semua operator dan manager seluruh SPBU Sultra';
+  }
+
   const desc = document.getElementById('users-desc');
   if (desc) {
     desc.textContent = role === 'manager'
@@ -2532,51 +2602,66 @@ async function loadHistory() {
 
 // ─── VIEW MITRA ───────────────────────────────────────────────
 
-let allMitraData = [];
+let allMitraData  = [];
+let mitraKontrakMap = {}; // mitra_id → kontrak aktif atau null
+let mitraKuponMap   = {}; // mitra_id → { tersedia, dipakai, nilaiTersedia }
 
 async function loadMitraView() {
   const listEl = document.getElementById('mitra-view-list');
   if (listEl) listEl.innerHTML = '<div class="loading-msg">Memuat...</div>';
 
-  let q = sb.from('mitra')
-    .select('id, nama_perusahaan, pic_nama, pic_telp, status, mekanisme_bayar, created_at')
-    .order('nama_perusahaan');
-  if (currentProfile.role === 'manager' && currentSpbu)
-    q = q.eq('spbu_id', currentSpbu.id);
-  const { data: mitras, error } = await q;
+  try {
+    // Query mitra
+    let q = sb.from('mitra')
+      .select('id, nama_perusahaan, pic_nama, pic_telp, pic_email, alamat, status, created_at')
+      .order('nama_perusahaan');
+    if (currentProfile.role === 'manager' && currentSpbu)
+      q = q.eq('spbu_id', currentSpbu.id);
+    const { data: mitras } = await q;
+    allMitraData = (mitras || []);
 
-  if (error) {
-    listEl.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`;
-    return;
-  }
-
-  allMitraData = mitras || [];
-
-  // Hitung kupon per mitra
-  let kuponStat = {};
-  if (allMitraData.length) {
     const ids = allMitraData.map(m => m.id);
+    if (!ids.length) { renderMitraView([], {}, {}); return; }
+
+    // Query kontrak aktif per mitra
+    const { data: kontraks } = await sb.from('kontrak_mitra')
+      .select('mitra_id, nomor_kontrak, status, tanggal_selesai')
+      .in('mitra_id', ids)
+      .eq('status', 'aktif');
+    mitraKontrakMap = {};
+    (kontraks || []).forEach(k => { mitraKontrakMap[k.mitra_id] = k; });
+
+    // Query kupon per mitra
     const { data: kupons } = await sb.from('kupon')
       .select('mitra_id, nominal_rupiah, status')
       .in('mitra_id', ids);
+    mitraKuponMap = {};
     (kupons || []).forEach(k => {
-      if (!kuponStat[k.mitra_id]) kuponStat[k.mitra_id] = { tersedia: 0, dipakai: 0, nilaiTersedia: 0 };
-      if (k.status === 'tersedia') { kuponStat[k.mitra_id].tersedia++; kuponStat[k.mitra_id].nilaiTersedia += k.nominal_rupiah; }
-      if (k.status === 'dipakai')  kuponStat[k.mitra_id].dipakai++;
+      if (!mitraKuponMap[k.mitra_id]) mitraKuponMap[k.mitra_id] = { tersedia: 0, dipakai: 0, nilaiTersedia: 0 };
+      if (k.status === 'tersedia') {
+        mitraKuponMap[k.mitra_id].tersedia++;
+        mitraKuponMap[k.mitra_id].nilaiTersedia += k.nominal_rupiah;
+      }
+      if (k.status === 'dipakai') mitraKuponMap[k.mitra_id].dipakai++;
     });
+
+    document.getElementById('mitra-view-desc').textContent =
+      `${allMitraData.filter(m => m.status === 'aktif').length} mitra aktif`;
+
+    renderMitraView(allMitraData, mitraKontrakMap, mitraKuponMap);
+  } catch(e) {
+    if (listEl) listEl.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
   }
-
-  document.getElementById('mitra-view-desc').textContent =
-    `${allMitraData.length} mitra terdaftar`;
-
-  renderMitraView(allMitraData, kuponStat);
 }
 
-function renderMitraView(mitras, kuponStat) {
+function renderMitraView(mitras, kontrakMap, kuponMap) {
   const listEl = document.getElementById('mitra-view-list');
   if (!listEl) return;
 
-  if (!mitras.length) {
+  const aktifList = mitras.filter(m => m.status === 'aktif');
+  const nonaktifList = mitras.filter(m => m.status !== 'aktif');
+
+  if (!aktifList.length && !nonaktifList.length) {
     listEl.innerHTML = `
       <div style="text-align:center;padding:48px 20px;">
         <div style="font-size:40px;margin-bottom:12px;">🏢</div>
@@ -2584,7 +2669,7 @@ function renderMitraView(mitras, kuponStat) {
         <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">
           Mulai onboarding dengan menambahkan mitra pertama.
         </div>
-        <button onclick="showModalMitraViewBaru()"
+        <button onclick="showModalTambahMitra()"
           style="padding:10px 24px;background:var(--green);color:#fff;border:none;
           border-radius:var(--radius);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--ff);">
           + Tambah Mitra Pertama
@@ -2593,78 +2678,102 @@ function renderMitraView(mitras, kuponStat) {
     return;
   }
 
-  listEl.innerHTML = mitras.map(m => {
-    const stat = kuponStat?.[m.id] || { tersedia: 0, dipakai: 0, nilaiTersedia: 0 };
-    const aktif = m.status === 'aktif';
+  const renderKartu = (m) => {
+    const stat    = kuponMap?.[m.id]  || { tersedia: 0, dipakai: 0, nilaiTersedia: 0 };
+    const kontrak = kontrakMap?.[m.id] || null;
+    const aktif   = m.status === 'aktif';
     const inisial = m.nama_perusahaan.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+    const sudahBerkontrak = !!kontrak;
 
     return `
-    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);
-      padding:14px 16px;margin-bottom:10px;transition:box-shadow .15s;"
-      onmouseenter="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'"
-      onmouseleave="this.style.boxShadow='none'">
-
+    <div style="background:#fff;border:1px solid ${aktif ? 'var(--border)' : '#e5e7eb'};
+      border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;
+      opacity:${aktif ? 1 : 0.65};">
       <div style="display:flex;align-items:flex-start;gap:12px;">
 
-        <!-- Avatar inisial -->
-        <div style="width:40px;height:40px;border-radius:10px;background:var(--blue);
-          color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;
-          justify-content:center;flex-shrink:0;">${inisial}</div>
+        <!-- Avatar -->
+        <div style="width:40px;height:40px;border-radius:10px;
+          background:${aktif ? 'var(--blue)' : '#9ca3af'};
+          color:#fff;font-size:13px;font-weight:700;
+          display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${inisial}
+        </div>
 
-        <!-- Info mitra -->
+        <!-- Info -->
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">
             <span style="font-size:14px;font-weight:600;color:var(--text);">${m.nama_perusahaan}</span>
-            ${!aktif ? `<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;
-              background:#fee2e2;color:#991b1b;">Nonaktif</span>` : ''}
+            ${!aktif ? `<span style="font-size:10px;font-weight:600;padding:1px 7px;
+              border-radius:20px;background:#fee2e2;color:#991b1b;">Nonaktif</span>` : ''}
+            ${sudahBerkontrak ? `<span style="font-size:10px;padding:1px 7px;
+              border-radius:20px;background:#dcfce7;color:#166534;font-weight:500;">
+              📋 ${kontrak.nomor_kontrak}</span>` : ''}
           </div>
           <div style="font-size:12px;color:var(--text-muted);">
             ${m.pic_nama || '—'}${m.pic_telp ? ' · ' + m.pic_telp : ''}
           </div>
-
           <!-- Kupon summary -->
-          <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:4px;font-size:11px;">
-              <span style="width:7px;height:7px;border-radius:50%;background:var(--blue);display:inline-block;"></span>
-              <span style="color:var(--text-muted);">Tersedia:</span>
-              <span style="font-weight:600;color:var(--text);">${stat.tersedia} kupon
-                ${stat.nilaiTersedia > 0 ? '(Rp ' + stat.nilaiTersedia.toLocaleString('id-ID') + ')' : ''}
-              </span>
+          ${aktif ? `<div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+            <div style="font-size:11px;color:var(--text-muted);">
+              Kupon aktif: <strong style="color:var(--blue);">${stat.tersedia} lembar
+              ${stat.nilaiTersedia > 0 ? '· Rp '+stat.nilaiTersedia.toLocaleString('id-ID') : ''}</strong>
             </div>
-            <div style="display:flex;align-items:center;gap:4px;font-size:11px;">
-              <span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;"></span>
-              <span style="color:var(--text-muted);">Dipakai:</span>
-              <span style="font-weight:600;color:var(--text);">${stat.dipakai} kupon</span>
+            <div style="font-size:11px;color:var(--text-muted);">
+              Terpakai: <strong style="color:var(--green);">${stat.dipakai}</strong>
             </div>
-          </div>
+          </div>` : ''}
         </div>
 
-        <!-- Aksi per baris -->
+        <!-- Aksi -->
+        ${aktif ? `
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+          <!-- Generate kupon — aksi utama -->
           <button onclick="showModalGenerateKuponForMitra('${m.id}','${m.nama_perusahaan.replace(/'/g,"\\'")}')"
             style="padding:7px 14px;background:var(--green);color:#fff;border:none;
             border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;
             font-family:var(--ff);white-space:nowrap;">
             🎫 Generate Kupon
           </button>
+          <!-- Aksi sekunder -->
           <div style="display:flex;gap:5px;">
-            <button onclick="showModalKontrakCepatForMitra('${m.id}','${m.nama_perusahaan.replace(/'/g,"\\'")}')"
-              style="flex:1;padding:5px 10px;background:transparent;border:1px solid var(--border);
-              border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:var(--ff);
-              color:var(--text-muted);white-space:nowrap;">
-              📋 Kontrak
-            </button>
-            <button onclick="lihatKuponMitra('${m.id}','${m.nama_perusahaan.replace(/'/g,"\\'")}')"
-              style="flex:1;padding:5px 10px;background:transparent;border:1px solid var(--border);
-              border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:var(--ff);
-              color:var(--text-muted);white-space:nowrap;">
-              📊 Kupon
-            </button>
+            ${sudahBerkontrak
+              ? `<button onclick="switchTab('kontrak')"
+                  title="Lihat kontrak ${kontrak.nomor_kontrak}"
+                  style="flex:1;padding:5px 8px;background:transparent;border:1px solid var(--border);
+                  border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:var(--ff);
+                  color:var(--text-muted);">📋 Kontrak</button>`
+              : `<button onclick="showModalKontrakCepatForMitra('${m.id}','${m.nama_perusahaan.replace(/'/g,"\\'")}')"
+                  title="Buat kontrak untuk mitra ini"
+                  style="flex:1;padding:5px 8px;background:transparent;border:1px solid var(--green);
+                  border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:var(--ff);
+                  color:var(--green);font-weight:500;">+ Kontrak</button>`}
+            <button onclick="showModalEditMitra('${m.id}')"
+              title="Edit data mitra"
+              style="padding:5px 8px;background:transparent;border:1px solid var(--border);
+              border-radius:var(--radius);font-size:11px;cursor:pointer;color:var(--text-muted);">✏️</button>
+            <button onclick="konfirmasiNonaktifMitra('${m.id}','${m.nama_perusahaan.replace(/'/g,"\\'")}')"
+              title="Nonaktifkan mitra"
+              style="padding:5px 8px;background:transparent;border:1px solid var(--border);
+              border-radius:var(--radius);font-size:11px;cursor:pointer;color:var(--red);">🗑</button>
           </div>
-        </div>
+        </div>` : `
+        <div style="flex-shrink:0;">
+          <button onclick="reaktifkanMitra('${m.id}','${m.nama_perusahaan.replace(/'/g,"\\'")}')"
+            style="padding:6px 12px;background:transparent;border:1px solid var(--border);
+            border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:var(--ff);
+            color:var(--text-muted);">Aktifkan kembali</button>
+        </div>`}
       </div>
     </div>`;
-  }).join('');
+  };
+
+  listEl.innerHTML =
+    aktifList.map(renderKartu).join('') +
+    (nonaktifList.length ? `
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);
+        letter-spacing:.05em;text-transform:uppercase;margin:16px 0 8px;">
+        Nonaktif (${nonaktifList.length})
+      </div>` + nonaktifList.map(renderKartu).join('') : '');
 }
 
 function filterMitraView(q) {
@@ -2674,48 +2783,146 @@ function filterMitraView(q) {
         m.nama_perusahaan.toLowerCase().includes(keyword) ||
         (m.pic_nama || '').toLowerCase().includes(keyword)
       );
-  renderMitraView(filtered, {}); // kuponStat tidak di-pass saat filter — acceptable tradeoff
+  renderMitraView(filtered, mitraKontrakMap, mitraKuponMap);
 }
 
-// Modal tambah mitra baru dari view Mitra
-function showModalMitraViewBaru() {
-  // Reuse modal yang sudah ada di tab Kontrak
-  // (modal-mitra-baru sudah ada, dengan fungsi showModalMitraBaru)
-  // Perlu pastikan modal mitra baru bisa dipanggil dari tab Mitra
-  if (typeof showModalMitraBaru === 'function') {
-    showModalMitraBaru();
-  } else {
-    // Fallback: arahkan ke kontrak.html
-    window.location.href = 'kontrak.html';
+// Modal tambah mitra baru dari tab Mitra
+function showModalTambahMitra() {
+  document.getElementById('modal-mitra-form-title').textContent = 'Tambah Mitra Baru';
+  document.getElementById('mf-mitra-id').value = '';
+  document.getElementById('mf-nama').value     = '';
+  document.getElementById('mf-pic').value      = '';
+  document.getElementById('mf-telp').value     = '';
+  document.getElementById('mf-email').value    = '';
+  document.getElementById('mf-alamat').value   = '';
+  document.getElementById('mf-error').style.display = 'none';
+  document.getElementById('mf-submit-label').textContent = 'Simpan Mitra';
+  document.getElementById('modal-mitra-form').classList.add('show');
+  setTimeout(() => document.getElementById('mf-nama').focus(), 100);
+}
+
+async function showModalEditMitra(mitraId) {
+  // Ambil data mitra dari cache atau DB
+  let m = allMitraData.find(x => x.id === mitraId);
+  if (!m) {
+    const { data } = await sb.from('mitra').select('*').eq('id', mitraId).single();
+    m = data;
+  }
+  if (!m) { showToast('Data mitra tidak ditemukan', true); return; }
+
+  document.getElementById('modal-mitra-form-title').textContent = 'Edit Data Mitra';
+  document.getElementById('mf-mitra-id').value = m.id;
+  document.getElementById('mf-nama').value     = m.nama_perusahaan || '';
+  document.getElementById('mf-pic').value      = m.pic_nama  || '';
+  document.getElementById('mf-telp').value     = m.pic_telp  || '';
+  document.getElementById('mf-email').value    = m.pic_email || '';
+  document.getElementById('mf-alamat').value   = m.alamat    || '';
+  document.getElementById('mf-error').style.display = 'none';
+  document.getElementById('mf-submit-label').textContent = 'Simpan Perubahan';
+  document.getElementById('modal-mitra-form').classList.add('show');
+  setTimeout(() => document.getElementById('mf-nama').focus(), 100);
+}
+
+function closeModalMitraForm() {
+  document.getElementById('modal-mitra-form').classList.remove('show');
+}
+
+async function submitMitraForm() {
+  const mitraId = document.getElementById('mf-mitra-id').value;
+  const nama    = document.getElementById('mf-nama').value.trim();
+  const pic     = document.getElementById('mf-pic').value.trim();
+  const telp    = document.getElementById('mf-telp').value.trim();
+  const email   = document.getElementById('mf-email').value.trim();
+  const alamat  = document.getElementById('mf-alamat').value.trim();
+  const errEl   = document.getElementById('mf-error');
+  const btn     = document.getElementById('mf-submit-label');
+
+  errEl.style.display = 'none';
+  if (!nama) { errEl.textContent = 'Nama perusahaan/instansi wajib diisi'; errEl.style.display = 'block'; return; }
+  if (!pic)  { errEl.textContent = 'Nama PIC wajib diisi'; errEl.style.display = 'block'; return; }
+
+  btn.textContent = 'Menyimpan...';
+
+  try {
+    const payload = {
+      nama_perusahaan: nama,
+      pic_nama:        pic,
+      pic_telp:        telp  || null,
+      pic_email:       email || null,
+      alamat:          alamat || null,
+      status:          'aktif',
+    };
+
+    if (mitraId) {
+      // Edit
+      const { error } = await sb.from('mitra').update(payload).eq('id', mitraId);
+      if (error) throw error;
+      showToast('Data mitra berhasil diperbarui');
+    } else {
+      // Tambah baru
+      const spbuId = currentSpbu?.id;
+      if (!spbuId) throw new Error('SPBU tidak terdeteksi');
+      payload.spbu_id = spbuId;
+      payload.mekanisme_bayar = 'tunai';
+      const { error } = await sb.from('mitra').insert(payload);
+      if (error) throw error;
+      showToast('Mitra baru berhasil ditambahkan');
+    }
+
+    closeModalMitraForm();
+    loadMitraView();
+
+  } catch(e) {
+    errEl.textContent = 'Gagal: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = mitraId ? 'Simpan Perubahan' : 'Simpan Mitra';
   }
 }
 
-// Generate kupon langsung dari baris mitra — pre-fill mitra di modal
+async function konfirmasiNonaktifMitra(mitraId, mitraNama) {
+  if (!confirm(`Nonaktifkan mitra "${mitraNama}"?\n\nMitra tidak akan bisa generate kupon baru. Data dan riwayat kupon tetap tersimpan.`)) return;
+  const { error } = await sb.from('mitra').update({ status: 'nonaktif' }).eq('id', mitraId);
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(`${mitraNama} berhasil dinonaktifkan`);
+  loadMitraView();
+}
+
+async function reaktifkanMitra(mitraId, mitraNama) {
+  if (!confirm(`Aktifkan kembali mitra "${mitraNama}"?`)) return;
+  const { error } = await sb.from('mitra').update({ status: 'aktif' }).eq('id', mitraId);
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(`${mitraNama} berhasil diaktifkan kembali`);
+  loadMitraView();
+}
+
+// Reuse showModalMitraViewBaru sebagai alias
+function showModalMitraViewBaru() { showModalTambahMitra(); }
+
+// Generate kupon langsung dari baris mitra
 function showModalGenerateKuponForMitra(mitraId, mitraNama) {
-  // Pastikan tab kupon sudah di-init, lalu buka modal generate dengan mitra pre-selected
-  kuponMitraList = []; // reset cache agar reload
+  kuponMitraList = [];
   initKuponTab().then(() => {
     showModalGenerateKupon();
-    // Pre-select mitra di dropdown modal generate
-    const genSel = document.getElementById('gen-kupon-mitra');
-    if (genSel) { genSel.value = mitraId; }
+    setTimeout(() => {
+      const genSel = document.getElementById('gen-kupon-mitra');
+      if (genSel) genSel.value = mitraId;
+    }, 50);
   });
 }
 
 // Kontrak cepat dari baris mitra — pre-fill mitra
 function showModalKontrakCepatForMitra(mitraId, mitraNama) {
-  showModalKontrakCepat().then?.(() => {}) || showModalKontrakCepat();
-  // Pre-select mitra setelah modal terbuka
+  showModalKontrakCepat().finally?.(() => {});
   setTimeout(() => {
     const sel = document.getElementById('kc-mitra-id');
     if (sel) sel.value = mitraId;
-  }, 300);
+  }, 350);
 }
 
-// Lihat kupon mitra — switch ke tab Kontrak sub-tab Kupon dengan filter mitra
-function lihatKuponMitra(mitraId, mitraNama) {
+// Lihat kupon mitra di tab Kontrak
+function lihatKuponMitra(mitraId) {
   switchTab('kontrak');
-  document.getElementById('tab-kontrak').click();
   setTimeout(() => {
     const subtabBtn = document.getElementById('subtab-kupon-btn');
     if (subtabBtn) switchSubtab('kupon', subtabBtn);
@@ -2726,8 +2933,7 @@ function lihatKuponMitra(mitraId, mitraNama) {
   }, 200);
 }
 
-// Setelah modal mitra baru berhasil simpan — refresh view mitra
-const _origSubmitMitraBaru = typeof submitMitraBaru === 'function' ? submitMitraBaru : null;
+
 
 
 
