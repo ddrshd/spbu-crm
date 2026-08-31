@@ -872,7 +872,7 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     </div>
 
     <!-- SUB: KONTRAK LIST -->
-    <div id="subview-kontrak">
+    <div id="subview-kontrak" style="display:none">
       <div class="toolbar">
         <div>
           <div style="font-size:13px;font-weight:500">Kontrak Kerjasama Mitra</div>
@@ -4308,9 +4308,25 @@ function startClock() {
 
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab)?.classList.add('active');
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + tab).classList.add('active');
+  document.getElementById('view-' + tab)?.classList.add('active');
+
+  // Reset semua subview kontrak saat pindah tab apapun
+  // Ini mencegah subview "bocor" ke tampilan tab lain
+  ['subview-kontrak','subview-kendaraan','subview-saldo','subview-kupon'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  // Jika masuk tab kontrak, tampilkan subview default (kontrak aktif)
+  if (tab === 'kontrak') {
+    const defaultSubview = document.getElementById('subview-kontrak');
+    if (defaultSubview) defaultSubview.style.display = '';
+    // Reset active pill ke Kontrak Aktif
+    document.querySelectorAll('#view-kontrak .period-pill').forEach(b => b.classList.remove('active'));
+    document.getElementById('subtab-kontrak-btn')?.classList.add('active');
+  }
+
   if (tab === 'history')   loadHistory();
   if (tab === 'dashboard') loadDashboard();
   if (tab === 'users')     loadUsers();
@@ -5008,10 +5024,15 @@ async function submitGenTagihan() {
 function switchSubtab(tab, btn) {
   document.querySelectorAll('#view-kontrak .period-pill').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('subview-kontrak').style.display   = tab === 'kontrak'   ? '' : 'none';
-  document.getElementById('subview-kendaraan').style.display = tab === 'kendaraan' ? '' : 'none';
-  document.getElementById('subview-saldo').style.display     = tab === 'saldo'     ? '' : 'none';
-  document.getElementById('subview-kupon').style.display     = tab === 'kupon'     ? '' : 'none';
+  // Sembunyikan semua subview dulu
+  ['subview-kontrak','subview-kendaraan','subview-saldo','subview-kupon'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  // Tampilkan subview yang dipilih
+  const target = document.getElementById('subview-' + tab);
+  if (target) target.style.display = '';
+
   if (tab === 'kendaraan') { mitraListKend = []; loadKendaraanMitra(); }
   if (tab === 'saldo')     { loadSaldoDeposit(); }
   if (tab === 'kupon')     { initKuponTab(); }
