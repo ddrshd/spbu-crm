@@ -5248,83 +5248,103 @@ async function loadKontrakList() {
   wrap.innerHTML = '<div class="loading-msg">Memuat kontrak...</div>';
 
   let q = sb.from('kontrak_mitra')
-    .select('*, mitra:mitra_id(nama_perusahaan,mekanisme_bayar,pic_nama), spbu:spbu_id(nama,kode)')
+    .select('*, mitra:mitra_id(nama_perusahaan, pic_nama, alamat), spbu:spbu_id(nama, kode)')
     .order('created_at', { ascending: false });
-
-  if (currentProfile.role === 'manager' && currentSpbu) {
+  if (currentProfile.role === 'manager' && currentSpbu)
     q = q.eq('spbu_id', currentSpbu.id);
-  }
 
   const { data: kontraks, error } = await q;
   if (error) { wrap.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`; return; }
+
+  const summEl = document.getElementById('kontrak-summary');
+
   if (!kontraks?.length) {
     wrap.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;">
       <div style="font-size:24px;margin-bottom:12px;">📄</div>
       <div style="font-weight:500;margin-bottom:6px;">Belum ada kontrak</div>
-      <div style="font-size:12px;color:var(--text-muted);">Buat kontrak baru lewat tombol di atas</div>
+      <div style="font-size:12px;color:var(--text-muted);">
+        Buat kontrak dari <button onclick="switchTab('mitra')"
+          style="font-size:12px;color:var(--blue);background:none;border:none;
+          cursor:pointer;padding:0;font-family:var(--ff);">tab Mitra →</button>
+      </div>
     </div>`;
-    document.getElementById('kontrak-summary').innerHTML = '';
-    return;
+    summEl.innerHTML = ''; return;
   }
 
-  // Hitung tagihan bulan ini per mitra
-  const now = new Date();
-  const bulanStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const bulanEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString();
-
+  // Query kupon stats per mitra
   const mitraIds = [...new Set(kontraks.map(k => k.mitra_id))];
-  const { data: trxBulan } = await sb.from('transaksi')
-    .select('mitra_id, total, volume')
-    .in('mitra_id', mitraIds)
-    .is('deleted_at', null)
-    .gte('created_at', bulanStart)
-    .lte('created_at', bulanEnd);
+  const { data: kupons } = await sb.from('kupon')
+    .select('mitra_id, nominal_rupiah, status, dipakai_nopol, dipakai_at')
+    .in('mitra_id', mitraIds);
 
-  // Agregasi per mitra
-  const tagihan = {};
-  (trxBulan || []).forEach(t => {
-    if (!tagihan[t.mitra_id]) tagihan[t.mitra_id] = { total: 0, vol: 0, trx: 0 };
-    tagihan[t.mitra_id].total += parseInt(t.total);
-    tagihan[t.mitra_id].vol   += parseFloat(t.volume);
-    tagihan[t.mitra_id].trx++;
+  // Agregasi kupon per mitra
+  const kuponStats = {};
+  (kupons || []).forEach(k => {
+    if (!kuponStats[k.mitra_id]) kuponStats[k.mitra_id] = {
+      tersedia: 0, dipakai: 0, nilaiTersedia: 0, nilaiDipakai: 0, volTotal: 0
+    };
+    if (k.status === 'tersedia') {
+      kuponStats[k.mitra_id].tersedia++;
+      kuponStats[k.mitra_id].nilaiTersedia += k.nominal_rupiah;
+    }
+    if (k.status === 'dipakai') {
+      kuponStats[k.mitra_id].dipakai++;
+      kuponStats[k.mitra_id].nilaiDipakai += k.nominal_rupiah;
+    }
   });
 
-  // Summary bar
-  const totalAktif  = kontraks.filter(k => k.status === 'aktif').length;
-  const totalTagihan = Object.values(tagihan).reduce((s, t) => s + t.total, 0);
-  const totalVol     = Object.values(tagihan).reduce((s, t) => s + t.vol, 0);
-  document.getElementById('kontrak-summary').innerHTML = `
+  // Query volume dari transaksi via kupon (nopol_mitra = true, mitra_id match)
+  const { data: trxData } = await sb.from('transaksi')
+    .select('mitra_id, volume, total')
+    .in('mitra_id', mitraIds)
+    .eq('nopol_mitra', true)
+    .is('deleted_at', null);
+  const trxStats = {};
+  (trxData || []).forEach(t => {
+    if (!trxStats[t.mitra_id]) trxStats[t.mitra_id] = { vol: 0, total: 0, trx: 0 };
+    trxStats[t.mitra_id].vol   += parseFloat(t.volume);
+    trxStats[t.mitra_id].total += parseInt(t.total);
+    trxStats[t.mitra_id].trx++;
+  });
+
+  // Summary bar — kupon based
+  const totalAktif     = kontraks.filter(k => k.status === 'aktif').length;
+  const totalDipakai   = Object.values(kuponStats).reduce((s, k) => s + k.nilaiDipakai, 0);
+  const totalTersedia  = Object.values(kuponStats).reduce((s, k) => s + k.nilaiTersedia, 0);
+  summEl.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;border-top:3px solid var(--blue);">
       <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">KONTRAK AKTIF</div>
       <div style="font-size:22px;font-weight:600;font-family:var(--fm);">${totalAktif}</div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">dari ${kontraks.length} total</div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;border-top:3px solid var(--green);">
-      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">TAGIHAN BULAN INI</div>
-      <div style="font-size:18px;font-weight:600;font-family:var(--fm);">Rp ${(totalTagihan/1e6).toFixed(2)}Jt</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${totalVol.toFixed(0)} liter</div>
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">KUPON TERPAKAI</div>
+      <div style="font-size:18px;font-weight:600;font-family:var(--fm);">Rp ${(totalDipakai/1e6).toFixed(2)}Jt</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">seluruh mitra</div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;border-top:3px solid #f59e0b;">
-      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">MITRA AKTIF</div>
-      <div style="font-size:22px;font-weight:600;font-family:var(--fm);">${mitraIds.length}</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">perusahaan/instansi</div>
+      <div style="font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px;">KUPON AKTIF</div>
+      <div style="font-size:18px;font-weight:600;font-family:var(--fm);">Rp ${(totalTersedia/1e6).toFixed(2)}Jt</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">siap digunakan</div>
     </div>`;
 
-  // Render daftar kontrak
+  const now = new Date();
   wrap.innerHTML = kontraks.map(k => {
-    const t = tagihan[k.mitra_id] || { total: 0, vol: 0, trx: 0 };
+    const ks = kuponStats[k.mitra_id] || { tersedia:0, dipakai:0, nilaiTersedia:0, nilaiDipakai:0 };
+    const ts = trxStats[k.mitra_id]   || { vol:0, total:0, trx:0 };
+
     const mulai   = new Date(k.tanggal_mulai);
     const selesai = new Date(k.tanggal_selesai);
-    const totalDays  = (selesai - mulai) / 864e5;
-    const usedDays   = Math.max(0, (now - mulai) / 864e5);
-    const progress   = Math.min(100, Math.round(usedDays / totalDays * 100));
-    const sisaHari   = Math.max(0, Math.ceil((selesai - now) / 864e5));
+    const totalDays = (selesai - mulai) / 864e5;
+    const usedDays  = Math.max(0, (now - mulai) / 864e5);
+    const progress  = Math.min(100, Math.round(usedDays / totalDays * 100));
+    const sisaHari  = Math.max(0, Math.ceil((selesai - now) / 864e5));
+    const fmtTgl    = d => new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+    const stClass   = { aktif:'st-aktif', expired:'st-expired', draft:'st-draft', suspended:'st-suspended' };
+    const stLabel   = { aktif:'Aktif', expired:'Expired', draft:'Draft', suspended:'Suspended' };
+    const progressColor = progress > 80 ? 'var(--red)' : progress > 60 ? '#d97706' : 'var(--blue)';
 
-    const fmtTgl = d => new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
-    const stClass = { aktif:'st-aktif', expired:'st-expired', draft:'st-draft', suspended:'st-suspended' };
-    const stLabel = { aktif:'Aktif', expired:'Expired', draft:'Draft', suspended:'Suspended' };
-
-    const progressColor = progress > 80 ? '#e02424' : progress > 60 ? '#d97706' : 'var(--blue)';
+    const isSA = currentProfile.role === 'super_admin';
 
     return `<div class="kontrak-item">
       <div class="kontrak-item-head">
@@ -5339,18 +5359,19 @@ async function loadKontrakList() {
         </div>
       </div>
 
+      <!-- Stats kupon — ganti tagihan -->
       <div class="kontrak-stats">
         <div class="kstat-box">
-          <div class="kstat-val">Rp ${(t.total/1e6).toFixed(1)}Jt</div>
-          <div class="kstat-label">Tagihan bulan ini</div>
+          <div class="kstat-val" style="color:var(--blue);">${ks.tersedia}</div>
+          <div class="kstat-label">Kupon aktif</div>
         </div>
         <div class="kstat-box">
-          <div class="kstat-val">${t.vol.toFixed(0)} L</div>
-          <div class="kstat-label">Volume bulan ini</div>
+          <div class="kstat-val" style="color:var(--green);">${ks.dipakai}</div>
+          <div class="kstat-label">Kupon dipakai</div>
         </div>
         <div class="kstat-box">
-          <div class="kstat-val">${t.trx}</div>
-          <div class="kstat-label">Transaksi</div>
+          <div class="kstat-val">${ts.vol.toFixed(0)} L</div>
+          <div class="kstat-label">Volume klaim</div>
         </div>
         <div class="kstat-box">
           <div class="kstat-val" style="color:${sisaHari < 30 ? 'var(--red)' : 'var(--text)'}">${sisaHari}</div>
@@ -5358,10 +5379,23 @@ async function loadKontrakList() {
         </div>
       </div>
 
+      <!-- Nilai kupon ringkas -->
+      <div style="display:flex;gap:16px;padding:8px 0;border-top:1px solid var(--border);margin-top:2px;flex-wrap:wrap;">
+        <div style="font-size:12px;color:var(--text-muted);">
+          Aktif: <strong style="color:var(--blue);font-family:var(--fm);">Rp ${ks.nilaiTersedia.toLocaleString('id-ID')}</strong>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);">
+          Terpakai: <strong style="color:var(--green);font-family:var(--fm);">Rp ${ks.nilaiDipakai.toLocaleString('id-ID')}</strong>
+        </div>
+        ${ts.trx > 0 ? `<div style="font-size:12px;color:var(--text-muted);">
+          Revenue: <strong style="font-family:var(--fm);">Rp ${ts.total.toLocaleString('id-ID')}</strong>
+        </div>` : ''}
+      </div>
+
       ${k.status === 'aktif' ? `
       <div class="kontrak-progress-wrap">
         <div class="kontrak-progress-label">
-          <span>Progress kontrak</span><span>${progress}%</span>
+          <span>Durasi kontrak</span><span>${progress}%</span>
         </div>
         <div class="kontrak-progress-bar">
           <div class="kontrak-progress-fill" style="width:${progress}%;background:${progressColor};"></div>
@@ -5369,27 +5403,23 @@ async function loadKontrakList() {
       </div>` : ''}
 
       <div class="kontrak-actions">
-        <button class="kontrak-btn primary" onclick="previewKontrak(${JSON.stringify(k).replace(/"/g,'&quot;')})">Preview Kontrak</button>
-        ${k.mitra?.mekanisme_bayar === 'invoice_bulanan'
-          ? `<button class="kontrak-btn" onclick="showToast('Tagihan bulan ini: Rp ${t.total.toLocaleString('id-ID')}')">Lihat Tagihan</button>`
-          : ''}
-        <a href="kontrak.html" style="text-decoration:none;"><button class="kontrak-btn">Buat Kontrak Baru</button></a>
-        ${currentProfile.role === 'super_admin' ? `
+        <button class="kontrak-btn primary"
+          onclick="showDetailKontrak(${JSON.stringify(k).replace(/"/g,'&quot;')})">
+          📄 Lihat & Cetak Kontrak
+        </button>
+        ${isSA ? `
           ${k.status === 'aktif'
             ? `<button class="kontrak-btn" style="border-color:#d97706;color:#d97706;"
-                onclick="stopKontrak('${k.id}','${(k.nomor_kontrak).replace(/'/g,"\\'")}','${(k.mitra?.nama_perusahaan||'').replace(/'/g,"\\'")}')">
-                ⏸ Stop Kontrak
-              </button>`
+                onclick="stopKontrak('${k.id}','${k.nomor_kontrak.replace(/'/g,"\\'")}','${(k.mitra?.nama_perusahaan||'').replace(/'/g,"\\'")}')">
+                ⏸ Stop</button>`
             : k.status === 'suspended'
             ? `<button class="kontrak-btn" style="border-color:var(--green);color:var(--green);"
-                onclick="reaktivasiKontrak('${k.id}','${(k.nomor_kontrak).replace(/'/g,"\\'")}')">
-                ▶ Reaktivasi
-              </button>`
+                onclick="reaktivasiKontrak('${k.id}','${k.nomor_kontrak.replace(/'/g,"\\'")}')">
+                ▶ Aktifkan</button>`
             : ''}
           <button class="kontrak-btn" style="border-color:var(--red);color:var(--red);"
-            onclick="showHapusKontrakModal('${k.id}','${(k.nomor_kontrak).replace(/'/g,"\\'")}','${(k.mitra?.nama_perusahaan||'').replace(/'/g,"\\'")}')">
-            🗑 Hapus
-          </button>
+            onclick="showHapusKontrakModal('${k.id}','${k.nomor_kontrak.replace(/'/g,"\\'")}','${(k.mitra?.nama_perusahaan||'').replace(/'/g,"\\'")}')">
+            🗑 Hapus</button>
         ` : ''}
       </div>
     </div>`;
@@ -5490,30 +5520,260 @@ async function submitKontrakCepat() {
 
 
 
-function previewKontrak(k) {
-  document.getElementById('modal-kontrak-judul').textContent = k.nomor_kontrak;
-  const fmtTgl = d => new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
-  document.getElementById('modal-kontrak-body').innerHTML = `
-    <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #111;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.06em;">PERJANJIAN KERJASAMA</div>
-      <div style="font-size:14px;font-weight:700;margin-top:4px;">PENGADAAN BAHAN BAKAR MINYAK (BBM)</div>
-      <div style="font-size:12px;color:#555;margin-top:6px;">Nomor: ${k.nomor_kontrak}</div>
+function showDetailKontrak(k) {
+  const fmtTgl = d => new Date(d).toLocaleDateString('id-ID',
+    { day:'numeric', month:'long', year:'numeric' });
+  const tglMulai   = fmtTgl(k.tanggal_mulai);
+  const tglSelesai = fmtTgl(k.tanggal_selesai);
+  const tglCetak   = fmtTgl(new Date());
+  const spbuNama   = k.spbu?.nama  || '—';
+  const mitraNama  = k.mitra?.nama_perusahaan || '—';
+  const mitraPIC   = k.mitra?.pic_nama  || '—';
+  const mitraAlamat= k.mitra?.alamat || '—';
+  const vol        = k.volume_estimasi
+    ? parseInt(k.volume_estimasi).toLocaleString('id-ID') + ' liter/bulan' : '—';
+  const ketentuan  = k.ketentuan_khusus || '';
+  const penanda    = k.disetujui_oleh   || '—';
+  const jabatan    = k.jabatan_penanda  || '—';
+
+  const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<title>Kontrak ${k.nomor_kontrak}</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm; }
+  @media print {
+    .no-print { display:none!important; }
+    body { margin:0; }
+  }
+  * { box-sizing:border-box; }
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12pt;
+    color: #111;
+    line-height: 1.6;
+    background: #fff;
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  .print-btn {
+    position: fixed; top: 16px; right: 16px; z-index: 99;
+    padding: 10px 22px; background: #1A56C8; color: #fff;
+    border: none; border-radius: 6px; font-size: 13px;
+    cursor: pointer; font-family: Arial, sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  }
+  /* Header */
+  .doc-header {
+    text-align: center;
+    padding-bottom: 14px;
+    border-bottom: 2px solid #111;
+    margin-bottom: 20px;
+  }
+  .logo-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px; margin-bottom: 10px;
+  }
+  .logo-badge {
+    background: #0D1B3E; color: #fff;
+    font-size: 18px; font-weight: 800;
+    padding: 6px 14px; border-radius: 6px;
+    letter-spacing: .06em;
+  }
+  .stripe {
+    height: 4px; display: flex; border-radius: 2px;
+    overflow: hidden; margin: 10px auto; width: 80%;
+  }
+  .stripe div { flex:1; }
+  h1 { font-size: 14pt; margin: 8px 0 4px; letter-spacing: .04em; }
+  .nomor { font-size: 11pt; color: #444; margin: 0; }
+  /* Sections */
+  h2 {
+    font-size: 11pt; text-decoration: underline;
+    margin: 18px 0 6px; text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  p { margin: 4px 0; text-align: justify; }
+  .pihak-row {
+    display: grid; grid-template-columns: 140px 8px 1fr;
+    gap: 2px 0; margin: 4px 0; font-size: 11pt;
+  }
+  /* Pasal */
+  .pasal { margin: 16px 0 4px; }
+  .pasal-title {
+    font-weight: bold; text-align: center;
+    font-size: 11pt; margin-bottom: 4px;
+  }
+  ol { margin: 4px 0 4px 20px; padding:0; }
+  ol li { margin-bottom: 3px; }
+  /* TTD */
+  .ttd-wrap {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 30px; margin-top: 40px;
+  }
+  .ttd-box { text-align: center; }
+  .ttd-label { font-size: 11pt; margin-bottom: 60px; }
+  .ttd-line {
+    border-top: 1px solid #111;
+    padding-top: 6px; font-size: 11pt;
+  }
+  .ttd-jabatan { font-size: 10pt; color: #444; }
+  .footer-note {
+    margin-top: 30px; font-size: 9pt; color: #666;
+    text-align: center; border-top: 1px solid #ddd; padding-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<button class="print-btn no-print" onclick="window.print()">🖨 Cetak / Simpan PDF</button>
+
+<!-- HEADER -->
+<div class="doc-header">
+  <div class="logo-row">
+    <div class="logo-badge">BISON</div>
+    <div style="text-align:left;">
+      <div style="font-size:10pt;font-family:Arial;">PT Pertamina Patra Niaga</div>
+      <div style="font-size:9pt;font-family:Arial;color:#555;">Sulawesi Tenggara · ${spbuNama}</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;margin-bottom:16px;">
-      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Pihak I (SPBU)</div><div style="font-weight:600;">${k.spbu?.nama || '—'}</div></div>
-      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Pihak II (Mitra)</div><div style="font-weight:600;">${k.mitra?.nama_perusahaan || '—'}</div></div>
-      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Tanggal Mulai</div><div>${fmtTgl(k.tanggal_mulai)}</div></div>
-      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Tanggal Selesai</div><div>${fmtTgl(k.tanggal_selesai)}</div></div>
-      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Estimasi Volume</div><div>${k.volume_estimasi ? k.volume_estimasi + ' L/bulan' : '—'}</div></div>
-      <div><div style="color:#888;font-size:10px;text-transform:uppercase;margin-bottom:3px;">Status</div><div style="font-weight:600;">${k.status}</div></div>
-    </div>
-    ${k.syarat_pembayaran ? `<div style="font-size:12px;margin-bottom:10px;"><span style="color:#888;font-size:10px;text-transform:uppercase;">Syarat Pembayaran: </span>${k.syarat_pembayaran}</div>` : ''}
-    ${k.ketentuan_khusus ? `<div style="font-size:12px;margin-bottom:10px;"><span style="color:#888;font-size:10px;text-transform:uppercase;">Ketentuan Khusus: </span>${k.ketentuan_khusus}</div>` : ''}
-    <div style="text-align:center;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px;margin-top:20px;">
-      Preview ringkas — gunakan Generator Kontrak untuk dokumen lengkap
-    </div>`;
-  document.getElementById('modal-preview-kontrak').style.display = 'block';
-  document.body.style.overflow = 'hidden';
+  </div>
+  <div class="stripe">
+    <div style="background:#E8182C;"></div>
+    <div style="background:#1A56C8;"></div>
+    <div style="background:#00A651;"></div>
+  </div>
+  <h1>PERJANJIAN KERJASAMA PENGADAAN BBM</h1>
+  <p class="nomor">Nomor: <strong>${k.nomor_kontrak}</strong></p>
+</div>
+
+<!-- PEMBUKA -->
+<p>
+  Perjanjian Kerjasama ini dibuat dan ditandatangani pada tanggal
+  <strong>${tglMulai}</strong>, oleh dan antara:
+</p>
+
+<!-- PIHAK I -->
+<h2>Para Pihak</h2>
+
+<p><strong>Pihak Pertama</strong></p>
+<div class="pihak-row"><span>Nama SPBU</span><span>:</span><span>${spbuNama}</span></div>
+<div class="pihak-row"><span>Pengelola</span><span>:</span><span>PT Pertamina Patra Niaga – Sultra</span></div>
+<div class="pihak-row"><span>Selanjutnya</span><span>:</span><span>"<strong>SPBU</strong>"</span></div>
+
+<p style="margin-top:12px;"><strong>Pihak Kedua</strong></p>
+<div class="pihak-row"><span>Nama</span><span>:</span><span>${mitraNama}</span></div>
+<div class="pihak-row"><span>PIC</span><span>:</span><span>${mitraPIC}</span></div>
+<div class="pihak-row"><span>Alamat</span><span>:</span><span>${mitraAlamat}</span></div>
+<div class="pihak-row"><span>Selanjutnya</span><span>:</span><span>"<strong>Mitra</strong>"</span></div>
+
+<p style="margin-top:10px;">
+  Para Pihak sepakat untuk mengadakan Perjanjian Kerjasama dengan ketentuan sebagai berikut:
+</p>
+
+<!-- PASAL 1 -->
+<div class="pasal">
+  <p class="pasal-title">PASAL 1 — MAKSUD DAN TUJUAN</p>
+  <p>
+    Perjanjian ini mengatur kerjasama pengadaan Bahan Bakar Minyak (BBM) antara SPBU dan Mitra
+    untuk keperluan operasional kendaraan armada Mitra melalui mekanisme kupon BBM digital
+    berbasis sistem BISON (Business Integrated System for Oil Network).
+  </p>
+</div>
+
+<!-- PASAL 2 -->
+<div class="pasal">
+  <p class="pasal-title">PASAL 2 — JANGKA WAKTU</p>
+  <ol>
+    <li>Perjanjian ini berlaku selama <strong>1 (satu) tahun</strong>, terhitung sejak tanggal
+      <strong>${tglMulai}</strong> sampai dengan <strong>${tglSelesai}</strong>.</li>
+    <li>Perjanjian dapat diperpanjang atas kesepakatan tertulis kedua pihak sebelum masa berlaku berakhir.</li>
+  </ol>
+</div>
+
+<!-- PASAL 3 -->
+<div class="pasal">
+  <p class="pasal-title">PASAL 3 — RUANG LINGKUP</p>
+  <ol>
+    <li>SPBU menyediakan BBM untuk kendaraan armada Mitra sesuai ketersediaan produk.</li>
+    ${vol !== '—' ? `<li>Estimasi kebutuhan BBM Mitra: <strong>${vol}</strong>.</li>` : ''}
+    <li>Jenis BBM yang dilayani mengacu pada produk yang tersedia dan disepakati para pihak.</li>
+    <li>Transaksi pengisian BBM dilakukan di lokasi SPBU <strong>${spbuNama}</strong>.</li>
+  </ol>
+</div>
+
+<!-- PASAL 4 -->
+<div class="pasal">
+  <p class="pasal-title">PASAL 4 — MEKANISME KUPON DAN PEMBAYARAN</p>
+  <ol>
+    <li>Mitra melakukan pembayaran deposit di muka ke rekening SPBU sebelum BBM dapat diambil.</li>
+    <li>SPBU menerbitkan kupon BBM digital melalui sistem BISON senilai jumlah yang dibayarkan.</li>
+    <li>Setiap kupon memiliki kode unik 6 karakter dan bernilai nominal Rupiah.</li>
+    <li>Volume BBM yang diterima menyesuaikan harga BBM yang berlaku pada saat pengambilan.</li>
+    <li>Satu kupon hanya dapat digunakan untuk satu kali transaksi secara penuh.</li>
+    <li>Kupon yang hilang dapat diterbitkan ulang dengan prosedur verifikasi kepada SPBU.</li>
+    <li>Kupon tidak dapat diperjualbelikan kepada pihak ketiga di luar armada Mitra.</li>
+  </ol>
+</div>
+
+<!-- PASAL 5 -->
+<div class="pasal">
+  <p class="pasal-title">PASAL 5 — HAK DAN KEWAJIBAN</p>
+  <ol>
+    <li>SPBU wajib melayani pengisian BBM kepada setiap kendaraan Mitra yang menunjukkan kupon valid.</li>
+    <li>SPBU berhak menolak kupon yang tidak valid, sudah dipakai, atau telah di-void.</li>
+    <li>Mitra wajib memastikan kupon hanya digunakan oleh armada kendaraan yang sah.</li>
+    <li>Mitra berhak memantau riwayat penggunaan kupon melalui portal BISON.</li>
+    <li>Segala penyalahgunaan kupon oleh pihak yang tidak berwenang menjadi tanggung jawab Mitra.</li>
+  </ol>
+</div>
+
+<!-- PASAL 6 (ketentuan khusus jika ada) -->
+${ketentuan ? `<div class="pasal">
+  <p class="pasal-title">PASAL 6 — KETENTUAN KHUSUS</p>
+  <p>${ketentuan}</p>
+</div>` : ''}
+
+<!-- PASAL PENUTUP -->
+<div class="pasal">
+  <p class="pasal-title">PASAL ${ketentuan ? '7' : '6'} — PENUTUP</p>
+  <ol>
+    <li>Perjanjian ini dibuat dalam 2 (dua) rangkap asli yang masing-masing bermaterai cukup dan
+      mempunyai kekuatan hukum yang sama.</li>
+    <li>Hal-hal yang belum diatur dalam perjanjian ini akan diselesaikan secara musyawarah
+      untuk mufakat.</li>
+  </ol>
+</div>
+
+<!-- TANDA TANGAN -->
+<div class="ttd-wrap">
+  <div class="ttd-box">
+    <div class="ttd-label">Pihak Pertama<br/><strong>${spbuNama}</strong></div>
+    <div class="ttd-line">Pengelola SPBU</div>
+    <div class="ttd-jabatan">PT Pertamina Patra Niaga Sultra</div>
+  </div>
+  <div class="ttd-box">
+    <div class="ttd-label">Pihak Kedua<br/><strong>${mitraNama}</strong></div>
+    <div class="ttd-line">${penanda}</div>
+    <div class="ttd-jabatan">${jabatan}</div>
+  </div>
+</div>
+
+<div class="footer-note">
+  Dokumen ini digenerate oleh sistem BISON · ${tglCetak} · ${k.nomor_kontrak}
+</div>
+
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=800');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  } else {
+    showToast('Popup diblokir browser — izinkan popup untuk tab ini', true);
+  }
 }
 
 async function stopKontrak(kontrakId, nomorKontrak, namaMitra) {
