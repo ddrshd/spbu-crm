@@ -273,14 +273,49 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
 
 /* ─── KPI CARDS ──────────────────────────────────── */
 .kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
-.kpi-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.kpi-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
 .kpi-card.accent-red{border-top:3px solid var(--red);}
 .kpi-card.accent-blue{border-top:3px solid var(--blue);}
 .kpi-card.accent-green{border-top:3px solid var(--green);}
-.kpi-card.accent-amber{border-top:3px solid var(--amber);}
-.kpi-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
-.kpi-value{font-size:22px;font-weight:700;color:var(--text);line-height:1;font-family:var(--fm);}
-.kpi-sub{font-size:11px;color:var(--text-muted);margin-top:5px;}
+.kpi-card.accent-amber{border-top:3px solid #f59e0b;}
+.kpi-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-muted);margin-bottom:6px;}
+.kpi-value{font-size:20px;font-weight:700;color:var(--text);line-height:1.1;font-family:var(--fm);}
+.kpi-sub{font-size:11px;color:var(--text-muted);margin-top:4px;}
+
+/* ─── DASHBOARD CHARTS ───────────────────────────── */
+.charts-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.chart-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:0;}
+.section-title-dash{font-size:12px;font-weight:700;color:var(--text);
+  letter-spacing:.02em;margin-bottom:10px;}
+
+/* ─── REKAP MITRA B2B ────────────────────────────── */
+.loyal-wrap{background:#fff;border:1px solid var(--border);
+  border-radius:var(--radius-lg);margin-bottom:16px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;}
+.loyal-header{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid var(--border);background:var(--gray-50);}
+.loyal-wrap .tbl th{padding:8px 10px;font-size:10px;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);
+  border-bottom:1px solid var(--border);}
+.loyal-wrap .tbl td{padding:10px 10px;font-size:12px;
+  border-bottom:1px solid var(--gray-100);vertical-align:middle;}
+.loyal-wrap .tbl tr:last-child td{border-bottom:none;}
+
+/* ─── TOP KENDARAAN ──────────────────────────────── */
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;
+  font-size:10px;font-weight:700;
+  background:var(--gray-100);color:var(--text-muted);}
+.rank-1{background:#FEF3C7;color:#92400E;}
+.rank-2{background:#F3F4F6;color:#374151;}
+.rank-3{background:#FEF3C7;color:#92400E;}
+.nopol-cell{font-family:var(--fm);font-weight:600;font-size:11px;
+  letter-spacing:.06em;color:var(--navy);}
+.vol-bar-wrap{display:flex;align-items:center;gap:8px;}
+.vol-bar{height:6px;background:var(--blue);border-radius:3px;flex-shrink:0;}
 
 /* ─── PRODUK PILLS ───────────────────────────────── */
 .produk-pill{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
@@ -717,18 +752,18 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
 
     <!-- Chart row: distribusi produk + transaksi per tanggal -->
     <div class="charts-row">
-      <div class="chart-card" style="flex:0 0 260px;">
-        <div class="section-title">Distribusi Produk</div>
+      <div class="chart-card" style="flex:0 0 220px;">
+        <div class="section-title-dash">Distribusi Produk</div>
         <canvas id="chart-produk" height="180"></canvas>
       </div>
       <div class="chart-card" style="flex:1;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div class="section-title" style="margin:0">Transaksi per Tanggal</div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="section-title-dash" style="margin:0;">Transaksi per Tanggal</div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);">
               <span style="width:10px;height:3px;background:#1A56C8;display:inline-block;border-radius:2px;"></span>Semua
             </span>
-            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);">
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);">
               <span style="width:10px;height:3px;background:#00A651;display:inline-block;border-radius:2px;"></span>B2B
             </span>
           </div>
@@ -740,20 +775,30 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     <!-- Rekap per mitra -->
     <div class="loyal-wrap" id="dash-mitra-wrap">
       <div class="loyal-header">
-        <span class="section-title" style="margin:0;">Rekap Mitra B2B</span>
+        <span style="font-size:12px;font-weight:700;color:var(--text);">Rekap Mitra B2B</span>
         <span style="font-size:11px;color:var(--text-muted);" id="dash-mitra-subtitle">Periode terpilih</span>
       </div>
       <div style="overflow-x:auto;">
-        <table class="tbl">
+        <table class="tbl" style="table-layout:fixed;min-width:500px;">
+          <colgroup>
+            <col style="min-width:120px;"/>
+            <col style="width:64px;"/>
+            <col style="width:72px;"/>
+            <col style="width:110px;"/>
+            <col style="width:90px;"/>
+            <col style="width:80px;"/>
+            <col style="width:72px;"/>
+            <col style="width:68px;"/>
+          </colgroup>
           <thead>
             <tr>
               <th>Mitra</th>
-              <th style="text-align:right;">Transaksi</th>
-              <th style="text-align:right;">Volume (L)</th>
+              <th style="text-align:right;">Trx</th>
+              <th style="text-align:right;">Vol (L)</th>
               <th style="text-align:right;">Total (Rp)</th>
               <th style="text-align:right;">Avg/Trx</th>
-              <th>Top Produk</th>
-              <th>Kendaraan</th>
+              <th>Produk</th>
+              <th style="text-align:center;">Armada</th>
               <th>Terakhir</th>
             </tr>
           </thead>
@@ -767,11 +812,28 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     <!-- Top kendaraan umum -->
     <div class="loyal-wrap">
       <div class="loyal-header">
-        <span class="section-title" style="margin:0">Top Kendaraan — by Volume</span>
+        <span style="font-size:12px;font-weight:700;color:var(--text);">Top Kendaraan — by Volume</span>
       </div>
-      <div style="overflow:auto;">
-        <table class="tbl">
-          <thead><tr><th>#</th><th>Nopol</th><th>Kunjungan</th><th>Vol. Total</th><th>Produk Favorit</th><th>Terakhir</th></tr></thead>
+      <div style="overflow-x:auto;">
+        <table class="tbl" style="table-layout:fixed;width:100%;">
+          <colgroup>
+            <col style="width:32px;"/>
+            <col style="width:90px;"/>
+            <col style="width:64px;"/>
+            <col style="width:100px;"/>
+            <col style="width:90px;"/>
+            <col style="width:64px;"/>
+          </colgroup>
+          <thead>
+            <tr>
+              <th style="padding:8px 6px 8px 12px;">#</th>
+              <th>Nopol</th>
+              <th style="text-align:center;">Kunjungan</th>
+              <th>Vol. Total</th>
+              <th>Produk Favorit</th>
+              <th>Terakhir</th>
+            </tr>
+          </thead>
           <tbody id="loyal-body"><tr><td colspan="6" class="loading-msg">Memuat...</td></tr></tbody>
         </table>
       </div>
@@ -4150,22 +4212,22 @@ async function loadDashboard() {
             ? m.last.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
             : '—';
           const pct = totalB2BRev > 0 ? Math.round(m.rev / totalB2BRev * 100) : 0;
+          const revFmt = m.rev >= 1e6 ? (m.rev/1e6).toFixed(2)+' Jt' : m.rev.toLocaleString('id-ID');
+          const avgFmt = Math.round(m.rev/m.trx).toLocaleString('id-ID');
           return `<tr>
-            <td>
-              <div style="font-size:13px;font-weight:600;color:var(--text);">${m.nama}</div>
-              <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${pct}% dari total B2B</div>
+            <td style="padding:10px 10px;">
+              <div style="font-size:12px;font-weight:600;color:var(--text);
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                title="${m.nama}">${m.nama}</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:1px;">${pct}% B2B</div>
             </td>
-            <td style="text-align:right;font-family:var(--fm);font-size:13px;">${m.trx}</td>
-            <td style="text-align:right;font-family:var(--fm);font-size:13px;">${m.vol.toFixed(0)} L</td>
-            <td style="text-align:right;font-family:var(--fm);font-size:13px;font-weight:600;color:var(--green);">
-              Rp ${m.rev.toLocaleString('id-ID')}
-            </td>
-            <td style="text-align:right;font-size:12px;color:var(--text-muted);">
-              Rp ${Math.round(m.rev / m.trx).toLocaleString('id-ID')}
-            </td>
-            <td><span class="produk-pill pill-${pk}">${topProd}</span></td>
-            <td style="font-size:12px;color:var(--text-muted);">${m.kendaraan.size} kendaraan</td>
-            <td style="font-size:12px;color:var(--text-muted);">${lastStr}</td>
+            <td style="text-align:right;font-family:var(--fm);font-size:12px;font-weight:600;padding:10px 10px;">${m.trx}</td>
+            <td style="text-align:right;font-family:var(--fm);font-size:12px;padding:10px 10px;">${m.vol.toFixed(0)}</td>
+            <td style="text-align:right;font-family:var(--fm);font-size:12px;font-weight:600;color:var(--green);padding:10px 10px;">${revFmt}</td>
+            <td style="text-align:right;font-size:11px;color:var(--text-muted);padding:10px 10px;">${avgFmt}</td>
+            <td style="padding:10px 10px;"><span class="produk-pill pill-${pk}" style="font-size:10px;">${topProd}</span></td>
+            <td style="text-align:center;font-size:12px;color:var(--text-muted);padding:10px 10px;">${m.kendaraan.size}</td>
+            <td style="font-size:11px;color:var(--text-muted);padding:10px 10px;white-space:nowrap;">${lastStr}</td>
           </tr>`;
         }).join('')
       : `<tr><td colspan="8" class="empty-state">${mitraVal ? 'Tidak ada data B2B untuk mitra ini' : 'Belum ada transaksi B2B di periode ini'}</td></tr>`;
@@ -4186,15 +4248,24 @@ async function loadDashboard() {
       ? sorted.map(([nopol, s], i) => {
           const fav = Object.entries(s.pk).sort((a, b) => b[1] - a[1])[0][0];
           const ls  = s.last ? s.last.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '-';
-          const bw  = Math.round(s.vol / maxV * 80);
+          const bw  = Math.round(s.vol / maxV * 72);
           const pk  = fav.replace(/\s/g, '-');
           return `<tr>
-            <td><span class="rank-badge ${i < 3 ? 'rank-' + (i + 1) : ''}">${i + 1}</span></td>
-            <td class="nopol-cell">${nopol}</td>
-            <td style="font-family:var(--fm)">${s.visits}x</td>
-            <td><div class="vol-bar-wrap"><div class="vol-bar" style="width:${bw}px"></div><span style="font-family:var(--fm);font-size:12px">${s.vol.toFixed(0)}L</span></div></td>
-            <td><span class="produk-pill pill-${pk}">${fav}</span></td>
-            <td style="color:var(--text-muted)">${ls}</td>
+            <td style="padding:9px 6px 9px 12px;">
+              <span class="rank-badge ${i < 3 ? 'rank-' + (i + 1) : ''}">${i + 1}</span>
+            </td>
+            <td style="padding:9px 10px;">
+              <span class="nopol-cell">${nopol}</span>
+            </td>
+            <td style="text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;padding:9px 10px;">${s.visits}x</td>
+            <td style="padding:9px 10px;">
+              <div class="vol-bar-wrap">
+                <div class="vol-bar" style="width:${bw}px"></div>
+                <span style="font-family:var(--fm);font-size:12px;font-weight:600;">${s.vol.toFixed(0)} L</span>
+              </div>
+            </td>
+            <td style="padding:9px 10px;"><span class="produk-pill pill-${pk}" style="font-size:10px;">${fav}</span></td>
+            <td style="color:var(--text-muted);font-size:11px;padding:9px 10px;white-space:nowrap;">${ls}</td>
           </tr>`;
         }).join('')
       : '<tr><td colspan="6" class="empty-state">Belum ada data</td></tr>';
@@ -5373,7 +5444,7 @@ async function loadKontrakList() {
     const stLabel   = { aktif:'Aktif', expired:'Expired', draft:'Draft', suspended:'Suspended' };
     const progressColor = progress > 80 ? 'var(--red)' : progress > 60 ? '#d97706' : 'var(--blue)';
 
-    const isSA = currentProfile.role === 'super_admin';
+    const isSA = ['manager','super_admin'].includes(currentProfile.role);
 
     return `<div class="kontrak-item">
       <div class="kontrak-item-head">
@@ -5912,7 +5983,7 @@ function showDetailKontrak(k) {
 }
 
 async function stopKontrak(kontrakId, nomorKontrak, namaMitra) {
-  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!['manager','super_admin'].includes(currentProfile.role)) { showToast('Akses ditolak', true); return; }
   if (!confirm(`Stop kontrak ${nomorKontrak} — ${namaMitra}?\n\nStatus berubah menjadi "Suspended". Kendaraan mitra masih terdaftar. Kontrak bisa diaktifkan kembali kapanpun.`)) return;
 
   const { error } = await sb.from('kontrak_mitra')
@@ -5927,7 +5998,7 @@ async function stopKontrak(kontrakId, nomorKontrak, namaMitra) {
 }
 
 async function reaktivasiKontrak(kontrakId, nomorKontrak) {
-  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!['manager','super_admin'].includes(currentProfile.role)) { showToast('Akses ditolak', true); return; }
   if (!confirm(`Aktifkan kembali kontrak ${nomorKontrak}?`)) return;
 
   const { error } = await sb.from('kontrak_mitra')
@@ -5945,7 +6016,7 @@ async function reaktivasiKontrak(kontrakId, nomorKontrak) {
 let _hapusNomorKontrak = '';
 
 function showHapusKontrakModal(kontrakId, nomorKontrak, namaMitra) {
-  if (currentProfile.role !== 'super_admin') { showToast('Akses ditolak', true); return; }
+  if (!['manager','super_admin'].includes(currentProfile.role)) { showToast('Akses ditolak', true); return; }
   _hapusNomorKontrak = nomorKontrak;
 
   document.getElementById('hapus-kontrak-id').value = kontrakId;
@@ -5992,7 +6063,7 @@ function validateHapusInput() {
 }
 
 async function submitHapusKontrak() {
-  if (currentProfile.role !== 'super_admin') return;
+  if (!['manager','super_admin'].includes(currentProfile.role)) return;
 
   const kontrakId = document.getElementById('hapus-kontrak-id').value;
   const errEl     = document.getElementById('hapus-kontrak-error');
