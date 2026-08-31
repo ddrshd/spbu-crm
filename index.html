@@ -865,8 +865,11 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     <!-- Sub-tabs -->
     <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--gray-100);border-radius:8px;padding:3px;width:fit-content;">
       <button class="period-pill active" id="subtab-kontrak-btn" onclick="switchSubtab('kontrak',this)">Kontrak Aktif</button>
-      <button class="period-pill" id="subtab-kendaraan-btn" onclick="switchSubtab('kendaraan',this)">Kendaraan Mitra</button>
-      <!-- Saldo Deposit — takeout sementara, diaktifkan kembali jika fitur deposit diaktifkan -->
+      <!-- Kendaraan Mitra: hanya super_admin, manager tidak perlu -->
+      <button class="period-pill" id="subtab-kendaraan-btn"
+        onclick="switchSubtab('kendaraan',this)"
+        style="display:none">Kendaraan Mitra</button>
+      <!-- Saldo Deposit — takeout sementara -->
       <!-- <button class="period-pill" id="subtab-saldo-btn" onclick="switchSubtab('saldo',this)">Saldo Deposit</button> -->
       <button class="period-pill" id="subtab-kupon-btn" onclick="switchSubtab('kupon',this)">Kupon BBM</button>
     </div>
@@ -1902,6 +1905,9 @@ function applyRoleTabs() {
     document.getElementById('filter-manager-btn')?.classList.remove('hidden');
     const btnKend = document.getElementById('btn-tambah-kendaraan');
     if (btnKend) btnKend.style.display = '';
+    // Super admin bisa lihat sub-tab Kendaraan Mitra
+    const kendaraanTab = document.getElementById('subtab-kendaraan-btn');
+    if (kendaraanTab) kendaraanTab.style.display = '';
   } else {
     document.getElementById('filter-manager-btn')?.classList.add('hidden');
   }
@@ -3076,35 +3082,58 @@ async function loadKuponBatch() {
 
         <!-- Daftar kupon dalam batch -->
         <div style="overflow-x:auto;">
-          <table class="tbl" style="margin:0;">
+          <table class="tbl" style="margin:0;table-layout:fixed;width:100%;">
+            <colgroup>
+              <col style="width:36px;"/>      <!-- No -->
+              <col style="width:100px;"/>     <!-- Kode -->
+              <col style="width:110px;"/>     <!-- Nominal -->
+              <col style="width:80px;"/>      <!-- Status -->
+              <col style="width:72px;"/>      <!-- Dipakai -->
+              <col style="width:90px;"/>      <!-- Nopol -->
+              ${canManage ? '<col style="width:60px;"/>' : ''}
+            </colgroup>
             <thead>
               <tr>
-                <th>Kode</th>
-                <th style="text-align:right;">Nominal</th>
-                <th>Status</th>
-                <th>Dipakai</th>
-                <th>Nopol</th>
-                ${canManage ? '<th>Aksi</th>' : ''}
+                <th style="padding:8px 6px 8px 12px;font-size:11px;color:var(--text-muted);">No</th>
+                <th style="padding:8px 6px;font-size:11px;">Kode</th>
+                <th style="padding:8px 6px;font-size:11px;text-align:right;">Nominal</th>
+                <th style="padding:8px 6px;font-size:11px;">Status</th>
+                <th style="padding:8px 6px;font-size:11px;">Dipakai</th>
+                <th style="padding:8px 6px;font-size:11px;">Nopol</th>
+                ${canManage ? '<th style="padding:8px 12px 8px 6px;font-size:11px;">Aksi</th>' : ''}
               </tr>
             </thead>
             <tbody>
-              ${ks.map(k => {
-                const stBg = k.status === 'tersedia' ? '#DCFCE7' : k.status === 'dipakai' ? '#EBF2FF' : '#F3F4F6';
-                const stCl = k.status === 'tersedia' ? '#166534' : k.status === 'dipakai' ? '#1A56C8' : '#6B7280';
+              ${ks.map((k, idx) => {
+                const stBg = k.status === 'tersedia' ? '#DCFCE7' : k.status === 'dipakai' ? '#DBEAFE' : '#F3F4F6';
+                const stCl = k.status === 'tersedia' ? '#166534' : k.status === 'dipakai' ? '#1E40AF' : '#6B7280';
                 const tglPakai = k.dipakai_at
                   ? new Date(k.dipakai_at).toLocaleDateString('id-ID',{day:'2-digit',month:'short'}) : '—';
-                return `<tr>
-                  <td style="font-family:var(--fm);font-size:16px;font-weight:700;letter-spacing:.1em;">${k.kode}</td>
-                  <td style="text-align:right;font-family:var(--fm);font-size:12px;font-weight:600;">Rp ${k.nominal_rupiah.toLocaleString('id-ID')}</td>
-                  <td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${stBg};color:${stCl};">${k.status}</span></td>
-                  <td style="font-size:11px;color:var(--text-muted);">${tglPakai}</td>
-                  <td style="font-size:11px;font-family:var(--fm);">${k.dipakai_nopol || '—'}</td>
-                  ${canManage ? `<td>
+                const rowBg = idx % 2 === 0 ? '' : 'background:#fafafa;';
+                return `<tr style="${rowBg}">
+                  <td style="padding:9px 6px 9px 12px;font-size:11px;color:var(--text-muted);font-weight:500;">${idx + 1}</td>
+                  <td style="padding:9px 6px;">
+                    <span style="font-family:var(--fm);font-size:13px;font-weight:700;
+                      letter-spacing:.08em;color:var(--text);">${k.kode}</span>
+                  </td>
+                  <td style="padding:9px 6px;text-align:right;font-family:var(--fm);font-size:12px;font-weight:600;color:var(--text);">
+                    Rp ${parseInt(k.nominal_rupiah).toLocaleString('id-ID')}
+                  </td>
+                  <td style="padding:9px 6px;">
+                    <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;
+                      background:${stBg};color:${stCl};white-space:nowrap;">${k.status}</span>
+                  </td>
+                  <td style="padding:9px 6px;font-size:11px;color:var(--text-muted);">${tglPakai}</td>
+                  <td style="padding:9px 6px;font-size:11px;font-family:var(--fm);
+                    color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    ${k.dipakai_nopol || '—'}
+                  </td>
+                  ${canManage ? `<td style="padding:9px 12px 9px 6px;">
                     ${k.status === 'tersedia' ? `
-                      <button class="act-btn del" style="font-size:10px;"
+                      <button class="act-btn del" style="font-size:10px;padding:3px 8px;"
                         onclick="showVoidSatu('${k.id}','${k.kode}',${k.nominal_rupiah})">
                         Void
-                      </button>` : '—'}
+                      </button>` : '<span style="color:var(--text-muted);font-size:11px;">—</span>'}
                   </td>` : ''}
                 </tr>`;
               }).join('')}
