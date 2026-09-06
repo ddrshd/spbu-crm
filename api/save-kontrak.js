@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
   const {
     mitra_id, spbu_id, tanggal_mulai, tanggal_selesai,
     volume_estimasi, syarat_pembayaran, ketentuan_khusus,
-    disetujui_oleh, jabatan_penanda, status
+    disetujui_oleh, jabatan_penanda, pimpinan_spbu, status
   } = req.body;
 
   if (!mitra_id || !spbu_id || !tanggal_mulai || !tanggal_selesai) {
@@ -115,6 +115,7 @@ module.exports = async function handler(req, res) {
         ketentuan_khusus:  ketentuan_khusus  || null,
         disetujui_oleh:    disetujui_oleh    || null,
         jabatan_penanda:   jabatan_penanda   || null,
+        pimpinan_spbu:     pimpinan_spbu     || null,
         status:            status            || 'aktif',
         dibuat_oleh:       caller.id,
       })
