@@ -852,6 +852,37 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       </div>
     </div>
 
+    <!-- Rangkuman Voucher per Mitra -->
+    <div class="loyal-wrap" id="dash-voucher-wrap">
+      <div class="loyal-header">
+        <span style="font-size:12px;font-weight:700;color:var(--text);">🎫 Rangkuman Voucher per Mitra</span>
+        <span style="font-size:11px;color:var(--text-muted);" id="dash-voucher-subtitle">Status kupon saat ini</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="tbl" style="table-layout:fixed;min-width:480px;">
+          <colgroup>
+            <col style="min-width:140px;"/>
+            <col style="width:110px;"/>
+            <col style="width:110px;"/>
+            <col style="width:110px;"/>
+            <col style="width:80px;"/>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Mitra</th>
+              <th style="text-align:right;">Diterbitkan</th>
+              <th style="text-align:right;">Terpakai</th>
+              <th style="text-align:right;">Sisa Aktif</th>
+              <th style="text-align:right;">% Terpakai</th>
+            </tr>
+          </thead>
+          <tbody id="dash-voucher-body">
+            <tr><td colspan="5" class="loading-msg">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Top kendaraan umum -->
     <div class="loyal-wrap">
       <div class="loyal-header">
@@ -4298,6 +4329,69 @@ async function loadDashboard() {
           </tr>`;
         }).join('')
       : `<tr><td colspan="8" class="empty-state">${mitraVal ? 'Tidak ada data B2B untuk mitra ini' : 'Belum ada transaksi B2B di periode ini'}</td></tr>`;
+
+    // ── Rangkuman Voucher per Mitra (status kupon saat ini, tidak terikat filter bulan) ──
+    try {
+      let vq = sb.from('kupon')
+        .select('nominal_rupiah,status,batch:batch_id!inner(spbu_id,mitra_id,mitra:mitra_id(nama_perusahaan))');
+      if (currentSpbu) vq = vq.eq('batch.spbu_id', currentSpbu.id);
+      if (mitraVal)    vq = vq.eq('batch.mitra_id', mitraVal);
+      const { data: voucherRows, error: voucherErr } = await vq;
+      if (voucherErr) throw voucherErr;
+
+      const voucherStats = {};
+      (voucherRows || []).forEach(k => {
+        const mId   = k.batch?.mitra_id;
+        if (!mId) return;
+        const mNama = k.batch?.mitra?.nama_perusahaan || mId;
+        if (!voucherStats[mId]) {
+          voucherStats[mId] = { nama: mNama, terbitN: 0, terbitRp: 0, pakaiN: 0, pakaiRp: 0, sisaN: 0, sisaRp: 0 };
+        }
+        const v = voucherStats[mId];
+        v.terbitN++; v.terbitRp += k.nominal_rupiah;
+        if (k.status === 'dipakai') { v.pakaiN++; v.pakaiRp += k.nominal_rupiah; }
+        else if (k.status === 'tersedia') { v.sisaN++; v.sisaRp += k.nominal_rupiah; }
+      });
+
+      const voucherSorted = Object.values(voucherStats).sort((a, b) => b.terbitRp - a.terbitRp);
+      const totalTerbitRp  = voucherSorted.reduce((s, v) => s + v.terbitRp, 0);
+
+      document.getElementById('dash-voucher-subtitle').textContent = voucherSorted.length
+        ? `${voucherSorted.length} mitra · Rp ${totalTerbitRp.toLocaleString('id-ID')} diterbitkan`
+        : 'Status kupon saat ini';
+
+      const rpFmt = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + ' Jt' : 'Rp ' + n.toLocaleString('id-ID');
+
+      document.getElementById('dash-voucher-body').innerHTML = voucherSorted.length
+        ? voucherSorted.map(v => {
+            const pctPakai = v.terbitN > 0 ? Math.round(v.pakaiN / v.terbitN * 100) : 0;
+            return `<tr>
+              <td style="padding:10px 10px;">
+                <div style="font-size:12px;font-weight:600;color:var(--text);
+                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                  title="${v.nama}">${v.nama}</div>
+              </td>
+              <td style="text-align:right;padding:10px 10px;">
+                <div style="font-family:var(--fm);font-size:12px;font-weight:600;">${v.terbitN} lembar</div>
+                <div style="font-size:10px;color:var(--text-muted);">${rpFmt(v.terbitRp)}</div>
+              </td>
+              <td style="text-align:right;padding:10px 10px;">
+                <div style="font-family:var(--fm);font-size:12px;font-weight:600;color:var(--green);">${v.pakaiN} lembar</div>
+                <div style="font-size:10px;color:var(--text-muted);">${rpFmt(v.pakaiRp)}</div>
+              </td>
+              <td style="text-align:right;padding:10px 10px;">
+                <div style="font-family:var(--fm);font-size:12px;font-weight:600;color:var(--blue);">${v.sisaN} lembar</div>
+                <div style="font-size:10px;color:var(--text-muted);">${rpFmt(v.sisaRp)}</div>
+              </td>
+              <td style="text-align:right;font-family:var(--fm);font-size:12px;font-weight:600;padding:10px 10px;">${pctPakai}%</td>
+            </tr>`;
+          }).join('')
+        : `<tr><td colspan="5" class="empty-state">${mitraVal ? 'Belum ada kupon untuk mitra ini' : 'Belum ada kupon diterbitkan'}</td></tr>`;
+    } catch (e) {
+      console.error('Gagal memuat rangkuman voucher:', e);
+      document.getElementById('dash-voucher-body').innerHTML =
+        `<tr><td colspan="5" class="empty-state">Gagal memuat data voucher</td></tr>`;
+    }
 
     // ── Top kendaraan ────────────────────────────────────────────
     const stats = {};
