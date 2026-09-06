@@ -1512,7 +1512,7 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       </div>
 
       <div class="field-group">
-        <label class="field-label">Nama Pimpinan / Pengelola SPBU <span style="color:var(--text-muted);font-weight:400;">(opsional)</span></label>
+        <label class="field-label">Nama Pimpinan / Pengelola SPBU <span style="color:var(--red)">*</span></label>
         <input class="field-input" id="kc-pimpinan-spbu" placeholder="Nama yang tanda tangan mewakili SPBU"/>
       </div>
 
@@ -5756,6 +5756,7 @@ async function submitKontrakCepat() {
   if (!tglMulai)      { errEl.textContent = 'Tanggal mulai wajib diisi'; errEl.style.display = 'block'; return; }
   if (!tglSelesai)    { errEl.textContent = 'Tanggal selesai wajib diisi'; errEl.style.display = 'block'; return; }
   if (!spbuId)        { errEl.textContent = 'SPBU tidak terdeteksi'; errEl.style.display = 'block'; return; }
+  if (!pimpinanSpbu)  { errEl.textContent = 'Nama pimpinan/pengelola SPBU wajib diisi'; errEl.style.display = 'block'; return; }
   if (!penandaMitra)  { errEl.textContent = 'Nama penandatangan mitra wajib diisi'; errEl.style.display = 'block'; return; }
 
   const btn = document.getElementById('kc-label');
@@ -5776,7 +5777,7 @@ async function submitKontrakCepat() {
         tanggal_mulai:     tglMulai,
         tanggal_selesai:   tglSelesai,
         syarat_pembayaran: 'Pembayaran deposit di awal. Pihak Pertama menerbitkan kupon BBM digital melalui sistem BISON.',
-        pimpinan_spbu:     pimpinanSpbu || null,
+        pimpinan_spbu:     pimpinanSpbu,
         disetujui_oleh:    penandaMitra,
         status:            'aktif',
       }),
@@ -6047,7 +6048,7 @@ function showDetailKontrak(k) {
   <div class="pihak-block">
     <div class="pihak-name">Pihak Pertama</div>
     <div class="pihak-row"><span class="pihak-key">Nama SPBU</span><span>:</span><span>${spbuNama}</span></div>
-    <div class="pihak-row"><span class="pihak-key">Pengelola</span><span>:</span><span>PT Pertamina Patra Niaga – Sultra</span></div>
+    <div class="pihak-row"><span class="pihak-key">Pengelola</span><span>:</span><span>${pimpinanSpbu}</span></div>
     <div class="pihak-row"><span class="pihak-key">Selanjutnya</span><span>:</span><span>"<strong>SPBU</strong>"</span></div>
   </div>
 
