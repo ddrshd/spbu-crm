@@ -229,7 +229,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
           <input class="field-input" id="spbu-alamat" placeholder="Jl. Soekarno Hatta, Kendari"/>
         </div>
         <div class="field-group">
-          <label class="field-label">Nama Pimpinan</label>
+          <label class="field-label">Nama Pimpinan <span style="color:red">*</span></label>
           <input class="field-input" id="spbu-pimpinan" placeholder="Nama pengelola SPBU"/>
         </div>
         <div class="field-group">
@@ -886,6 +886,15 @@ async function saveToDb() {
     return;
   }
   sel.style.border = '';
+
+  // Nama pimpinan/pengelola SPBU wajib — ini yang tampil sebagai Pihak Pertama di dokumen
+  const pimpinanInput = document.getElementById('spbu-pimpinan');
+  if (!pimpinanInput.value.trim()) {
+    pimpinanInput.style.border = '2px solid red';
+    alert('Nama Pimpinan / Pengelola SPBU wajib diisi — ini yang tercantum sebagai Pihak Pertama di dokumen kontrak.');
+    return;
+  }
+  pimpinanInput.style.border = '';
 
   // Ambil spbu_id dari mitra yang dipilih atau dari profil manager
   const selectedMitra = mitraList.find(m => m.id === mitraId);
