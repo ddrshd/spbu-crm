@@ -1511,10 +1511,20 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
         </div>
       </div>
 
+      <div class="field-group">
+        <label class="field-label">Nama Pimpinan / Pengelola SPBU <span style="color:var(--text-muted);font-weight:400;">(opsional)</span></label>
+        <input class="field-input" id="kc-pimpinan-spbu" placeholder="Nama yang tanda tangan mewakili SPBU"/>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Nama Penandatangan Mitra <span style="color:var(--red)">*</span></label>
+        <input class="field-input" id="kc-penandatangan-mitra" placeholder="Nama yang tanda tangan mewakili Mitra"/>
+      </div>
+
       <div style="background:#F0FDF4;border:1px solid rgba(0,166,81,.15);border-radius:var(--radius);
         padding:10px 14px;margin-bottom:14px;font-size:12px;color:#007A3C;line-height:1.6;">
         ✅ Kontrak akan langsung berstatus <strong>Aktif</strong> dengan ketentuan kupon BBM standar.
-        Untuk tambahkan detail (pasal, penandatangan, PDF), buka <strong>Buat Kontrak Lengkap</strong>.
+        Untuk tambahkan detail (pasal, jabatan penandatangan, PDF), buka <strong>Buat Kontrak Lengkap</strong>.
       </div>
 
       <div class="error-msg" id="kc-error" style="display:none;margin-bottom:12px;"></div>
@@ -5704,6 +5714,8 @@ async function showModalKontrakCepat() {
     .toISOString().split('T')[0];
   document.getElementById('kc-tgl-mulai').value   = today;
   document.getElementById('kc-tgl-selesai').value = nextYear;
+  document.getElementById('kc-pimpinan-spbu').value = '';
+  document.getElementById('kc-penandatangan-mitra').value = '';
 
   // Load mitra aktif untuk dropdown
   const sel = document.getElementById('kc-mitra-id');
@@ -5731,17 +5743,20 @@ function onKcMitraChange() {
 }
 
 async function submitKontrakCepat() {
-  const mitraId    = document.getElementById('kc-mitra-id').value;
-  const tglMulai   = document.getElementById('kc-tgl-mulai').value;
-  const tglSelesai = document.getElementById('kc-tgl-selesai').value;
-  const errEl      = document.getElementById('kc-error');
-  const spbuId     = currentSpbu?.id;
+  const mitraId       = document.getElementById('kc-mitra-id').value;
+  const tglMulai      = document.getElementById('kc-tgl-mulai').value;
+  const tglSelesai    = document.getElementById('kc-tgl-selesai').value;
+  const pimpinanSpbu  = document.getElementById('kc-pimpinan-spbu').value.trim();
+  const penandaMitra  = document.getElementById('kc-penandatangan-mitra').value.trim();
+  const errEl         = document.getElementById('kc-error');
+  const spbuId        = currentSpbu?.id;
 
   errEl.style.display = 'none';
-  if (!mitraId)    { errEl.textContent = 'Pilih mitra terlebih dahulu'; errEl.style.display = 'block'; return; }
-  if (!tglMulai)   { errEl.textContent = 'Tanggal mulai wajib diisi'; errEl.style.display = 'block'; return; }
-  if (!tglSelesai) { errEl.textContent = 'Tanggal selesai wajib diisi'; errEl.style.display = 'block'; return; }
-  if (!spbuId)     { errEl.textContent = 'SPBU tidak terdeteksi'; errEl.style.display = 'block'; return; }
+  if (!mitraId)       { errEl.textContent = 'Pilih mitra terlebih dahulu'; errEl.style.display = 'block'; return; }
+  if (!tglMulai)      { errEl.textContent = 'Tanggal mulai wajib diisi'; errEl.style.display = 'block'; return; }
+  if (!tglSelesai)    { errEl.textContent = 'Tanggal selesai wajib diisi'; errEl.style.display = 'block'; return; }
+  if (!spbuId)        { errEl.textContent = 'SPBU tidak terdeteksi'; errEl.style.display = 'block'; return; }
+  if (!penandaMitra)  { errEl.textContent = 'Nama penandatangan mitra wajib diisi'; errEl.style.display = 'block'; return; }
 
   const btn = document.getElementById('kc-label');
   btn.textContent = 'Menyimpan...';
@@ -5761,6 +5776,8 @@ async function submitKontrakCepat() {
         tanggal_mulai:     tglMulai,
         tanggal_selesai:   tglSelesai,
         syarat_pembayaran: 'Pembayaran deposit di awal. Pihak Pertama menerbitkan kupon BBM digital melalui sistem BISON.',
+        pimpinan_spbu:     pimpinanSpbu || null,
+        disetujui_oleh:    penandaMitra,
         status:            'aktif',
       }),
     });
@@ -5800,6 +5817,7 @@ function showDetailKontrak(k) {
   const ketentuan   = k.ketentuan_khusus || '';
   const penanda     = k.disetujui_oleh   || '................................';
   const jabatan     = k.jabatan_penanda  || '................................';
+  const pimpinanSpbu = k.pimpinan_spbu   || '................................';
 
   const html = `<!DOCTYPE html>
 <html lang="id">
@@ -6119,8 +6137,8 @@ function showDetailKontrak(k) {
   <div class="ttd-wrap">
     <div class="ttd-box">
       <div class="ttd-label">Pihak Pertama<br/><strong>${spbuNama}</strong></div>
-      <div class="ttd-line">Pengelola SPBU</div>
-      <div class="ttd-jabatan">PT Pertamina Patra Niaga Sultra</div>
+      <div class="ttd-line">${pimpinanSpbu}</div>
+      <div class="ttd-jabatan">Pengelola SPBU</div>
     </div>
     <div class="ttd-box">
       <div class="ttd-label">Pihak Kedua<br/><strong>${mitraNama}</strong></div>
