@@ -70,19 +70,11 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
 .brand-logo svg{width:22px;height:22px;}
 .topbar-brand{font-size:16px;font-weight:700;letter-spacing:-.01em;color:#fff;line-height:1;}
 .topbar-sub{font-size:10px;color:rgba(255,255,255,.65);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.conn-dot{width:6px;height:6px;border-radius:50%;background:var(--gray-300);display:inline-block;}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0;position:relative;}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--gray-300);display:inline-block;flex-shrink:0;}
 .conn-dot.ok{background:#4ADE80;}
 .conn-dot.err{background:var(--red-light);}
 .conn-label{font-size:10px;color:var(--gray-600);}
-.user-chip{
-  display:flex;align-items:center;gap:6px;
-  background:var(--blue-light);
-  border:1px solid rgba(26,86,200,.2);
-  border-radius:20px;
-  padding:4px 10px 4px 4px;
-  cursor:pointer;
-}
 .user-avatar{
   width:24px;height:24px;border-radius:50%;
   background:var(--red);
@@ -90,9 +82,44 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
   font-size:10px;font-weight:700;color:#fff;
   flex-shrink:0;
 }
-.user-name{color:var(--navy);font-weight:600;font-size:12px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.user-avatar-btn{
+  padding:0;border:none;background:transparent;cursor:pointer;
+  display:flex;align-items:center;line-height:0;
+  border-radius:50%;
+}
+.user-avatar-btn:focus-visible{outline:2px solid var(--blue-mid);outline-offset:2px;}
 .role-badge{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--navy);color:#fff;font-weight:600;}
 .logout-btn{padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--gray-600);cursor:pointer;font-family:var(--ff);}
+.logout-btn-full{width:100%;margin-top:10px;color:var(--red);border-color:rgba(232,24,44,.3);}
+
+/* ─── USER POPOVER ──────────────────────────────────── */
+.user-popover{
+  position:absolute;
+  top:calc(100% + 8px);
+  right:0;
+  width:230px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:0 8px 24px rgba(13,27,62,.16);
+  padding:14px;
+  z-index:50;
+  display:none;
+  font-family:var(--ff);
+}
+.user-popover.show{display:block;}
+.user-popover-header{display:flex;align-items:center;gap:10px;}
+.user-avatar-lg{width:38px;height:38px;font-size:14px;}
+.user-popover-info{min-width:0;}
+.user-popover-name{color:var(--navy);font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.user-popover-row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;margin-top:10px;padding-top:10px;
+  border-top:1px solid var(--border);
+  font-size:11px;color:var(--gray-600);
+}
+.user-popover-row > span:last-child{color:var(--navy);font-weight:600;text-align:right;}
+.user-popover-status{display:flex;align-items:center;gap:5px;}
 
 /* ─── TABS ──────────────────────────────────────── */
 .tabs{
@@ -538,16 +565,32 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       </div>
     </div>
     <div class="topbar-right">
-      <div style="display:flex;align-items:center;gap:5px;">
-        <span class="conn-dot" id="conn-dot"></span>
-        <span class="conn-label" id="conn-label">...</span>
-      </div>
-      <div class="user-chip" id="user-chip">
+      <span class="conn-dot" id="conn-dot" title="Status koneksi"></span>
+      <button class="user-avatar-btn" id="user-avatar-btn" onclick="toggleUserPopover(event)" aria-haspopup="true" aria-expanded="false">
         <div class="user-avatar" id="user-avatar">—</div>
-        <span class="user-name" id="user-name">—</span>
-        <span class="role-badge" id="role-badge">—</span>
+      </button>
+
+      <div class="user-popover" id="user-popover">
+        <div class="user-popover-header">
+          <div class="user-avatar user-avatar-lg" id="popover-avatar">—</div>
+          <div class="user-popover-info">
+            <div class="user-popover-name" id="popover-name">—</div>
+            <span class="role-badge" id="popover-role">—</span>
+          </div>
+        </div>
+        <div class="user-popover-row">
+          <span>SPBU</span>
+          <span id="popover-spbu">—</span>
+        </div>
+        <div class="user-popover-row">
+          <span>Status</span>
+          <span class="user-popover-status">
+            <span class="conn-dot" id="popover-conn-dot"></span>
+            <span id="popover-conn-label">—</span>
+          </span>
+        </div>
+        <button class="logout-btn logout-btn-full" onclick="doLogout()">Keluar</button>
       </div>
-      <button class="logout-btn" onclick="doLogout()">Keluar</button>
     </div>
   </div>
 
@@ -1913,9 +1956,10 @@ function renderUserTopbar() {
   const p = currentProfile;
   const inisial = (p.nama || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   document.getElementById('user-avatar').textContent = inisial;
-  document.getElementById('user-name').textContent = p.nama || currentUser.email;
+  document.getElementById('popover-avatar').textContent = inisial;
+  document.getElementById('popover-name').textContent = p.nama || currentUser.email;
 
-  const badge = document.getElementById('role-badge');
+  const badge = document.getElementById('popover-role');
   const roleLabel = { operator: 'Operator', manager: 'Manager', super_admin: 'Super Admin' };
   badge.textContent = roleLabel[p.role] || p.role;
   badge.className = 'role-badge ' + (p.role !== 'operator' ? p.role : '');
@@ -1924,7 +1968,27 @@ function renderUserTopbar() {
     ? currentSpbu.nama + ' · ' + currentSpbu.kode
     : 'Semua SPBU · Sulawesi Tenggara';
   document.getElementById('spbu-label').textContent = spbuNama;
+  document.getElementById('popover-spbu').textContent = spbuNama;
 }
+
+function toggleUserPopover(e) {
+  e.stopPropagation();
+  const pop = document.getElementById('user-popover');
+  const btn = document.getElementById('user-avatar-btn');
+  const willShow = !pop.classList.contains('show');
+  pop.classList.toggle('show', willShow);
+  btn.setAttribute('aria-expanded', String(willShow));
+}
+
+document.addEventListener('click', (e) => {
+  const pop = document.getElementById('user-popover');
+  const btn = document.getElementById('user-avatar-btn');
+  if (!pop || !pop.classList.contains('show')) return;
+  if (!pop.contains(e.target) && !btn.contains(e.target)) {
+    pop.classList.remove('show');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+});
 
 function applyRoleTabs() {
   const role = currentProfile.role;
@@ -4393,8 +4457,12 @@ async function saveHarga(kode, nama) {
 
 // ─── UTILS ───────────────────────────────────────────────────
 function setConn(ok) {
-  document.getElementById('conn-dot').className = 'conn-dot ' + (ok ? 'ok' : 'err');
-  document.getElementById('conn-label').textContent = ok ? 'Connected' : 'Offline';
+  const cls = 'conn-dot ' + (ok ? 'ok' : 'err');
+  document.getElementById('conn-dot').className = cls;
+  const popDot = document.getElementById('popover-conn-dot');
+  const popLabel = document.getElementById('popover-conn-label');
+  if (popDot) popDot.className = cls;
+  if (popLabel) popLabel.textContent = ok ? 'Connected' : 'Offline';
 }
 
 function startClock() {
