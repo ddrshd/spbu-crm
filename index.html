@@ -1261,6 +1261,15 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
           <input class="field-input" id="gen-kupon-catatan" placeholder="Misal: Deposit Mei 2026"/>
         </div>
 
+        <div class="field-group">
+          <label class="field-label">Periode Aktif Kupon <span style="color:var(--red)">*</span></label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input class="field-input" type="date" id="gen-kupon-mulai" style="flex:1;min-width:0;"/>
+            <span style="font-size:12px;color:var(--text-muted);">s/d</span>
+            <input class="field-input" type="date" id="gen-kupon-sampai" style="flex:1;min-width:0;"/>
+          </div>
+        </div>
+
         <!-- Pecahan kupon -->
         <div style="margin-bottom:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -3326,6 +3335,11 @@ function showModalGenerateKupon() {
   document.getElementById('kupon-pecahan-list').innerHTML = '';
   document.getElementById('gen-kupon-ref').value = '';
   document.getElementById('gen-kupon-catatan').value = '';
+  // Default periode: hari ini s/d +3 bulan
+  const _now = new Date();
+  const _end = new Date(_now); _end.setMonth(_end.getMonth() + 3);
+  document.getElementById('gen-kupon-mulai').value  = toIsoDate(_now);
+  document.getElementById('gen-kupon-sampai').value = toIsoDate(_end);
   document.getElementById('gen-kupon-error').style.display = 'none';
   document.getElementById('gen-kupon-total').textContent = 'Rp 0';
   document.getElementById('gen-kupon-label').textContent = '🎫 Generate & Download PDF';
@@ -3380,12 +3394,16 @@ async function submitGenerateKupon() {
   const mitraId  = document.getElementById('gen-kupon-mitra').value;
   const ref      = document.getElementById('gen-kupon-ref').value.trim();
   const catatan  = document.getElementById('gen-kupon-catatan').value.trim();
+  const mulai    = document.getElementById('gen-kupon-mulai').value;
+  const sampai   = document.getElementById('gen-kupon-sampai').value;
   const errEl    = document.getElementById('gen-kupon-error');
   const spbuId   = currentSpbu?.id;
 
   errEl.style.display = 'none';
   if (!mitraId) { errEl.textContent = 'Pilih mitra terlebih dahulu'; errEl.style.display = 'block'; return; }
   if (!spbuId)  { errEl.textContent = 'SPBU tidak terdeteksi'; errEl.style.display = 'block'; return; }
+  if (!mulai || !sampai) { errEl.textContent = 'Isi periode aktif kupon'; errEl.style.display = 'block'; return; }
+  if (sampai < mulai)    { errEl.textContent = 'Tanggal akhir periode harus setelah tanggal mulai'; errEl.style.display = 'block'; return; }
 
   // Kumpulkan pecahan
   const pecahan = [];
@@ -3418,6 +3436,17 @@ async function submitGenerateKupon() {
     });
     if (error) throw error;
 
+    // Simpan periode aktif ke batch — verifikasi baris benar-benar ter-update (hindari silent RLS failure)
+    const { data: perUpd, error: perErr } = await sb.from('batch_kupon')
+      .update({ berlaku_mulai: mulai, berlaku_sampai: sampai })
+      .eq('id', batchId)
+      .select('id');
+    if (perErr || !perUpd?.length) {
+      throw new Error('Kupon ter-generate, tapi periode aktif gagal disimpan' +
+        (perErr ? ': ' + perErr.message : ' (cek RLS UPDATE batch_kupon)') +
+        '. Jangan cetak dulu — void batch ini lalu generate ulang.');
+    }
+
     // Ambil kupon yang baru di-generate untuk PDF
     const { data: kupons } = await sb.from('kupon')
       .select('kode, nominal_rupiah')
@@ -3426,13 +3455,17 @@ async function submitGenerateKupon() {
 
     const mitraNama = kuponMitraList.find(m => m.id === mitraId)?.nama_perusahaan || '';
     const spbuNama  = currentSpbu?.nama || '';
+    const spbuKode  = currentSpbu?.kode || '';
 
     closeModalGenerateKupon();
     showToast(`${kupons?.length || 0} kupon berhasil digenerate — mengunduh PDF...`);
     loadKuponBatch();
 
     // Generate dan unduh PDF
-    cetakPdfKupon(kupons || [], mitraNama, spbuNama, ref);
+    await cetakPdfKupon(kupons || [], {
+      mitraNama, spbuNama, spbuKode, referensi: ref,
+      berlakuMulai: mulai, berlakuSampai: sampai,
+    });
 
   } catch(e) {
     errEl.textContent = 'Gagal generate: ' + e.message;
@@ -3442,21 +3475,85 @@ async function submitGenerateKupon() {
   }
 }
 
+// ── Helper tanggal & kode SPBU ────────────────────────────────
+function toIsoDate(d) {
+  // YYYY-MM-DD dalam waktu lokal (bukan UTC) — aman untuk WITA
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function fmtTglKupon(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function fmtKodeSpbu(kode) {
+  // 7493104 → 74.931.04 (format nomor SPBU)
+  const k = String(kode || '').replace(/\D/g, '');
+  return k.length === 7 ? `${k.slice(0, 2)}.${k.slice(2, 5)}.${k.slice(5)}` : (kode || '');
+}
+
+// Logo Pertamina resmi: file PNG di root repo → di-inline sebagai data URL
+// supaya file HTML yang diunduh tetap tampil saat dibuka offline.
+let _logoPertaminaCache = null;
+async function getLogoPertamina() {
+  if (_logoPertaminaCache !== null) return _logoPertaminaCache;
+  try {
+    const res = await fetch('/logo-pertamina.png', { cache: 'force-cache' });
+    if (!res.ok) throw new Error(res.status);
+    const blob = await res.blob();
+    _logoPertaminaCache = await new Promise((ok, fail) => {
+      const r = new FileReader();
+      r.onload = () => ok(r.result);
+      r.onerror = fail;
+      r.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn('Logo Pertamina tidak ditemukan (/logo-pertamina.png):', e);
+    _logoPertaminaCache = '';
+  }
+  return _logoPertaminaCache;
+}
+
 // ── PDF kupon ─────────────────────────────────────────────────
-function cetakPdfKupon(kupons, mitraNama, spbuNama, referensi) {
-  const tgl = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
-  const perRow = 3; // 3 kolom per baris
+async function cetakPdfKupon(kupons, opt = {}) {
+  const {
+    mitraNama = '', spbuNama = '', spbuKode = '', referensi = '',
+    berlakuMulai = '', berlakuSampai = '',
+  } = opt;
+  const tgl      = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+  const noSpbu   = fmtKodeSpbu(spbuKode);
+  const periode  = (berlakuMulai && berlakuSampai)
+    ? `${fmtTglKupon(berlakuMulai)} – ${fmtTglKupon(berlakuSampai)}`
+    : 'Selama stok BBM tersedia';
+  const logo     = await getLogoPertamina();
+  const logoHtml = logo
+    ? `<img class="kupon-logo" src="${logo}" alt="Pertamina"/>`
+    : `<div class="kupon-logo-fallback">PERTAMINA</div>`;
+
   const kuponCards = kupons.map(k => `
     <div class="kupon-card">
       <div class="kupon-header">
-        <div class="kupon-brand">BISON</div>
-        <div class="kupon-spbu">${spbuNama}</div>
+        ${logoHtml}
+        <div class="kupon-spbu">
+          <div class="kupon-spbu-no">SPBU ${noSpbu}</div>
+          <div class="kupon-spbu-nama">${spbuNama}</div>
+        </div>
       </div>
-      <div class="kupon-kode">${k.kode}</div>
-      <div class="kupon-nominal">Rp ${parseInt(k.nominal_rupiah).toLocaleString('id-ID')}</div>
-      <div class="kupon-mitra">${mitraNama}</div>
+      <div class="kupon-stripe"><div style="background:#E8182C"></div><div style="background:#1A56C8"></div><div style="background:#00A651"></div></div>
+      <div class="kupon-body">
+        <div class="kupon-kode">${k.kode}</div>
+        <div class="kupon-nominal">Rp ${parseInt(k.nominal_rupiah).toLocaleString('id-ID')}</div>
+        <div class="kupon-mitra">${mitraNama}</div>
+      </div>
+      <div class="kupon-periode">
+        <span class="kupon-periode-label">BERLAKU</span>
+        <span class="kupon-periode-val">${periode}</span>
+      </div>
       <div class="kupon-footer">
-        Tunjukkan ke operator SPBU · Berlaku selama stok BBM ada
+        <span>Tunjukkan ke operator SPBU ${noSpbu}</span>
+        <span class="kupon-bison">BISON</span>
       </div>
     </div>`).join('');
 
@@ -3468,55 +3565,61 @@ function cetakPdfKupon(kupons, mitraNama, spbuNama, referensi) {
 <style>
   @page { size: A4; margin: 12mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; }
-  .doc-header { text-align: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #0D1B3E; }
-  .doc-title { font-size: 18px; font-weight: 800; color: #0D1B3E; letter-spacing: .06em; }
-  .doc-meta { font-size: 11px; color: #666; margin-top: 4px; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #0D1B3E; }
+  .doc-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #0D1B3E; }
+  .doc-header img { height: 30px; width: auto; }
+  .doc-title { font-size: 17px; font-weight: 800; letter-spacing: .05em; }
+  .doc-meta { font-size: 10.5px; color: #555; margin-top: 3px; line-height: 1.5; }
   .kupon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .kupon-card {
-    border: 1.5px solid #0D1B3E; border-radius: 8px; overflow: hidden;
+    border: 1.5px solid #0D1B3E; border-radius: 8px; overflow: hidden; background: #fff;
     break-inside: avoid; page-break-inside: avoid;
   }
   .kupon-header {
-    background: #0D1B3E; padding: 6px 10px;
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: space-between; align-items: center; gap: 6px;
+    padding: 6px 9px; background: #fff;
   }
-  .kupon-brand { font-size: 13px; font-weight: 800; color: #fff; letter-spacing: .06em; }
-  .kupon-spbu { font-size: 9px; color: rgba(255,255,255,.7); text-align: right; max-width: 80px; }
+  .kupon-logo { height: 20px; width: auto; max-width: 55%; object-fit: contain; }
+  .kupon-logo-fallback { font-size: 11px; font-weight: 800; letter-spacing: .08em; color: #0D1B3E; }
+  .kupon-spbu { text-align: right; line-height: 1.2; min-width: 0; }
+  .kupon-spbu-no { font-size: 11px; font-weight: 800; color: #0D1B3E; font-family: 'Courier New', monospace; white-space: nowrap; }
+  .kupon-spbu-nama { font-size: 8.5px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kupon-stripe { height: 3px; display: flex; }
+  .kupon-stripe div { flex: 1; }
+  .kupon-body { text-align: center; padding: 8px 8px 4px; }
   .kupon-kode {
-    font-size: 28px; font-weight: 800; text-align: center;
-    letter-spacing: .18em; color: #0D1B3E;
-    padding: 10px 8px 4px; font-family: 'Courier New', monospace;
+    font-size: 26px; font-weight: 800; letter-spacing: .18em;
+    font-family: 'Courier New', monospace; line-height: 1.1;
   }
-  .kupon-nominal {
-    font-size: 14px; font-weight: 700; text-align: center;
-    color: #00A651; padding: 2px 8px 6px;
-  }
+  .kupon-nominal { font-size: 14px; font-weight: 700; color: #00A651; margin-top: 3px; }
   .kupon-mitra {
-    font-size: 9px; text-align: center; color: #666;
-    padding: 0 8px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 9px; color: #666; margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .kupon-periode {
+    margin: 4px 8px 6px; padding: 4px 6px; border-radius: 4px;
+    background: #FFF7E6; border: 1px solid #F5C77E;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .kupon-periode-label { font-size: 7.5px; font-weight: 800; letter-spacing: .08em; color: #B45309; }
+  .kupon-periode-val { font-size: 9.5px; font-weight: 700; color: #7C2D12; white-space: nowrap; }
   .kupon-footer {
-    font-size: 8px; text-align: center; color: #999;
-    background: #F8FAFC; padding: 5px 8px;
-    border-top: 1px solid #E2E8F0;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 7.5px; color: #fff; background: #0D1B3E; padding: 4px 8px;
   }
-  .stripe { height: 3px; display: flex; margin-top: 16px; border-radius: 2px; overflow: hidden; }
-  .stripe div { flex: 1; }
+  .kupon-bison { font-weight: 800; letter-spacing: .1em; }
 </style>
 </head>
 <body>
 <div class="doc-header">
-  <div class="doc-title">KUPON BBM — BISON</div>
-  <div class="doc-meta">
-    ${mitraNama} · ${spbuNama} · Diterbitkan ${tgl}
-    ${referensi ? ' · Ref: ' + referensi : ''}
-    · ${kupons.length} lembar kupon
-  </div>
-  <div class="stripe">
-    <div style="background:#E8182C"></div>
-    <div style="background:#1A56C8"></div>
-    <div style="background:#00A651"></div>
+  ${logo ? `<img src="${logo}" alt="Pertamina"/>` : ''}
+  <div>
+    <div class="doc-title">KUPON BBM — SPBU ${noSpbu} ${spbuNama}</div>
+    <div class="doc-meta">
+      ${mitraNama} · Diterbitkan ${tgl}${referensi ? ' · Ref: ' + referensi : ''} · ${kupons.length} lembar kupon<br/>
+      Periode aktif: <b>${periode}</b>
+    </div>
   </div>
 </div>
 <div class="kupon-grid">${kuponCards}</div>
@@ -3527,7 +3630,7 @@ function cetakPdfKupon(kupons, mitraNama, spbuNama, referensi) {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `Kupon-BISON-${mitraNama.replace(/\s/g,'-')}-${Date.now()}.html`;
+  a.download = `Kupon-BISON-${noSpbu || 'SPBU'}-${mitraNama.replace(/\s/g,'-')}-${Date.now()}.html`;
   a.click();
   URL.revokeObjectURL(url);
   showToast('PDF kupon siap — buka file HTML yang terunduh lalu Ctrl+P untuk cetak');
@@ -3536,15 +3639,23 @@ function cetakPdfKupon(kupons, mitraNama, spbuNama, referensi) {
 // Download ulang PDF batch yang sudah ada
 async function downloadPdfBatch(batchId) {
   const { data: batch } = await sb.from('batch_kupon')
-    .select('referensi_transfer, mitra:mitra_id(nama_perusahaan)')
+    .select('referensi_transfer, berlaku_mulai, berlaku_sampai, mitra:mitra_id(nama_perusahaan), spbu:spbu_id(nama, kode)')
     .eq('id', batchId).single();
   const { data: kupons } = await sb.from('kupon')
     .select('kode, nominal_rupiah')
     .eq('batch_id', batchId)
     .eq('status', 'tersedia')
     .order('nominal_rupiah', { ascending: false });
-  cetakPdfKupon(kupons || [], batch?.mitra?.nama_perusahaan || '', currentSpbu?.nama || '', batch?.referensi_transfer || '');
+  await cetakPdfKupon(kupons || [], {
+    mitraNama:     batch?.mitra?.nama_perusahaan || '',
+    spbuNama:      batch?.spbu?.nama || currentSpbu?.nama || '',
+    spbuKode:      batch?.spbu?.kode || currentSpbu?.kode || '',
+    referensi:     batch?.referensi_transfer || '',
+    berlakuMulai:  batch?.berlaku_mulai || '',
+    berlakuSampai: batch?.berlaku_sampai || '',
+  });
 }
+
 
 // ── Void kupon ────────────────────────────────────────────────
 function showVoidBatch(batchId, mitraNama, count, nilai) {
@@ -3652,7 +3763,7 @@ async function checkKode(kode) {
 
   try {
     const { data: k, error } = await sb.from('kupon')
-      .select('id, kode, nominal_rupiah, status, mitra:mitra_id(nama_perusahaan)')
+      .select('id, kode, nominal_rupiah, status, mitra_id, mitra:mitra_id(nama_perusahaan), batch:batch_id(berlaku_mulai, berlaku_sampai)')
       .eq('kode', kode.toUpperCase())
       .maybeSingle();
 
@@ -3674,6 +3785,21 @@ async function checkKode(kode) {
       return;
     }
 
+    // Cek periode aktif (batch lama tanpa periode = tetap berlaku)
+    const today = toIsoDate(new Date());
+    const bMulai  = k.batch?.berlaku_mulai;
+    const bSampai = k.batch?.berlaku_sampai;
+    if (bMulai && today < bMulai) {
+      hint.innerHTML = `<div style="background:#FFFBEB;border:1px solid rgba(217,119,6,.25);border-radius:6px;
+        padding:7px 12px;font-size:12px;color:#B45309;">⏳ Kupon belum aktif — berlaku mulai ${fmtTglKupon(bMulai)}</div>`;
+      return;
+    }
+    if (bSampai && today > bSampai) {
+      hint.innerHTML = `<div style="background:#FEF2F2;border:1px solid rgba(220,38,38,.2);border-radius:6px;
+        padding:7px 12px;font-size:12px;color:#DC2626;">⛔ Kupon kedaluwarsa — berlaku s/d ${fmtTglKupon(bSampai)}</div>`;
+      return;
+    }
+
     // Valid — tersedia
     detectedKupon = k;
     hint.innerHTML = `
@@ -3688,6 +3814,7 @@ async function checkKode(kode) {
         <div style="font-size:11px;color:#007A3C;">
           ✅ Pilih produk BBM — volume akan dihitung otomatis dari nominal kupon
         </div>
+        ${bSampai ? `<div style="font-size:11px;color:#007A3C;margin-top:2px;">📅 Berlaku s/d ${fmtTglKupon(bSampai)}</div>` : ''}
       </div>`;
   } catch(e) {
     hint.innerHTML = `<div style="font-size:12px;color:var(--red);">Error: ${e.message}</div>`;
