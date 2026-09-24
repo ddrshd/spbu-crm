@@ -35,15 +35,31 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Role tidak valid' });
   }
 
-  // Manager hanya bisa buat operator SPBU-nya sendiri
-  if (caller.role === 'manager') {
-    if (role !== 'operator') return res.status(403).json({ error: 'Manager hanya bisa membuat akun operator' });
-    if (spbu_id && spbu_id !== caller.spbu_id) return res.status(403).json({ error: 'Hanya bisa menambah operator untuk SPBU Anda sendiri' });
-  }
-
   // Validasi mitra_id wajib ada jika role mitra
   if (role === 'mitra' && !mitra_id) {
     return res.status(400).json({ error: 'mitra_id wajib diisi untuk role mitra' });
+  }
+
+  // Manager: operator SPBU-nya sendiri, atau user mitra untuk mitra milik SPBU-nya
+  if (caller.role === 'manager') {
+    if (!['operator', 'mitra'].includes(role)) {
+      return res.status(403).json({ error: 'Manager hanya bisa membuat akun operator atau mitra' });
+    }
+    if (!caller.spbu_id) return res.status(403).json({ error: 'Akun manager belum terhubung ke SPBU' });
+    if (role === 'operator' && spbu_id && spbu_id !== caller.spbu_id) {
+      return res.status(403).json({ error: 'Hanya bisa menambah operator untuk SPBU Anda sendiri' });
+    }
+    if (role === 'mitra') {
+      // Re-query server-side: jangan percaya dropdown di client
+      const mRes = await fetch(`${SUPA_URL}/rest/v1/mitra?id=eq.${encodeURIComponent(mitra_id)}&select=id,spbu_id,status&limit=1`, {
+        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
+      });
+      const mitras = await mRes.json();
+      const m = Array.isArray(mitras) ? mitras[0] : null;
+      if (!m) return res.status(404).json({ error: 'Mitra tidak ditemukan' });
+      if (m.spbu_id !== caller.spbu_id) return res.status(403).json({ error: 'Mitra ini bukan milik SPBU Anda' });
+      if (m.status !== 'aktif') return res.status(400).json({ error: 'Mitra tidak aktif' });
+    }
   }
 
   const finalSpbuId = role === 'mitra' ? null
@@ -74,15 +90,27 @@ module.exports = async function handler(req, res) {
   const profilePayload = { nama, role, spbu_id: finalSpbuId, aktif: true };
   if (role === 'mitra') profilePayload.mitra_id = mitra_id;
 
-  await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${newUserId}`, {
+  const patchRes = await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${newUserId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       'apikey': SERVICE_KEY,
       'Authorization': `Bearer ${SERVICE_KEY}`,
+      'Prefer': 'return=representation',
     },
     body: JSON.stringify(profilePayload)
   });
+  const patched = patchRes.ok ? await patchRes.json() : [];
+
+  // Verifikasi profil benar-benar ter-update. Kalau gagal, hapus user Auth
+  // supaya tidak tersisa akun "yatim" dengan role default.
+  if (!patchRes.ok || !patched?.length) {
+    await fetch(`${SUPA_URL}/auth/v1/admin/users/${newUserId}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
+    });
+    return res.status(500).json({ error: 'Profil gagal disimpan, akun dibatalkan. Coba lagi.' });
+  }
 
   return res.status(200).json({ success: true, user: { id: newUserId, nama, email, role, spbu_id: finalSpbuId, mitra_id: mitra_id || null } });
 };
