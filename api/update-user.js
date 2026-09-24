@@ -16,8 +16,13 @@ module.exports = async function handler(req, res) {
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
   // Verifikasi caller
+  // Ambil id caller dari JWT, lalu query profil DIA sendiri (token tetap diverifikasi oleh RLS).
+  // Tanpa filter id, limit=1 bisa mengembalikan profil user lain yang terlihat oleh manager.
+  let callerId;
+  try { callerId = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString()).sub; }
+  catch { return res.status(401).json({ error: 'Token tidak valid' }); }
   const callerRes = await fetch(
-    `${SUPA_URL}/rest/v1/profiles?select=id,role,spbu_id&limit=1`,
+    `${SUPA_URL}/rest/v1/profiles?id=eq.${callerId}&select=id,role,spbu_id&limit=1`,
     { headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${token}` } }
   );
   const callerProfiles = await callerRes.json();
@@ -55,7 +60,7 @@ module.exports = async function handler(req, res) {
 
   // Ambil profil target untuk cek role
   const targetRes = await fetch(
-    `${SUPA_URL}/rest/v1/profiles?id=eq.${target_user_id}&select=role,spbu_id&limit=1`,
+    `${SUPA_URL}/rest/v1/profiles?id=eq.${target_user_id}&select=role,spbu_id,mitra_id&limit=1`,
     { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } }
   );
   const targets = await targetRes.json();
@@ -65,8 +70,17 @@ module.exports = async function handler(req, res) {
 
   // ── Isolasi manager: hanya bisa edit operator SPBU-nya ───────
   if (caller.role === 'manager') {
-    if (target.role !== 'operator' || target.spbu_id !== caller.spbu_id) {
-      return res.status(403).json({ error: 'Hanya bisa edit operator SPBU Anda' });
+    let allowed = target.role === 'operator' && target.spbu_id === caller.spbu_id;
+    if (!allowed && target.role === 'mitra' && target.mitra_id && caller.spbu_id) {
+      // User mitra: boleh jika mitra-nya terdaftar di SPBU manager
+      const mRes = await fetch(`${SUPA_URL}/rest/v1/mitra?id=eq.${target.mitra_id}&select=spbu_id&limit=1`, {
+        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
+      });
+      const mitras = await mRes.json();
+      allowed = Array.isArray(mitras) && mitras[0]?.spbu_id === caller.spbu_id;
+    }
+    if (!allowed) {
+      return res.status(403).json({ error: 'Hanya bisa edit operator/mitra SPBU Anda' });
     }
   }
 
