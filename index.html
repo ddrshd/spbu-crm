@@ -1735,7 +1735,7 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
         </button>
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">
-        Hanya menampilkan mitra yang sudah memiliki kontrak aktif. User ini akan bisa login ke portal mitra.
+        Hanya menampilkan mitra aktif di SPBU Anda. User ini akan bisa login ke portal mitra.
       </div>
 
       <!-- Form inline buat mitra baru -->
@@ -2109,21 +2109,22 @@ function applyRoleTabs() {
   const userSubtitle = document.getElementById('user-subtitle');
   if (userSubtitle) {
     userSubtitle.textContent = role === 'manager'
-      ? 'Kelola operator SPBU Anda'
+      ? 'Kelola operator & user mitra SPBU Anda'
       : 'Kelola semua operator dan manager seluruh SPBU Sultra';
   }
 
   const desc = document.getElementById('users-desc');
   if (desc) {
     desc.textContent = role === 'manager'
-      ? 'Kelola operator untuk SPBU ' + (currentSpbu?.nama || '')
+      ? 'Kelola operator & user mitra untuk SPBU ' + (currentSpbu?.nama || '')
       : 'Kelola semua operator dan manager seluruh SPBU Sultra';
   }
 
-  // Manager hanya bisa tambah operator
+  // Manager bisa tambah operator & user mitra (mitra milik SPBU-nya)
   if (role === 'manager') {
     const roleSelect = document.getElementById('u-role');
-    if (roleSelect) roleSelect.innerHTML = '<option value="operator">Operator</option>';
+    if (roleSelect) roleSelect.innerHTML =
+      '<option value="operator">Operator</option><option value="mitra">Mitra</option>';
   }
 
   // Super admin — dropdown SPBU di form input transaksi
@@ -4770,7 +4771,15 @@ async function loadUsers() {
       .order('role').order('nama');
 
     if (currentProfile.role === 'manager' && currentSpbu) {
-      q = q.eq('spbu_id', currentSpbu.id);
+      // User mitra tidak punya spbu_id (sengaja — supaya RLS transaksi tidak bocor),
+      // jadi ambil lewat mitra_id milik SPBU ini
+      const { data: mitraSpbu, error: mErr } = await sb.from('mitra')
+        .select('id').eq('spbu_id', currentSpbu.id);
+      if (mErr) throw mErr;
+      const mitraIds = (mitraSpbu || []).map(m => m.id);
+      q = mitraIds.length
+        ? q.or(`spbu_id.eq.${currentSpbu.id},mitra_id.in.(${mitraIds.join(',')})`)
+        : q.eq('spbu_id', currentSpbu.id);
     }
 
     const { data, error } = await q;
