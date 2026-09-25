@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
 <!-- Supabase dimuat di head — lebih cepat tersedia saat user klik Masuk -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/password.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -349,7 +350,9 @@ function showError(msg) {
   ['email','password'].forEach(id => document.getElementById(id).classList.add('error'));
 }
 function clearError() {
-  document.getElementById('error-msg').classList.remove('show');
+  const em = document.getElementById('error-msg');
+  em.classList.remove('show');
+  em.style.background = ''; em.style.color = ''; em.style.borderColor = ''; // reset gaya info Lupa password
   ['email','password'].forEach(id => document.getElementById(id).classList.remove('error'));
 }
 
@@ -370,14 +373,30 @@ async function doLogin() {
       showError(msg); setLoading(false); return;
     }
     const { data: profile, error: perr } = await client.from('profiles')
-      .select('id,nama,role,aktif').eq('id', data.user.id).single();
+      .select('*').eq('id', data.user.id).single();
     if (perr || !profile) {
-      showError('Profil tidak ditemukan. Hubungi administrator.');
+      if (perr) console.error('Login — gagal baca profil:', perr);
+      showError('Profil tidak ditemukan. Hubungi administrator.' + (perr?.code ? ` (kode: ${perr.code})` : ''));
       await client.auth.signOut(); setLoading(false); return;
     }
     if (!profile.aktif) {
       showError('Akun dinonaktifkan. Hubungi administrator.');
       await client.auth.signOut(); setLoading(false); return;
+    }
+    // Password masih dari admin/manager → wajib buat password sendiri dulu
+    if (profile.wajib_ganti_password === true) {
+      setLoading(false);
+      const ok = await BisonPassword.open({
+        client, forced: true, passwordLama: password,
+        onLogout: () => client.auth.signOut(),
+      });
+      if (!ok) {
+        document.getElementById('password').value = '';
+        showError('Anda perlu membuat password baru sebelum bisa masuk.');
+        return;
+      }
+      showToast('Password baru tersimpan. Gunakan password ini untuk login berikutnya.');
+      setLoading(true);
     }
     showToast('Selamat datang, ' + profile.nama + '!');
     setTimeout(() => window.location.href = profile.role === 'mitra' ? 'mitra.html' : 'index.html', 800);
@@ -396,20 +415,15 @@ function togglePassword() {
   eye.textContent = pw.type === 'password' ? '👁' : '🙈';
 }
 
-async function showForgot(e) {
+// Reset password lewat manager SPBU (reset via email ditunda sampai SMTP siap).
+// Password hasil reset otomatis wajib diganti saat login berikutnya.
+function showForgot(e) {
   e.preventDefault();
-  const email = document.getElementById('email').value.trim();
-  if (!email) { showError('Masukkan email dulu.'); return; }
-  setLoading(true);
-  try {
-    const { error } = await getSb().auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/index.html'
-    });
-    setLoading(false);
-    error ? showError('Gagal kirim email reset.') : showToast('Link reset dikirim ke ' + email);
-  } catch(e) {
-    showError('Gagal: ' + e.message); setLoading(false);
-  }
+  clearError();
+  const el = document.getElementById('error-msg');
+  el.textContent = 'Hubungi manager SPBU Anda untuk reset password. Mitra: hubungi SPBU tempat perusahaan Anda terdaftar. Setelah di-reset, Anda akan diminta membuat password baru saat login.';
+  el.style.background = '#EFF6FF'; el.style.color = '#1E40AF'; el.style.borderColor = 'rgba(30,64,175,.2)';
+  el.classList.add('show');
 }
 
 function showToast(msg) {

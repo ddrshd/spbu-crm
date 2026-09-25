@@ -589,6 +589,8 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
             <span id="popover-conn-label">—</span>
           </span>
         </div>
+        <button class="logout-btn logout-btn-full" onclick="openGantiPassword()"
+          style="margin-bottom:6px;background:transparent;color:var(--navy);border:1px solid var(--border);">🔒 Ganti Password</button>
         <button class="logout-btn logout-btn-full" onclick="doLogout()">Keluar</button>
       </div>
     </div>
@@ -1929,6 +1931,7 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="/password.js"></script>
 <script>
 // ─── CONFIG ──────────────────────────────────────────────────
 const SUPA_URL = 'https://vjmsqwdzprajgqrpohzl.supabase.co';
@@ -1982,6 +1985,17 @@ async function init() {
       return;
     }
 
+    // Password masih dari admin/manager → wajib buat password sendiri sebelum lanjut
+    if (profile.wajib_ganti_password === true) {
+      const ok = await BisonPassword.open({
+        client: sb, forced: true,
+        onLogout: async () => { await sb.auth.signOut(); window.location.href = 'login.html'; },
+      });
+      if (!ok) return;
+      currentProfile.wajib_ganti_password = false;
+      showToast('Password baru tersimpan');
+    }
+
     // Isi avatar + popover user di topbar
     renderUserTopbar();
 
@@ -2022,6 +2036,12 @@ function renderUserTopbar() {
     : 'Semua SPBU · Sulawesi Tenggara';
   document.getElementById('spbu-label').textContent = spbuNama;
   document.getElementById('popover-spbu').textContent = spbuNama;
+}
+
+async function openGantiPassword() {
+  document.getElementById('user-popover')?.classList.remove('show');
+  const ok = await BisonPassword.open({ client: sb });
+  if (ok) showToast('Password berhasil diganti. Perangkat lain otomatis keluar.');
 }
 
 function toggleUserPopover(e) {
@@ -4766,7 +4786,7 @@ async function loadUsers() {
 
   try {
     let q = sb.from('profiles')
-      .select('id, nama, role, aktif, spbu_id, mitra_id, spbu:spbu_id(nama, kode), mitra:mitra_id(nama_perusahaan)')
+      .select('id, nama, role, aktif, spbu_id, mitra_id, wajib_ganti_password, password_diganti_at, spbu:spbu_id(nama, kode), mitra:mitra_id(nama_perusahaan)')
       .neq('role', 'super_admin')
       .order('role').order('nama');
 
@@ -4838,7 +4858,14 @@ function renderUsersTable() {
           <div style="width:28px;height:28px;border-radius:50%;background:${roleBg[u.role] || '#f3f4f6'};
             color:${roleColor[u.role] || '#374151'};display:flex;align-items:center;justify-content:center;
             font-size:10px;font-weight:600;flex-shrink:0;">${inisial}</div>
-          <span style="font-weight:500;">${u.nama}</span>
+          <div style="min-width:0;">
+            <div style="font-weight:500;">${u.nama}</div>
+            ${u.wajib_ganti_password
+              ? `<span style="display:inline-block;margin-top:2px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:#FEF3C7;color:#92400E;">Belum ganti password</span>`
+              : (u.password_diganti_at
+                  ? `<div style="font-size:10px;color:var(--text-muted);margin-top:1px;">🔒 Diganti ${new Date(u.password_diganti_at).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                  : '')}
+          </div>
         </div>
       </td>
       <td style="font-size:12px;color:var(--text-muted);font-family:var(--fm);" id="email-${u.id}">—</td>

@@ -214,6 +214,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
         <div class="mitra-dot"></div>
         <span class="mitra-name" id="mitra-name">Memuat...</span>
       </div>
+      <button class="logout-btn" onclick="openGantiPassword()" title="Ganti password" aria-label="Ganti password">🔒</button>
       <button class="logout-btn" onclick="doLogout()">Keluar</button>
     </div>
   </div>
@@ -446,6 +447,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/password.js"></script>
 <script>
 const SUPA_URL = 'https://vjmsqwdzprajgqrpohzl.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbXNxd2R6cHJhamdxcnBvaHpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTM2MTgsImV4cCI6MjA5MDUyOTYxOH0.dPMY_HEozO267sA4IvfwCcf9s0_z2pmk7zYE19T2sCU';
@@ -466,6 +468,11 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {
 let currentPeriod = 'bulan_ini';
 let trxData = [];
 
+async function openGantiPassword() {
+  const ok = await BisonPassword.open({ client: sb });
+  if (ok) showToast('Password berhasil diganti. Perangkat lain otomatis keluar.');
+}
+
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
@@ -484,6 +491,16 @@ async function init() {
 
   currentProfile = profile;
   currentMitra = profile.mitra;
+
+  // Password masih dari admin/manager → wajib buat password sendiri sebelum lanjut
+  if (profile.wajib_ganti_password === true) {
+    const ok = await BisonPassword.open({
+      client: sb, forced: true,
+      onLogout: async () => { await sb.auth.signOut(); window.location.href = 'login.html'; },
+    });
+    if (!ok) return;
+    currentProfile.wajib_ganti_password = false;
+  }
 
   if (!currentMitra) {
     document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#6b7280;">Data mitra tidak ditemukan. Hubungi admin SPBU.</div>';
