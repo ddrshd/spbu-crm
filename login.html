@@ -9,7 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
 <!-- Supabase dimuat di head — lebih cepat tersedia saat user klik Masuk -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="/password.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -382,21 +381,6 @@ async function doLogin() {
     if (!profile.aktif) {
       showError('Akun dinonaktifkan. Hubungi administrator.');
       await client.auth.signOut(); setLoading(false); return;
-    }
-    // Password masih dari admin/manager → wajib buat password sendiri dulu
-    if (profile.wajib_ganti_password === true) {
-      setLoading(false);
-      const ok = await BisonPassword.open({
-        client, forced: true, passwordLama: password,
-        onLogout: () => client.auth.signOut(),
-      });
-      if (!ok) {
-        document.getElementById('password').value = '';
-        showError('Anda perlu membuat password baru sebelum bisa masuk.');
-        return;
-      }
-      showToast('Password baru tersimpan. Gunakan password ini untuk login berikutnya.');
-      setLoading(true);
     }
     showToast('Selamat datang, ' + profile.nama + '!');
     setTimeout(() => window.location.href = profile.role === 'mitra' ? 'mitra.html' : 'index.html', 800);

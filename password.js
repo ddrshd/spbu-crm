@@ -1,7 +1,7 @@
 /**
  * BISON - Modal ganti password (dipakai login.html, index.html, mitra.html)
  *
- * BisonPassword.open({ client, forced, onLogout, passwordLama }) -> Promise<boolean>
+ * BisonPassword.open({ client, forced, onLogout, passwordLama, tanpaPasswordLama, nama }) -> Promise<boolean>
  *   client   : Supabase client halaman tsb
  *   forced   : true = wajib ganti (tidak bisa ditutup, hanya "Keluar")
  *   onLogout : dipanggil saat user pilih Keluar di mode forced
@@ -144,12 +144,12 @@
     const ulang = el('bpw-ulang').value;
     showErr('');
 
-    if (!lama) return showErr(state.forced ? 'Isi password sementara Anda' : 'Isi password lama');
+    if (!lama && !state.tanpaPasswordLama) return showErr('Isi password lama');
     const r = cekAturan(baru, state.email);
     if (!r.len)  return showErr('Password baru minimal 8 karakter');
     if (!r.mix)  return showErr('Password baru harus berisi huruf dan angka');
     if (!r.kata) return showErr('Password baru mengandung kata yang mudah ditebak');
-    if (baru === lama) return showErr('Password baru harus berbeda dari password lama');
+    if (lama && baru === lama) return showErr('Password baru harus berbeda dari password lama');
     if (baru !== ulang) return showErr('Ulangi password tidak sama');
 
     const btn = el('bpw-submit');
@@ -160,7 +160,7 @@
       const res = await fetch('/api/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ password_lama: lama, password_baru: baru }),
+        body: JSON.stringify({ password_lama: lama || null, password_baru: baru }),
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out.error || 'Gagal mengganti password');
@@ -173,7 +173,7 @@
     }
   }
 
-  async function open({ client, forced = false, onLogout = null, passwordLama = '' } = {}) {
+  async function open({ client, forced = false, onLogout = null, passwordLama = '', tanpaPasswordLama = false, nama = '' } = {}) {
     ensureDom();
     if (state) close(false);
     const { data: { session } } = await client.auth.getSession();
@@ -182,23 +182,26 @@
     overlay.querySelectorAll('.bpw-eye').forEach(b => b.textContent = '\u{1F441}');
     showErr('');
 
-    el('bpw-title').textContent = forced ? 'Buat Password Baru' : 'Ganti Password';
+    el('bpw-title').textContent = forced
+      ? (nama ? `Selamat datang, ${nama.split(' ')[0]}!` : 'Buat Password Baru')
+      : 'Ganti Password';
     const sub = el('bpw-sub');
     sub.className = 'bpw-sub' + (forced ? ' warn' : '');
     sub.textContent = forced
-      ? 'Password Anda saat ini diberikan oleh administrator. Demi keamanan, buat password Anda sendiri sebelum melanjutkan.'
+      ? 'Anda berhasil masuk. Satu langkah lagi: password Anda saat ini diberikan oleh administrator, jadi buat password Anda sendiri untuk login berikutnya.'
       : 'Setelah diganti, akun Anda akan otomatis keluar dari perangkat lain.';
     el('bpw-lama-label').textContent = forced ? 'Password sementara (dari admin)' : 'Password lama';
     // Dari halaman login: password lama sudah diketik user -> isi otomatis & sembunyikan
+    // tanpaPasswordLama: login pertama (server hanya mengizinkan jika akun masih wajib ganti)
     el('bpw-lama').value = passwordLama || '';
-    el('bpw-lama').closest('.bpw-field').style.display = passwordLama ? 'none' : '';
+    el('bpw-lama').closest('.bpw-field').style.display = (passwordLama || tanpaPasswordLama) ? 'none' : '';
     el('bpw-cancel').textContent = forced ? 'Keluar' : 'Batal';
 
     return new Promise(resolve => {
-      state = { client, forced, onLogout, resolve, email: session?.user?.email || '', busy: false };
+      state = { client, forced, onLogout, resolve, email: session?.user?.email || '', busy: false, tanpaPasswordLama };
       renderRules();
       overlay.classList.add('show');
-      setTimeout(() => el(passwordLama ? 'bpw-baru' : 'bpw-lama').focus(), 50);
+      setTimeout(() => el((passwordLama || tanpaPasswordLama) ? 'bpw-baru' : 'bpw-lama').focus(), 50);
     });
   }
 

@@ -492,16 +492,6 @@ async function init() {
   currentProfile = profile;
   currentMitra = profile.mitra;
 
-  // Password masih dari admin/manager → wajib buat password sendiri sebelum lanjut
-  if (profile.wajib_ganti_password === true) {
-    const ok = await BisonPassword.open({
-      client: sb, forced: true,
-      onLogout: async () => { await sb.auth.signOut(); window.location.href = 'login.html'; },
-    });
-    if (!ok) return;
-    currentProfile.wajib_ganti_password = false;
-  }
-
   if (!currentMitra) {
     document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#6b7280;">Data mitra tidak ditemukan. Hubungi admin SPBU.</div>';
     return;
@@ -522,6 +512,18 @@ async function init() {
 
   await loadDashboard();
   await loadKendaraan();
+
+  // Login pertama / setelah reset: portal tampil dulu, lalu minta buat password sendiri
+  if (currentProfile.wajib_ganti_password === true) {
+    const ok = await BisonPassword.open({
+      client: sb, forced: true, tanpaPasswordLama: true, nama: currentProfile.nama,
+      onLogout: async () => { await sb.auth.signOut(); window.location.href = 'login.html'; },
+    });
+    if (ok) {
+      currentProfile.wajib_ganti_password = false;
+      showToast('Password baru tersimpan. Gunakan password ini untuk login berikutnya.');
+    }
+  }
 }
 
 function getPeriodRange(period) {

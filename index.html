@@ -1985,17 +1985,6 @@ async function init() {
       return;
     }
 
-    // Password masih dari admin/manager → wajib buat password sendiri sebelum lanjut
-    if (profile.wajib_ganti_password === true) {
-      const ok = await BisonPassword.open({
-        client: sb, forced: true,
-        onLogout: async () => { await sb.auth.signOut(); window.location.href = 'login.html'; },
-      });
-      if (!ok) return;
-      currentProfile.wajib_ganti_password = false;
-      showToast('Password baru tersimpan');
-    }
-
     // Isi avatar + popover user di topbar
     renderUserTopbar();
 
@@ -2012,6 +2001,11 @@ async function init() {
     startClock();
     loadHistory();
     loadDashboard();
+
+    // Login pertama / setelah reset: aplikasi tampil dulu, lalu minta buat password sendiri
+    if (currentProfile.wajib_ganti_password === true) {
+      setTimeout(mintaBuatPasswordAwal, 600);
+    }
 
   } catch (e) {
     setConn(false);
@@ -2036,6 +2030,17 @@ function renderUserTopbar() {
     : 'Semua SPBU · Sulawesi Tenggara';
   document.getElementById('spbu-label').textContent = spbuNama;
   document.getElementById('popover-spbu').textContent = spbuNama;
+}
+
+async function mintaBuatPasswordAwal() {
+  const ok = await BisonPassword.open({
+    client: sb, forced: true, tanpaPasswordLama: true, nama: currentProfile.nama,
+    onLogout: async () => { await sb.auth.signOut(); window.location.href = 'login.html'; },
+  });
+  if (ok) {
+    currentProfile.wajib_ganti_password = false;
+    showToast('Password baru tersimpan. Gunakan password ini untuk login berikutnya.');
+  }
 }
 
 async function openGantiPassword() {
