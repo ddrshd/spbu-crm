@@ -45,10 +45,23 @@ module.exports = async function handler(req, res) {
   }
 
   const { password_lama, password_baru } = req.body || {};
-  if (!password_lama || !password_baru) {
-    return res.status(400).json({ error: 'Password lama dan password baru wajib diisi' });
+  if (!password_baru) {
+    return res.status(400).json({ error: 'Password baru wajib diisi' });
   }
-  if (password_lama === password_baru) {
+
+  // Password lama boleh kosong HANYA untuk akun yang masih wajib ganti
+  // (login pertama / setelah reset — user baru saja login dengan password sementara)
+  if (!password_lama) {
+    const pRes = await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${user.id}&select=wajib_ganti_password&limit=1`, {
+      headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
+    });
+    const rows = pRes.ok ? await pRes.json().catch(() => []) : [];
+    if (rows?.[0]?.wajib_ganti_password !== true) {
+      return res.status(400).json({ error: 'Password lama wajib diisi' });
+    }
+  }
+
+  if (password_lama && password_lama === password_baru) {
     return res.status(400).json({ error: 'Password baru harus berbeda dari password lama' });
   }
 
@@ -56,14 +69,16 @@ module.exports = async function handler(req, res) {
   const aturanErr = cekAturanPassword(password_baru, user.email);
   if (aturanErr) return res.status(400).json({ error: aturanErr });
 
-  // 3. Verifikasi password lama
-  const verRes = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY },
-    body: JSON.stringify({ email: user.email, password: password_lama })
-  });
-  if (!verRes.ok) {
-    return res.status(400).json({ error: 'Password lama salah' });
+  // 3. Verifikasi password lama (dilewati untuk login pertama, lihat di atas)
+  if (password_lama) {
+    const verRes = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY },
+      body: JSON.stringify({ email: user.email, password: password_lama })
+    });
+    if (!verRes.ok) {
+      return res.status(400).json({ error: 'Password lama salah' });
+    }
   }
 
   // 4. Update password via endpoint user (ikut aturan & leaked-password check Supabase)
@@ -85,7 +100,7 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Password baru harus berbeda dari password lama' });
     }
     if (code === 'reauthentication_needed') {
-      // Password lama sudah diverifikasi di langkah 3 → aman update via admin API
+      // Token caller valid (langkah 1) + password lama terverifikasi / akun wajib ganti → aman via admin API
       updRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` },
