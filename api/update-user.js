@@ -105,6 +105,22 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Gagal update password: ' + (err.message || 'unknown') });
     }
     updated.password = true;
+
+    // Password di-reset oleh admin/manager → jadi password sementara, wajib diganti user
+    if (target_user_id !== caller.id) {
+      const flagRes = await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${target_user_id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SERVICE_KEY,
+          'Authorization': `Bearer ${SERVICE_KEY}`,
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify({ wajib_ganti_password: true })
+      });
+      const flagged = flagRes.ok ? await flagRes.json().catch(() => []) : [];
+      updated.wajib_ganti = !!flagged?.length;
+    }
   }
 
   // ── Update email ─────────────────────────────────────────────

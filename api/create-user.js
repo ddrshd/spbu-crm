@@ -87,7 +87,9 @@ module.exports = async function handler(req, res) {
   const newUserId = createData.id;
 
   // Update profil dengan role, spbu_id, dan mitra_id
-  const profilePayload = { nama, role, spbu_id: finalSpbuId, aktif: true };
+  // Password dari admin/manager = sementara → wajib diganti user saat login pertama
+  const profilePayload = { nama, role, spbu_id: finalSpbuId, aktif: true,
+                           wajib_ganti_password: true, password_diganti_at: null };
   if (role === 'mitra') profilePayload.mitra_id = mitra_id;
 
   const patchRes = await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${newUserId}`, {
