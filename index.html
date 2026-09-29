@@ -3543,7 +3543,185 @@ async function getLogoPertamina() {
 }
 
 // ── PDF kupon ─────────────────────────────────────────────────
+// ── PDF kupon (jsPDF, vektor — tajam saat dicetak, file kecil) ──
+// Layout A4 portrait: 3 kolom x 5 baris = 15 kupon per halaman.
+function buatPdfKupon(JsPDF, kupons, opt, logo) {
+  const {
+    mitraNama = '', spbuNama = '', noSpbu = '', referensi = '',
+    periode = '', tglTerbit = '',
+  } = opt;
+
+  const doc = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+  const NAVY = [13, 27, 62], RED = [232, 24, 44], BLUE = [26, 86, 200], GREEN = [0, 166, 81];
+  const GREEN_TXT = [0, 122, 60], GRAY = [102, 102, 102];
+
+  const M = 10, COLS = 3, ROWS = 5, GAP = 4;
+  const CW = (210 - 2 * M - (COLS - 1) * GAP) / COLS;   // ~60.7 mm
+  const CH = 48;
+  const GRID_Y = 30;
+  const PER_PAGE = COLS * ROWS;
+  const totalPages = Math.max(1, Math.ceil(kupons.length / PER_PAGE));
+
+  // Potong teks agar muat lebar tertentu (tambahkan "...")
+  const fit = (txt, maxW) => {
+    txt = String(txt || '');
+    if (doc.getTextWidth(txt) <= maxW) return txt;
+    while (txt.length > 1 && doc.getTextWidth(txt + '...') > maxW) txt = txt.slice(0, -1);
+    return txt + '...';
+  };
+
+  const stripe = (x, y, w, h) => {
+    const seg = w / 3;
+    [RED, BLUE, GREEN].forEach((c, i) => { doc.setFillColor(...c); doc.rect(x + seg * i, y, seg, h, 'F'); });
+  };
+
+  const header = (page) => {
+    let tx = M;
+    if (logo?.dataUrl) {
+      const lh = 8, lw = lh * logo.ratio;
+      doc.addImage(logo.dataUrl, logo.format, M, 11, lw, lh, 'logoPertamina');
+      tx = M + lw + 4;
+    }
+    doc.setTextColor(...NAVY);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+    doc.text(fit(`KUPON BBM - SPBU ${noSpbu} ${spbuNama}`, 200 - tx), tx, 15);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+    const meta = [mitraNama, tglTerbit && `Diterbitkan ${tglTerbit}`, referensi && `Ref: ${referensi}`,
+                  `${kupons.length} lembar`].filter(Boolean).join('  |  ');
+    doc.text(fit(meta, 200 - tx), tx, 19.5);
+    doc.text(fit(`Periode aktif: ${periode}`, 150 - tx), tx, 23);
+    doc.text(`Hal ${page}/${totalPages}`, 200, 23, { align: 'right' });
+    stripe(M, 25.5, 190, 1);
+  };
+
+  const card = (k, x, y) => {
+    // Bingkai + latar
+    doc.setDrawColor(...NAVY); doc.setLineWidth(0.35); doc.setFillColor(255, 255, 255);
+    doc.roundedRect(x, y, CW, CH, 2, 2, 'FD');
+
+    // Header: logo kiri, nomor SPBU kanan
+    if (logo?.dataUrl) {
+      const lh = 4.6;
+      doc.addImage(logo.dataUrl, logo.format, x + 3, y + 2.2, lh * logo.ratio, lh, 'logoPertamina');
+    } else {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...NAVY);
+      doc.text('PERTAMINA', x + 3, y + 5.6);
+    }
+    doc.setFont('courier', 'bold'); doc.setFontSize(8); doc.setTextColor(...NAVY);
+    doc.text(`SPBU ${noSpbu}`, x + CW - 3, y + 4.6, { align: 'right' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(5.8); doc.setTextColor(...GRAY);
+    doc.text(fit(spbuNama, CW / 2), x + CW - 3, y + 7.4, { align: 'right' });
+    stripe(x + 0.2, y + 9, CW - 0.4, 0.9);
+
+    // Kode kupon (lebar dihitung manual karena ada charSpace)
+    const kode = String(k.kode || '');
+    doc.setFont('courier', 'bold'); doc.setFontSize(21); doc.setTextColor(...NAVY);
+    const cs = 1.4;
+    const kw = doc.getTextWidth(kode) + cs * Math.max(0, kode.length - 1);
+    doc.text(kode, x + (CW - kw) / 2, y + 19.5, { charSpace: cs });
+
+    // Nominal + mitra
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5); doc.setTextColor(...GREEN_TXT);
+    doc.text(`Rp ${parseInt(k.nominal_rupiah || 0, 10).toLocaleString('id-ID')}`, x + CW / 2, y + 26, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...GRAY);
+    doc.text(fit(mitraNama, CW - 6), x + CW / 2, y + 29.8, { align: 'center' });
+
+    // Kotak periode
+    const bx = x + 3, bw = CW - 6, by = y + 32, bh = 6;
+    doc.setFillColor(255, 247, 230); doc.setDrawColor(245, 199, 126); doc.setLineWidth(0.25);
+    doc.roundedRect(bx, by, bw, bh, 1, 1, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(5.3);
+    const lbl = 'BERLAKU';
+    doc.setFontSize(7);
+    const val = fit(periode, bw - 16);
+    const valW = doc.getTextWidth(val);
+    doc.setFontSize(5.3);
+    const lblW = doc.getTextWidth(lbl);
+    const startX = bx + (bw - (lblW + 2 + valW)) / 2;
+    doc.setTextColor(180, 83, 9); doc.text(lbl, startX, by + 4);
+    doc.setFontSize(7); doc.setTextColor(124, 45, 18); doc.text(val, startX + lblW + 2, by + 4.1);
+
+    // Footer navy (sudut bawah membulat)
+    const fh = 6.2, fy = y + CH - fh;
+    doc.setFillColor(...NAVY);
+    doc.roundedRect(x, fy, CW, fh, 2, 2, 'F');
+    doc.rect(x, fy, CW, 2.2, 'F');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(5.5); doc.setTextColor(255, 255, 255);
+    doc.text(fit(`Tunjukkan ke operator SPBU ${noSpbu}`, CW - 16), x + 2.8, fy + 4);
+    doc.setFont('helvetica', 'bold'); doc.text('BISON', x + CW - 2.8, fy + 4, { align: 'right' });
+  };
+
+  kupons.forEach((k, i) => {
+    const idx = i % PER_PAGE;
+    if (idx === 0) {
+      if (i > 0) doc.addPage();
+      header(Math.floor(i / PER_PAGE) + 1);
+    }
+    const col = idx % COLS, row = Math.floor(idx / COLS);
+    card(k, M + col * (CW + GAP), GRID_Y + row * (CH + GAP));
+  });
+  if (!kupons.length) header(1);
+
+  return doc;
+}
+
+// Muat jsPDF sekali saja (lazy — tidak membebani halaman operator)
+let _jsPdfPromise = null;
+function loadJsPdf() {
+  if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if (!_jsPdfPromise) {
+    _jsPdfPromise = new Promise((ok, fail) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      sc.onload = () => window.jspdf?.jsPDF ? ok(window.jspdf.jsPDF) : fail(new Error('jsPDF tidak tersedia'));
+      sc.onerror = () => { _jsPdfPromise = null; fail(new Error('Gagal memuat jsPDF')); };
+      document.head.appendChild(sc);
+    });
+  }
+  return _jsPdfPromise;
+}
+
+// Logo Pertamina + rasio & format untuk jsPDF
+async function getLogoPertaminaInfo() {
+  const dataUrl = await getLogoPertamina();
+  if (!dataUrl) return null;
+  const ratio = await new Promise(res => {
+    const img = new Image();
+    img.onload = () => res(img.naturalWidth / img.naturalHeight || 2.9);
+    img.onerror = () => res(2.9);
+    img.src = dataUrl;
+  });
+  const format = /^data:image\/jpe?g/i.test(dataUrl) ? 'JPEG' : 'PNG';
+  return { dataUrl, ratio, format };
+}
+
+// Generate & unduh kupon sebagai PDF. Fallback ke HTML jika jsPDF gagal dimuat.
 async function cetakPdfKupon(kupons, opt = {}) {
+  const {
+    mitraNama = '', spbuNama = '', spbuKode = '', referensi = '',
+    berlakuMulai = '', berlakuSampai = '',
+  } = opt;
+  try {
+    const JsPDF = await loadJsPdf();
+    const logo  = await getLogoPertaminaInfo();
+    const noSpbu = fmtKodeSpbu(spbuKode);
+    const doc = buatPdfKupon(JsPDF, kupons, {
+      mitraNama, spbuNama, noSpbu, referensi,
+      periode: (berlakuMulai && berlakuSampai)
+        ? `${fmtTglKupon(berlakuMulai)} – ${fmtTglKupon(berlakuSampai)}`
+        : 'Selama stok BBM tersedia',
+      tglTerbit: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
+    }, logo);
+    const aman = s => String(s || '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    doc.save(`Kupon-BISON-${aman(noSpbu) || 'SPBU'}-${aman(mitraNama)}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    showToast(`PDF kupon siap (${kupons.length} lembar) — buka lalu cetak`);
+  } catch (e) {
+    console.error('Gagal membuat PDF kupon:', e);
+    await cetakHtmlKupon(kupons, opt);
+  }
+}
+
+async function cetakHtmlKupon(kupons, opt = {}) {
   const {
     mitraNama = '', spbuNama = '', spbuKode = '', referensi = '',
     berlakuMulai = '', berlakuSampai = '',
@@ -3659,7 +3837,7 @@ async function cetakPdfKupon(kupons, opt = {}) {
   a.download = `Kupon-BISON-${noSpbu || 'SPBU'}-${mitraNama.replace(/\s/g,'-')}-${Date.now()}.html`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('PDF kupon siap — buka file HTML yang terunduh lalu Ctrl+P untuk cetak');
+  showToast('PDF gagal dibuat — kupon diunduh sebagai HTML. Buka file lalu Ctrl+P untuk cetak.', true);
 }
 
 // Download ulang PDF batch yang sudah ada
