@@ -6156,6 +6156,9 @@ function showDetailKontrak(k) {
   const tglSelesai  = fmtTgl(k.tanggal_selesai);
   const tglCetak    = fmtTgl(new Date());
   const spbuNama    = k.spbu?.nama  || '—';
+  // Kode - Nama SPBU (contoh: 7493104 - Tapak Kuda) agar SPBU yang dimaksud jelas
+  const spbuLabel   = k.spbu?.kode ? `${k.spbu.kode} - ${spbuNama}` : spbuNama;
+  const logoBison   = `${window.location.origin}/logo-bison.png`;
   const mitraNama   = k.mitra?.nama_perusahaan || '—';
   const mitraPIC    = k.mitra?.pic_nama  || '—';
   const mitraAlamat = k.mitra?.alamat || '—';
@@ -6263,6 +6266,8 @@ function showDetailKontrak(k) {
     display: flex; align-items: center; justify-content: center;
     gap: 12px; margin-bottom: 14px;
   }
+  .logo-img { height: 58px; width: auto; display: block; }
+  .logo-row .logo-info { border-left: 1px solid #d1d5db; padding-left: 12px; }
   .logo-badge {
     background: #0D1B3E; color: #fff;
     font-size: 16px; font-weight: 800;
@@ -6367,10 +6372,11 @@ function showDetailKontrak(k) {
   <!-- HEADER -->
   <div class="doc-header">
     <div class="logo-row">
-      <div class="logo-badge">BISON</div>
+      <img class="logo-img" src="${logoBison}" alt="BISON — Business Integrated System for Oil Network"
+        onerror="this.outerHTML='&lt;div class=&quot;logo-badge&quot;&gt;BISON&lt;/div&gt;'"/>
       <div class="logo-info">
         <div class="org">PT Pertamina Patra Niaga</div>
-        <div class="sub">Sulawesi Tenggara · ${spbuNama}</div>
+        <div class="sub">Sulawesi Tenggara · SPBU ${spbuLabel}</div>
       </div>
     </div>
     <div class="stripe">
@@ -6393,7 +6399,7 @@ function showDetailKontrak(k) {
 
   <div class="pihak-block">
     <div class="pihak-name">Pihak Pertama</div>
-    <div class="pihak-row"><span class="pihak-key">Nama SPBU</span><span>:</span><span>${spbuNama}</span></div>
+    <div class="pihak-row"><span class="pihak-key">Nama SPBU</span><span>:</span><span>${spbuLabel}</span></div>
     <div class="pihak-row"><span class="pihak-key">Pengelola</span><span>:</span><span>${pimpinanSpbu}</span></div>
     <div class="pihak-row"><span class="pihak-key">Selanjutnya</span><span>:</span><span>"<strong>SPBU</strong>"</span></div>
   </div>
