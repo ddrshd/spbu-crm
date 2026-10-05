@@ -606,6 +606,7 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     <div class="tab hidden" id="tab-kontrak" onclick="switchTab('kontrak')">Kontrak</div>
     <div class="tab hidden" id="tab-tagihan" onclick="switchTab('tagihan')" style="display:none!important">Tagihan</div>
     <div class="tab hidden" id="tab-spbu" onclick="switchTab('spbu')">SPBU</div>
+    <div class="tab hidden" id="tab-rekap" onclick="switchTab('rekap')">Rekap</div>
     <div class="tab hidden" id="tab-harga" onclick="switchTab('harga')">Produk</div>
   </div>
 
@@ -1410,6 +1411,35 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
   </div>
 
   <!-- VIEW: DATA SPBU (Super Admin only) -->
+  <div class="view" id="view-rekap">
+    <div style="padding:14px 14px 4px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:17px;font-weight:800;color:var(--navy);">Rekap Mitra</div>
+          <div style="font-size:12px;color:var(--text-muted);">Per kabupaten/kota, SPBU, dan mitra</div>
+        </div>
+        <button class="add-btn" id="rekap-unduh-btn" onclick="unduhRekapExcel()">⬇ Excel</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <select class="field-select" id="rekap-periode" onchange="loadRekap()">
+          <option value="bulan_ini">Bulan ini</option>
+          <option value="bulan_lalu">Bulan lalu</option>
+          <option value="3_bulan">3 bulan terakhir</option>
+          <option value="tahun_ini">Tahun ini</option>
+          <option value="semua">Semua waktu</option>
+        </select>
+        <select class="field-select" id="rekap-wilayah" onchange="renderRekap()">
+          <option value="">Semua wilayah SBM</option>
+          <option value="SBM Sultra I">SBM Sultra I</option>
+          <option value="SBM Sultra II Fuel">SBM Sultra II Fuel</option>
+          <option value="SBM Sultra III Fuel">SBM Sultra III Fuel</option>
+          <option value="__kosong">Belum ada wilayah</option>
+        </select>
+      </div>
+      <div id="rekap-content"></div>
+    </div>
+  </div>
+
   <div class="view" id="view-spbu">
     <div class="toolbar">
       <span style="font-size:13px;font-weight:500">Data SPBU</span>
@@ -1418,11 +1448,11 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Kode</th><th>Nama SPBU</th><th>Alamat</th><th>Kota</th>
+          <th>Kode</th><th>Nama SPBU</th><th>Alamat</th><th>Kab/Kota</th><th>Wilayah</th>
           <th>Operator</th><th>Status</th><th>Aksi</th>
         </tr></thead>
         <tbody id="spbu-body">
-          <tr><td colspan="7" class="loading-msg">Memuat data SPBU...</td></tr>
+          <tr><td colspan="8" class="loading-msg">Memuat data SPBU...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1882,14 +1912,24 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
           style="font-family:var(--fm);"/>
       </div>
       <div class="field-group" style="margin-bottom:0">
-        <label class="field-label">Kota</label>
-        <input class="field-input" id="s-kota" type="text" placeholder="Kendari"/>
+        <label class="field-label">Kabupaten/Kota</label>
+        <select class="field-select" id="s-kota"></select>
       </div>
     </div>
 
     <div class="field-group" style="margin-top:12px;">
-      <label class="field-label">Nama SPBU</label>
-      <input class="field-input" id="s-nama" type="text" placeholder="SPBU 76.981.01 Kendari"/>
+      <label class="field-label">Wilayah SBM</label>
+      <select class="field-select" id="s-wilayah">
+        <option value="">— Pilih wilayah —</option>
+        <option value="SBM Sultra I">SBM Sultra I</option>
+        <option value="SBM Sultra II Fuel">SBM Sultra II Fuel</option>
+        <option value="SBM Sultra III Fuel">SBM Sultra III Fuel</option>
+      </select>
+    </div>
+
+    <div class="field-group" style="margin-top:12px;">
+      <label class="field-label">Nama SPBU <span style="font-weight:400;color:var(--text-muted);">(wajib jika status Aktif)</span></label>
+      <input class="field-input" id="s-nama" type="text" placeholder="Tapak Kuda"/>
     </div>
 
     <div class="field-group">
@@ -2072,7 +2112,7 @@ function applyRoleTabs() {
   const role = currentProfile.role;
 
   // ── Sembunyikan semua tab opsional dulu ──────────────────
-  ['tab-mitra','tab-kontrak','tab-users','tab-harga','tab-spbu','tab-tagihan']
+  ['tab-mitra','tab-kontrak','tab-users','tab-harga','tab-spbu','tab-tagihan','tab-rekap']
     .forEach(id => document.getElementById(id)?.classList.add('hidden'));
 
   // ── Kolom tabel riwayat ───────────────────────────────────
@@ -2106,6 +2146,7 @@ function applyRoleTabs() {
 
   if (role === 'super_admin') {
     document.getElementById('tab-spbu')?.classList.remove('hidden');
+    document.getElementById('tab-rekap')?.classList.remove('hidden');   // Rekap: sementara khusus super admin
     document.getElementById('filter-manager-btn')?.classList.remove('hidden');
     const btnKend = document.getElementById('btn-tambah-kendaraan');
     if (btnKend) btnKend.style.display = '';
@@ -2120,7 +2161,7 @@ function applyRoleTabs() {
   const tabBar = document.querySelector('.tabs');
   if (tabBar && (role === 'manager' || role === 'super_admin')) {
     // Urutan: dashboard → mitra → kontrak → input → history → users → harga → spbu
-    const order = ['tab-dashboard','tab-mitra','tab-kontrak','tab-input',
+    const order = ['tab-dashboard','tab-rekap','tab-mitra','tab-kontrak','tab-input',
                    'tab-history','tab-users','tab-harga','tab-spbu','tab-tagihan'];
     order.forEach(id => {
       const el = document.getElementById(id);
@@ -4940,6 +4981,7 @@ function switchTab(tab) {
   if (tab === 'kontrak')   loadKontrakList();
   if (tab === 'tagihan')   loadTagihan();
   if (tab === 'spbu')      loadSpbu();
+  if (tab === 'rekap' && currentProfile?.role === 'super_admin') loadRekap();
   if (tab === 'harga')     loadProdukHarga();
 }
 
@@ -6676,12 +6718,12 @@ async function loadSpbuList() {
 
 async function loadSpbu() {
   const tbody = document.getElementById('spbu-body');
-  tbody.innerHTML = '<tr><td colspan="7" class="loading-msg">Memuat...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" class="loading-msg">Memuat...</td></tr>';
 
   await loadSpbuList();
 
   if (!spbuList.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Belum ada data SPBU</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Belum ada data SPBU</td></tr>';
     return;
   }
 
@@ -6699,9 +6741,10 @@ async function loadSpbu() {
 
   tbody.innerHTML = spbuList.map(s => `<tr>
     <td style="font-family:var(--fm);font-weight:500;">${s.kode}</td>
-    <td style="font-weight:500;">${s.nama}</td>
+    <td style="font-weight:500;">${s.nama || '<span style="color:var(--text-muted);font-weight:400;">— belum diisi —</span>'}</td>
     <td style="font-size:12px;color:var(--text-muted);">${s.alamat || '—'}</td>
-    <td style="font-size:12px;">${s.kota || '—'}</td>
+    <td style="font-size:12px;">${KAB_SULTRA.includes(s.kota) ? s.kota : (s.kota ? `<span style="color:var(--red);">${s.kota} ⚠️</span>` : '—')}</td>
+    <td style="font-size:12px;">${s.wilayah_sbm || '—'}</td>
     <td style="font-family:var(--fm);text-align:center;">${countMap[s.id] || 0}</td>
     <td>
       <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;
@@ -6721,14 +6764,27 @@ async function loadSpbu() {
 
 function showAddSpbuModal() {
   editingSpbuId = null;
-  ['s-kode','s-nama','s-alamat','s-kota'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('s-kota').value = 'Kendari';
+  ['s-kode','s-nama','s-alamat'].forEach(id => document.getElementById(id).value = '');
+  isiOpsiKota('');
+  document.getElementById('s-wilayah').value = '';
   document.getElementById('s-aktif').value = 'true';
   document.getElementById('s-error').style.display = 'none';
   document.getElementById('modal-spbu-title').textContent = 'Tambah SPBU';
   document.getElementById('s-submit-label').textContent = 'Simpan';
   document.getElementById('modal-spbu').classList.add('show');
   document.getElementById('s-kode').focus();
+}
+
+// Dropdown kab/kota baku (sama dengan daftar SPBU Sultra). Nilai lama yang tidak baku
+// ditampilkan sebagai opsi "perlu diperbarui" agar tidak hilang diam-diam.
+function isiOpsiKota(nilai) {
+  const sel = document.getElementById('s-kota');
+  const baku = KAB_SULTRA.includes(nilai);
+  const esc = v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  sel.innerHTML = '<option value="">— Pilih kabupaten/kota —</option>' +
+    (nilai && !baku ? `<option value="${esc(nilai)}">${esc(nilai)} (tidak baku — perlu diperbarui)</option>` : '') +
+    KAB_SULTRA.map(k => `<option value="${k}">${k}</option>`).join('');
+  sel.value = nilai || '';
 }
 
 function showEditSpbu(id) {
@@ -6738,7 +6794,8 @@ function showEditSpbu(id) {
   document.getElementById('s-kode').value   = spbu.kode || '';
   document.getElementById('s-nama').value   = spbu.nama || '';
   document.getElementById('s-alamat').value = spbu.alamat || '';
-  document.getElementById('s-kota').value   = spbu.kota || '';
+  isiOpsiKota(spbu.kota || '');
+  document.getElementById('s-wilayah').value = spbu.wilayah_sbm || '';
   document.getElementById('s-aktif').value  = spbu.aktif ? 'true' : 'false';
   document.getElementById('s-error').style.display = 'none';
   document.getElementById('modal-spbu-title').textContent = 'Edit SPBU';
@@ -6756,13 +6813,15 @@ async function submitSpbu() {
   const nama   = document.getElementById('s-nama').value.trim();
   const alamat = document.getElementById('s-alamat').value.trim();
   const kota   = document.getElementById('s-kota').value.trim();
+  const wilayah = document.getElementById('s-wilayah').value;
   const aktif  = document.getElementById('s-aktif').value === 'true';
   const errEl  = document.getElementById('s-error');
 
   errEl.style.display = 'none';
 
   if (!kode) { errEl.textContent = 'Kode SPBU wajib diisi'; errEl.style.display = 'block'; return; }
-  if (!nama) { errEl.textContent = 'Nama SPBU wajib diisi'; errEl.style.display = 'block'; return; }
+  if (!nama && aktif) { errEl.textContent = 'Nama SPBU wajib diisi untuk SPBU aktif'; errEl.style.display = 'block'; return; }
+  if (!kota) { errEl.textContent = 'Pilih kabupaten/kota'; errEl.style.display = 'block'; return; }
 
   const btn   = document.getElementById('s-submit-btn');
   const label = document.getElementById('s-submit-label');
@@ -6771,7 +6830,7 @@ async function submitSpbu() {
 
   try {
     let error;
-    const payload = { kode, nama, alamat: alamat || null, kota: kota || 'Kendari', aktif };
+    const payload = { kode, nama: nama || null, alamat: alamat || null, kota, wilayah_sbm: wilayah || null, aktif };
 
     if (editingSpbuId) {
       ({ error } = await sb.from('spbu').update(payload).eq('id', editingSpbuId));
@@ -6808,6 +6867,370 @@ async function toggleSpbu(id, aktif) {
   if (error) { showToast('Gagal: ' + error.message, true); return; }
   showToast('Status SPBU diperbarui');
   loadSpbu();
+}
+
+// ─── REKAP MITRA (super admin) ───────────────────────────────
+const KAB_SULTRA = [
+  'Kota Kendari', 'Kota Bau Bau',
+  'Kab Bombana', 'Kab Buton', 'Kab Buton Selatan', 'Kab Buton Tengah', 'Kab Buton Utara',
+  'Kab Kolaka', 'Kab Kolaka Timur', 'Kab Kolaka Utara',
+  'Kab Konawe', 'Kab Konawe Kepulauan', 'Kab Konawe Selatan', 'Kab Konawe Utara',
+  'Kab Muna', 'Kab Muna Barat', 'Kab Wakatobi',
+];
+const WILAYAH_SBM = ['SBM Sultra I', 'SBM Sultra II Fuel', 'SBM Sultra III Fuel'];
+const KAB_KOSONG = 'Belum ada kabupaten';
+
+let rekapData = null;   // { spbus, rows, periode }
+
+function escRekap(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+const fmtLiter = v => Number(v || 0).toLocaleString('id-ID', { maximumFractionDigits: 0 });
+const fmtRp    = v => 'Rp ' + Math.round(Number(v || 0)).toLocaleString('id-ID');
+const labelSpbu = s => s ? (s.nama ? `${s.kode} - ${s.nama}` : `${s.kode}`) : 'Tanpa SPBU';
+
+function rekapPeriode(key) {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const awalBulan = (yy, mm) => new Date(yy, mm, 1);
+  const nama = d => d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  switch (key) {
+    case 'bulan_lalu': return { dari: awalBulan(y, m - 1), sampai: awalBulan(y, m), label: nama(awalBulan(y, m - 1)) };
+    case '3_bulan':    return { dari: awalBulan(y, m - 2), sampai: awalBulan(y, m + 1),
+                                label: `${nama(awalBulan(y, m - 2))} – ${nama(awalBulan(y, m))}` };
+    case 'tahun_ini':  return { dari: new Date(y, 0, 1), sampai: new Date(y + 1, 0, 1), label: `Tahun ${y}` };
+    case 'semua':      return { dari: null, sampai: null, label: 'Semua waktu' };
+    default:           return { dari: awalBulan(y, m), sampai: awalBulan(y, m + 1), label: nama(awalBulan(y, m)) };
+  }
+}
+
+async function loadRekap() {
+  const box = document.getElementById('rekap-content');
+  box.innerHTML = '<div class="loading-msg" style="padding:30px;text-align:center;">Memuat rekap...</div>';
+  const per = rekapPeriode(document.getElementById('rekap-periode').value);
+  try {
+    const [spbuRes, rekapRes] = await Promise.all([
+      sb.from('spbu').select('id, kode, nama, kota, wilayah_sbm, aktif').order('kode'),
+      sb.rpc('bison_rekap_mitra', {
+        p_dari:   per.dari   ? per.dari.toISOString()   : null,
+        p_sampai: per.sampai ? per.sampai.toISOString() : null,
+      }),
+    ]);
+    if (spbuRes.error)  throw spbuRes.error;
+    if (rekapRes.error) throw rekapRes.error;
+    rekapData = { spbus: spbuRes.data || [], rows: rekapRes.data || [], periode: per };
+    renderRekap();
+  } catch (e) {
+    console.error('Rekap gagal dimuat:', e);
+    box.innerHTML = `<div class="error-msg" style="display:block;margin:12px 0;">
+      Rekap gagal dimuat: ${escRekap(e.message || e)}.<br>
+      Pastikan file migration rekap sudah dijalankan di Supabase.</div>`;
+  }
+}
+
+// Hitung ringkasan dari sekumpulan baris mitra
+function aggMitra(rows) {
+  const batas30 = Date.now() - 30 * 864e5;
+  const valid = rows.filter(r => r.status === 'aktif' && !r.duplikat);
+  return {
+    terdaftar: valid.length,
+    kontrak:   valid.filter(r => r.kontrak_aktif).length,
+    aktif30:   valid.filter(r => r.trx_terakhir && new Date(r.trx_terakhir).getTime() >= batas30).length,
+    // Volume & rupiah tetap dihitung dari SEMUA mitra (termasuk yang ditandai duplikat) — transaksinya nyata
+    trx:       rows.reduce((s, r) => s + Number(r.trx_periode || 0), 0),
+    volume:    rows.reduce((s, r) => s + Number(r.volume_periode || 0), 0),
+    rupiah:    rows.reduce((s, r) => s + Number(r.rupiah_periode || 0), 0),
+  };
+}
+
+// Susun struktur kabupaten → SPBU → mitra sesuai filter wilayah
+function susunRekap() {
+  const { spbus, rows } = rekapData;
+  const wil = document.getElementById('rekap-wilayah').value;
+  const spbuOk = s => !wil || (wil === '__kosong' ? !s.wilayah_sbm : s.wilayah_sbm === wil);
+
+  const spbuMap = {};
+  spbus.filter(spbuOk).forEach(s => { spbuMap[s.id] = { ...s, mitra: [] }; });
+  const tanpaSpbu = { id: null, kode: '—', nama: 'Mitra tanpa SPBU', kota: null, aktif: false, mitra: [] };
+  rows.forEach(r => {
+    if (r.spbu_id && spbuMap[r.spbu_id]) spbuMap[r.spbu_id].mitra.push(r);
+    else if (!r.spbu_id && !wil) tanpaSpbu.mitra.push(r);
+  });
+
+  const kabMap = {};
+  const tambah = s => {
+    const kab = KAB_SULTRA.includes(s.kota) ? s.kota : KAB_KOSONG;
+    (kabMap[kab] ||= []).push(s);
+  };
+  Object.values(spbuMap).forEach(tambah);
+  if (tanpaSpbu.mitra.length) tambah(tanpaSpbu);
+
+  const urutKab = [...KAB_SULTRA, KAB_KOSONG].filter(k => kabMap[k]);
+  return urutKab.map(kab => {
+    const list = kabMap[kab].map(s => ({ ...s, agg: aggMitra(s.mitra) }))
+      .sort((a, b) => (b.aktif - a.aktif) || (b.agg.rupiah - a.agg.rupiah) || String(a.kode).localeCompare(String(b.kode)));
+    const semuaMitra = list.flatMap(s => s.mitra);
+    return {
+      kab, spbus: list,
+      spbuTotal: list.filter(s => s.id).length,
+      spbuAktif: list.filter(s => s.id && s.aktif).length,
+      agg: aggMitra(semuaMitra),
+    };
+  });
+}
+
+// Deteksi data bermasalah (mitra aktif & belum ditandai duplikat)
+function deteksiMasalah() {
+  const { spbus, rows } = rekapData;
+  const spbuById = Object.fromEntries(spbus.map(s => [s.id, s]));
+  const aktif = rows.filter(r => r.status === 'aktif' && !r.duplikat);
+  const out = [];
+  const normNama = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normTelp = s => String(s || '').replace(/\D/g, '').replace(/^62/, '0');
+
+  // 1. Nama sama di SPBU yang sama
+  const byNama = {};
+  aktif.forEach(r => { const k = `${r.spbu_id}|${normNama(r.nama_perusahaan)}`; (byNama[k] ||= []).push(r); });
+  Object.values(byNama).filter(g => g.length > 1).forEach(g => g.forEach(r => out.push({
+    jenis: 'Nama dobel', r, spbu: spbuById[r.spbu_id],
+    ket: `${g.length} data bernama "${g[0].nama_perusahaan}" di SPBU yang sama`,
+  })));
+
+  // 2. Nomor PIC sama dipakai beberapa mitra
+  const byTelp = {};
+  aktif.forEach(r => { const t = normTelp(r.pic_telp); if (t.length >= 8) (byTelp[t] ||= []).push(r); });
+  Object.entries(byTelp).filter(([, g]) => g.length > 1).forEach(([t, g]) => g.forEach(r => out.push({
+    jenis: 'Nomor PIC sama', r, spbu: spbuById[r.spbu_id],
+    ket: `${t} dipakai ${g.length} mitra: ${g.map(x => x.nama_perusahaan).join(', ')}`,
+  })));
+
+  // 3. Punya kupon tapi tidak ada kontrak aktif
+  aktif.filter(r => Number(r.kupon_count) > 0 && !r.kontrak_aktif).forEach(r => out.push({
+    jenis: 'Kupon tanpa kontrak', r, spbu: spbuById[r.spbu_id],
+    ket: `${Number(r.kupon_count).toLocaleString('id-ID')} kupon diterbitkan tanpa kontrak aktif`,
+  }));
+
+  // 4. Terdaftar tapi belum pernah transaksi
+  aktif.filter(r => Number(r.trx_all) === 0).forEach(r => out.push({
+    jenis: 'Belum pernah transaksi', r, spbu: spbuById[r.spbu_id],
+    ket: `Terdaftar sejak ${new Date(r.dibuat).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+  }));
+  return out;
+}
+
+function renderRekap() {
+  if (!rekapData) return;
+  const box = document.getElementById('rekap-content');
+  const kabs = susunRekap();
+  const masalah = deteksiMasalah();
+  const total = aggMitra(kabs.flatMap(k => k.spbus.flatMap(s => s.mitra)));
+  const spbuTotal = kabs.reduce((s, k) => s + k.spbuTotal, 0);
+  const spbuAktif = kabs.reduce((s, k) => s + k.spbuAktif, 0);
+
+  const kartu = (label, val, sub = '') => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;">
+      <div style="font-size:10.5px;color:var(--text-muted);font-weight:600;letter-spacing:.03em;">${label}</div>
+      <div style="font-size:17px;font-weight:800;color:var(--navy);margin-top:2px;">${val}</div>
+      ${sub ? `<div style="font-size:10.5px;color:var(--text-muted);">${sub}</div>` : ''}
+    </div>`;
+  const angka = a => `
+    <div style="display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px;color:var(--text-muted);margin-top:3px;">
+      <span>Mitra <b style="color:var(--text)">${a.terdaftar}</b></span>
+      <span>Kontrak <b style="color:var(--text)">${a.kontrak}</b></span>
+      <span>Aktif 30h <b style="color:var(--text)">${a.aktif30}</b></span>
+      <span><b style="color:var(--text)">${fmtLiter(a.volume)} L</b></span>
+      <span><b style="color:var(--green-d)">${fmtRp(a.rupiah)}</b></span>
+    </div>`;
+
+  const badge = (txt, bg, cl) =>
+    `<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:${bg};color:${cl};">${txt}</span>`;
+
+  const barisMitra = r => `
+    <div style="padding:9px 10px;border-top:1px solid var(--border);${r.duplikat || r.status !== 'aktif' ? 'opacity:.6;' : ''}">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+        <div style="min-width:0;">
+          <div style="font-weight:600;font-size:12.5px;">${escRekap(r.nama_perusahaan)}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${escRekap(r.pic_nama || '—')}${r.pic_telp ? ' · ' + escRekap(r.pic_telp) : ''}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+            ${r.kontrak_aktif ? badge(escRekap(r.nomor_kontrak), '#E6F7EE', '#065F46') : badge('Tanpa kontrak aktif', '#FEF3C7', '#92400E')}
+            ${r.status !== 'aktif' ? badge('Nonaktif', '#F1F5F9', '#475569') : ''}
+            ${r.duplikat ? badge('Ditandai duplikat', '#FEE2E2', '#991B1B') : ''}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;font-size:11px;">
+          <div style="font-weight:700;">${fmtLiter(r.volume_periode)} L</div>
+          <div style="color:var(--green-d);font-weight:700;">${fmtRp(r.rupiah_periode)}</div>
+          <div style="color:var(--text-muted);">${Number(r.trx_periode)} trx</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        ${r.duplikat
+          ? `<button class="act-btn" onclick="tandaiDuplikat('${r.mitra_id}', false)">Batal tandai</button>`
+          : `<button class="act-btn" onclick="tandaiDuplikat('${r.mitra_id}', true)">Tandai duplikat</button>`}
+        ${r.bisa_dihapus
+          ? `<button class="act-btn del" onclick="hapusMitraPermanen('${r.mitra_id}')">Hapus</button>`
+          : `<button class="act-btn" disabled title="Masih memiliki: ${escRekap(r.alasan_tidak_bisa_hapus)}" style="opacity:.45;cursor:not-allowed;">Hapus 🔒</button>`}
+      </div>
+      ${r.duplikat && r.catatan_duplikat ? `<div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">Catatan: ${escRekap(r.catatan_duplikat)}</div>` : ''}
+    </div>`;
+
+  const barisSpbu = s => `
+    <details style="border-top:1px solid var(--border);">
+      <summary style="list-style:none;cursor:pointer;padding:9px 12px;${s.id && !s.aktif ? 'color:var(--gray-400);' : ''}">
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <div style="font-weight:600;font-size:12.5px;">${escRekap(labelSpbu(s))}</div>
+          ${s.id && !s.aktif ? badge('Belum pakai BISON', '#F1F5F9', '#64748B') : ''}
+        </div>
+        ${angka(s.agg)}
+      </summary>
+      <div style="background:var(--gray-50);">
+        ${s.mitra.length ? s.mitra.map(barisMitra).join('') : '<div style="padding:10px;font-size:11.5px;color:var(--text-muted);">Belum ada mitra</div>'}
+      </div>
+    </details>`;
+
+  const blokKab = k => `
+    <details style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden;">
+      <summary style="list-style:none;cursor:pointer;padding:11px 12px;">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;">
+          <div style="font-weight:700;font-size:13.5px;color:var(--navy);">${escRekap(k.kab)}</div>
+          <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;">SPBU BISON <b style="color:var(--text)">${k.spbuAktif}/${k.spbuTotal}</b></div>
+        </div>
+        ${angka(k.agg)}
+      </summary>
+      ${k.spbus.map(barisSpbu).join('')}
+    </details>`;
+
+  const grupMasalah = {};
+  masalah.forEach(x => (grupMasalah[x.jenis] ||= []).push(x));
+
+  box.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      ${kartu('SPBU PAKAI BISON', `${spbuAktif} / ${spbuTotal}`, spbuTotal ? Math.round(spbuAktif / spbuTotal * 100) + '% cakupan' : '')}
+      ${kartu('MITRA TERDAFTAR', total.terdaftar, `${total.kontrak} berkontrak · ${total.aktif30} aktif 30 hari`)}
+      ${kartu('VOLUME', fmtLiter(total.volume) + ' L', `${total.trx.toLocaleString('id-ID')} transaksi`)}
+      ${kartu('NILAI', fmtRp(total.rupiah), escRekap(rekapData.periode.label))}
+    </div>
+
+    ${masalah.length ? `
+    <details style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:var(--radius);margin-bottom:12px;overflow:hidden;">
+      <summary style="list-style:none;cursor:pointer;padding:10px 12px;font-weight:700;font-size:12.5px;color:#92400E;">
+        ⚠️ ${masalah.length} catatan data perlu dicek
+        <span style="font-weight:500;"> · ${Object.entries(grupMasalah).map(([j, l]) => `${j} (${l.length})`).join(' · ')}</span>
+      </summary>
+      ${masalah.map(x => `
+        <div style="padding:8px 12px;border-top:1px solid #FDE68A;background:#fff;">
+          <div style="font-size:10.5px;font-weight:700;color:#B45309;">${escRekap(x.jenis)}</div>
+          <div style="font-size:12px;font-weight:600;">${escRekap(x.r.nama_perusahaan)}
+            <span style="font-weight:400;color:var(--text-muted);"> · ${escRekap(labelSpbu(x.spbu))}</span></div>
+          <div style="font-size:11px;color:var(--text-muted);">${escRekap(x.ket)}</div>
+        </div>`).join('')}
+    </details>` : ''}
+
+    <div style="font-size:11px;color:var(--text-muted);margin:0 2px 6px;">
+      Ketuk kabupaten/kota untuk melihat SPBU, lalu ketuk SPBU untuk melihat mitra.
+      Mitra nonaktif & yang ditandai duplikat tidak dihitung sebagai mitra, tapi volume & nilainya tetap dihitung.
+    </div>
+    ${kabs.map(blokKab).join('') || '<div class="empty-state">Tidak ada data untuk filter ini</div>'}`;
+}
+
+async function tandaiDuplikat(mitraId, tandai) {
+  const r = rekapData?.rows.find(x => x.mitra_id === mitraId);
+  if (!r) return;
+  let catatan = null;
+  if (tandai) {
+    catatan = prompt(`Tandai "${r.nama_perusahaan}" sebagai duplikat?\n\nMitra ini tidak akan dihitung di rekap, tapi datanya tetap tersimpan.\nCatatan (opsional), misal: "dobel dengan Bwss IV KTR/2026/0009":`, '');
+    if (catatan === null) return;
+  } else if (!confirm(`Batalkan tanda duplikat untuk "${r.nama_perusahaan}"?`)) return;
+
+  const { error } = await sb.rpc('bison_tandai_duplikat', { p_mitra_id: mitraId, p_tandai: tandai, p_catatan: catatan });
+  if (error) { showToast('Gagal: ' + error.message, true); return; }
+  showToast(tandai ? 'Mitra ditandai duplikat' : 'Tanda duplikat dibatalkan');
+  loadRekap();
+}
+
+async function hapusMitraPermanen(mitraId) {
+  const r = rekapData?.rows.find(x => x.mitra_id === mitraId);
+  if (!r) return;
+  const ketik = prompt(`HAPUS PERMANEN mitra "${r.nama_perusahaan}"?\n\nTindakan ini tidak bisa dibatalkan. Ketik HAPUS untuk melanjutkan:`, '');
+  if (ketik === null) return;
+  if (ketik.trim().toUpperCase() !== 'HAPUS') { showToast('Dibatalkan — konfirmasi tidak sesuai', true); return; }
+  const { error } = await sb.rpc('bison_hapus_mitra', { p_mitra_id: mitraId });
+  if (error) { showToast(error.message, true); return; }
+  showToast(`${r.nama_perusahaan} dihapus`);
+  loadRekap();
+}
+
+// ── Unduh Excel ──────────────────────────────────────────────
+let _xlsxPromise = null;
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!_xlsxPromise) {
+    _xlsxPromise = new Promise((ok, fail) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      sc.onload = () => window.XLSX ? ok(window.XLSX) : fail(new Error('Library Excel tidak tersedia'));
+      sc.onerror = () => { _xlsxPromise = null; fail(new Error('Gagal memuat library Excel')); };
+      document.head.appendChild(sc);
+    });
+  }
+  return _xlsxPromise;
+}
+
+async function unduhRekapExcel() {
+  if (!rekapData) { showToast('Rekap belum dimuat', true); return; }
+  const btn = document.getElementById('rekap-unduh-btn');
+  btn.disabled = true; const lbl = btn.textContent; btn.textContent = 'Menyiapkan...';
+  try {
+    const XLSX = await loadXlsx();
+    const kabs = susunRekap();
+    const masalah = deteksiMasalah();
+    const per = rekapData.periode.label;
+    const wilSel = document.getElementById('rekap-wilayah');
+    const wilLabel = wilSel.options[wilSel.selectedIndex].text;
+    const info = [[`Rekap Mitra BISON — Periode: ${per} — Wilayah: ${wilLabel}`],
+                  [`Diunduh: ${new Date().toLocaleString('id-ID')}. Mitra nonaktif & ditandai duplikat tidak dihitung sebagai mitra; volume & nilai tetap dihitung.`], []];
+
+    const shKab = [...info, ['Kabupaten/Kota', 'Jumlah SPBU', 'SPBU Pakai BISON', 'Mitra Terdaftar', 'Mitra Berkontrak Aktif',
+      'Mitra Aktif 30 Hari', 'Jumlah Transaksi', 'Volume (Liter)', 'Nilai (Rp)'],
+      ...kabs.map(k => [k.kab, k.spbuTotal, k.spbuAktif, k.agg.terdaftar, k.agg.kontrak, k.agg.aktif30, k.agg.trx,
+        Math.round(k.agg.volume), Math.round(k.agg.rupiah)])];
+
+    const shSpbu = [...info, ['Kabupaten/Kota', 'Wilayah SBM', 'Kode SPBU', 'Nama SPBU', 'Status BISON', 'Mitra Terdaftar',
+      'Mitra Berkontrak Aktif', 'Mitra Aktif 30 Hari', 'Jumlah Transaksi', 'Volume (Liter)', 'Nilai (Rp)'],
+      ...kabs.flatMap(k => k.spbus.map(s => [k.kab, s.wilayah_sbm || '', s.kode, s.nama || '',
+        s.id ? (s.aktif ? 'Aktif' : 'Belum bergabung') : '—', s.agg.terdaftar, s.agg.kontrak, s.agg.aktif30,
+        s.agg.trx, Math.round(s.agg.volume), Math.round(s.agg.rupiah)]))];
+
+    const shMitra = [...info, ['Kabupaten/Kota', 'Kode SPBU', 'Nama SPBU', 'Mitra', 'PIC', 'No. PIC', 'Status',
+      'Kontrak Aktif', 'Ditandai Duplikat', 'Jumlah Transaksi', 'Volume (Liter)', 'Nilai (Rp)', 'Transaksi Terakhir'],
+      ...kabs.flatMap(k => k.spbus.flatMap(s => s.mitra.map(r => [k.kab, s.kode, s.nama || '', r.nama_perusahaan,
+        r.pic_nama || '', r.pic_telp || '', r.status, r.kontrak_aktif ? r.nomor_kontrak : 'Tidak ada',
+        r.duplikat ? 'Ya' : '', Number(r.trx_periode), Math.round(Number(r.volume_periode)), Math.round(Number(r.rupiah_periode)),
+        r.trx_terakhir ? new Date(r.trx_terakhir).toLocaleDateString('id-ID') : '-'])))];
+
+    const shMasalah = [...info, ['Jenis', 'Mitra', 'Kode SPBU', 'Nama SPBU', 'Keterangan'],
+      ...masalah.map(x => [x.jenis, x.r.nama_perusahaan, x.spbu?.kode || '', x.spbu?.nama || '', x.ket])];
+
+    const wb = XLSX.utils.book_new();
+    const tambah = (aoa, nama, lebar) => {
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = lebar.map(w => ({ wch: w }));
+      XLSX.utils.book_append_sheet(wb, ws, nama);
+    };
+    tambah(shKab,     'Per Kabupaten',   [24, 12, 16, 15, 20, 18, 16, 15, 18]);
+    tambah(shSpbu,    'Per SPBU',        [22, 18, 12, 22, 16, 15, 20, 18, 16, 15, 18]);
+    tambah(shMitra,   'Per Mitra',       [22, 12, 20, 32, 20, 16, 10, 18, 16, 16, 15, 18, 18]);
+    tambah(shMasalah, 'Data Bermasalah', [22, 32, 12, 20, 60]);
+
+    const aman = s => String(s).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    XLSX.writeFile(wb, `Rekap-Mitra-BISON-${aman(per)}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    showToast('Excel rekap diunduh');
+  } catch (e) {
+    console.error(e);
+    showToast('Gagal membuat Excel: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = lbl;
+  }
 }
 
 // ─── START ───────────────────────────────────────────────────
