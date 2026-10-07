@@ -2884,9 +2884,10 @@ async function loadMitraView() {
     (kontraks || []).forEach(k => { mitraKontrakMap[k.mitra_id] = k; });
 
     // Query kupon per mitra
-    const { data: kupons } = await sb.from('kupon')
-      .select('mitra_id, nominal_rupiah, status')
-      .in('mitra_id', ids);
+    const { data: kupons } = await fetchAll(() => sb.from('kupon')
+      .select('id, mitra_id, nominal_rupiah, status')
+      .in('mitra_id', ids)
+      .order('id', { ascending: true }));
     mitraKuponMap = {};
     (kupons || []).forEach(k => {
       if (!mitraKuponMap[k.mitra_id]) mitraKuponMap[k.mitra_id] = { tersedia: 0, dipakai: 0, nilaiTersedia: 0 };
@@ -3248,10 +3249,11 @@ async function loadKuponBatch() {
 
     // Ambil semua kupon dalam batch-batch tersebut
     const batchIds = batches.map(b => b.id);
-    const { data: kupons } = await sb.from('kupon')
+    const { data: kupons } = await fetchAll(() => sb.from('kupon')
       .select('id,kode,batch_id,nominal_rupiah,status,dibuat_at,dipakai_at,dipakai_nopol')
       .in('batch_id', batchIds)
-      .order('dibuat_at', { ascending: true });
+      .order('dibuat_at', { ascending: true })
+      .order('id', { ascending: true }));
 
     // Group kupon per batch
     const kuponByBatch = {};
@@ -4537,18 +4539,19 @@ async function loadDashboard() {
 
   try {
     // Query transaksi periode
-    let q = sb.from('transaksi')
-      .select('id,nopol,produk,volume,total,mitra_id,created_at,mitra:mitra_id(nama_perusahaan)')
-      .gte('created_at', dateFrom + 'T00:00:00')
-      .lte('created_at', dateTo   + 'T23:59:59')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: true })
-      .limit(5000);
-
-    if (currentSpbu)  q = q.eq('spbu_id', currentSpbu.id);
-    if (mitraVal)     q = q.eq('mitra_id', mitraVal);
-
-    const { data: trxs } = await q;
+    const buildTrxQ = () => {
+      let q = sb.from('transaksi')
+        .select('id,nopol,produk,volume,total,mitra_id,created_at,mitra:mitra_id(nama_perusahaan)')
+        .gte('created_at', dateFrom + 'T00:00:00')
+        .lte('created_at', dateTo   + 'T23:59:59')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true });
+      if (currentSpbu)  q = q.eq('spbu_id', currentSpbu.id);
+      if (mitraVal)     q = q.eq('mitra_id', mitraVal);
+      return q;
+    };
+    const { data: trxs } = await fetchAll(buildTrxQ);
     const rows = trxs || [];
 
     // ── Update filter mitra dropdown (sekali saja saat kosong) ──
@@ -4673,7 +4676,7 @@ async function loadDashboard() {
       mitraStats[mId].vol += parseFloat(t.volume);
       mitraStats[mId].rev += parseInt(t.total);
       mitraStats[mId].produk[t.produk] = (mitraStats[mId].produk[t.produk] || 0) + 1;
-      mitraStats[mId].kendaraan.add(t.nopol);
+      if (t.nopol && String(t.nopol).trim()) mitraStats[mId].kendaraan.add(t.nopol);
       const dt = new Date(t.created_at);
       if (!mitraStats[mId].last || dt > mitraStats[mId].last) mitraStats[mId].last = dt;
     });
@@ -4714,11 +4717,15 @@ async function loadDashboard() {
 
     // ── Rangkuman Voucher per Mitra (status kupon saat ini, tidak terikat filter bulan) ──
     try {
-      let vq = sb.from('kupon')
-        .select('nominal_rupiah,status,batch:batch_id!inner(spbu_id,mitra_id,mitra:mitra_id(nama_perusahaan))');
-      if (currentSpbu) vq = vq.eq('batch.spbu_id', currentSpbu.id);
-      if (mitraVal)    vq = vq.eq('batch.mitra_id', mitraVal);
-      const { data: voucherRows, error: voucherErr } = await vq;
+      const buildVq = () => {
+        let vq = sb.from('kupon')
+          .select('id,nominal_rupiah,status,batch:batch_id!inner(spbu_id,mitra_id,mitra:mitra_id(nama_perusahaan))')
+          .order('id', { ascending: true });
+        if (currentSpbu) vq = vq.eq('batch.spbu_id', currentSpbu.id);
+        if (mitraVal)    vq = vq.eq('batch.mitra_id', mitraVal);
+        return vq;
+      };
+      const { data: voucherRows, error: voucherErr } = await fetchAll(buildVq);
       if (voucherErr) throw voucherErr;
 
       const voucherStats = {};
@@ -4778,6 +4785,7 @@ async function loadDashboard() {
     // ── Top kendaraan ────────────────────────────────────────────
     const stats = {};
     rows.forEach(t => {
+      if (!t.nopol || !String(t.nopol).trim()) return;   // transaksi kupon tanpa nopol tidak dihitung sebagai kendaraan
       if (!stats[t.nopol]) stats[t.nopol] = { visits: 0, vol: 0, pk: {}, last: null };
       stats[t.nopol].visits++;
       stats[t.nopol].vol += parseFloat(t.volume);
@@ -4951,6 +4959,20 @@ function startClock() {
   };
   tick();
   setInterval(tick, 1000);
+}
+
+// Supabase/PostgREST membatasi 1.000 baris per permintaan (.limit() lebih besar tetap terpotong).
+// fetchAll mengambil per halaman 1.000 sampai habis. buildQuery harus membuat query BARU setiap
+// dipanggil dan memiliki urutan (order) yang stabil.
+async function fetchAll(buildQuery, pageSize = 1000) {
+  let all = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) return { data: all, error };
+    all = all.concat(data || []);
+    if (!data || data.length < pageSize) break;
+  }
+  return { data: all, error: null };
 }
 
 function switchTab(tab) {
@@ -5616,13 +5638,14 @@ async function previewTagihan() {
   }
 
   const spbuId = currentSpbu?.id;
-  const { data: trx } = await sb.from('transaksi')
-    .select('total, volume')
+  const { data: trx } = await fetchAll(() => sb.from('transaksi')
+    .select('id, total, volume')
     .eq('mitra_id', mitraId)
     .eq('spbu_id', spbuId)
     .gte('created_at', mulai + 'T00:00:00')
     .lte('created_at', selesai + 'T23:59:59')
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .order('id', { ascending: true }));
 
   const total   = (trx || []).reduce((s, t) => s + parseInt(t.total), 0);
   const vol     = (trx || []).reduce((s, t) => s + parseFloat(t.volume), 0);
@@ -5936,9 +5959,10 @@ async function loadKontrakList() {
 
   // Query kupon stats per mitra
   const mitraIds = [...new Set(kontraks.map(k => k.mitra_id))];
-  const { data: kupons } = await sb.from('kupon')
-    .select('mitra_id, nominal_rupiah, status, dipakai_nopol, dipakai_at')
-    .in('mitra_id', mitraIds);
+  const { data: kupons } = await fetchAll(() => sb.from('kupon')
+    .select('id, mitra_id, nominal_rupiah, status, dipakai_nopol, dipakai_at')
+    .in('mitra_id', mitraIds)
+    .order('id', { ascending: true }));
 
   // Agregasi kupon per mitra
   const kuponStats = {};
@@ -5957,11 +5981,12 @@ async function loadKontrakList() {
   });
 
   // Query volume dari transaksi via kupon (nopol_mitra = true, mitra_id match)
-  const { data: trxData } = await sb.from('transaksi')
-    .select('mitra_id, volume, total')
+  const { data: trxData } = await fetchAll(() => sb.from('transaksi')
+    .select('id, mitra_id, volume, total')
     .in('mitra_id', mitraIds)
     .eq('nopol_mitra', true)
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .order('id', { ascending: true }));
   const trxStats = {};
   (trxData || []).forEach(t => {
     if (!trxStats[t.mitra_id]) trxStats[t.mitra_id] = { vol: 0, total: 0, trx: 0 };
