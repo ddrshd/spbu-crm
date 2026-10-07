@@ -4541,7 +4541,7 @@ async function loadDashboard() {
     // Query transaksi periode
     const buildTrxQ = () => {
       let q = sb.from('transaksi')
-        .select('id,nopol,produk,volume,total,mitra_id,created_at,mitra:mitra_id(nama_perusahaan)')
+        .select('id,nopol,produk,volume,total,mitra_id,created_at,mitra:mitra_id(nama_perusahaan,status)')
         .gte('created_at', dateFrom + 'T00:00:00')
         .lte('created_at', dateTo   + 'T23:59:59')
         .is('deleted_at', null)
@@ -4667,6 +4667,7 @@ async function loadDashboard() {
     // ── Rekap Mitra B2B ──────────────────────────────────────────
     const mitraStats = {};
     b2bRows.forEach(t => {
+      if (t.mitra && t.mitra.status !== 'aktif') return;   // mitra nonaktif tidak ditampilkan per mitra
       const mId   = t.mitra_id;
       const mNama = t.mitra?.nama_perusahaan || mId;
       if (!mitraStats[mId]) {
@@ -4719,7 +4720,7 @@ async function loadDashboard() {
     try {
       const buildVq = () => {
         let vq = sb.from('kupon')
-          .select('id,nominal_rupiah,status,batch:batch_id!inner(spbu_id,mitra_id,mitra:mitra_id(nama_perusahaan))')
+          .select('id,nominal_rupiah,status,batch:batch_id!inner(spbu_id,mitra_id,mitra:mitra_id(nama_perusahaan,status))')
           .order('id', { ascending: true });
         if (currentSpbu) vq = vq.eq('batch.spbu_id', currentSpbu.id);
         if (mitraVal)    vq = vq.eq('batch.mitra_id', mitraVal);
@@ -4732,6 +4733,7 @@ async function loadDashboard() {
       (voucherRows || []).forEach(k => {
         const mId   = k.batch?.mitra_id;
         if (!mId) return;
+        if (k.batch?.mitra && k.batch.mitra.status !== 'aktif') return;   // mitra nonaktif dikeluarkan
         const mNama = k.batch?.mitra?.nama_perusahaan || mId;
         if (!voucherStats[mId]) {
           voucherStats[mId] = { nama: mNama, terbitN: 0, terbitRp: 0, pakaiN: 0, pakaiRp: 0, sisaN: 0, sisaRp: 0 };
@@ -6970,7 +6972,8 @@ function aggMitra(rows) {
 
 // Susun struktur kabupaten → SPBU → mitra sesuai filter wilayah
 function susunRekap() {
-  const { spbus, rows } = rekapData;
+  const { spbus } = rekapData;
+  const rows = rekapData.rows.filter(r => r.status === 'aktif');   // mitra nonaktif dikeluarkan dari rekap
   const wil = document.getElementById('rekap-wilayah').value;
   const spbuOk = s => !wil || (wil === '__kosong' ? !s.wilayah_sbm : s.wilayah_sbm === wil);
 
@@ -7153,7 +7156,7 @@ function renderRekap() {
 
     <div style="font-size:11px;color:var(--text-muted);margin:0 2px 6px;">
       Ketuk kabupaten/kota untuk melihat SPBU, lalu ketuk SPBU untuk melihat mitra.
-      Mitra nonaktif & yang ditandai duplikat tidak dihitung sebagai mitra, tapi volume & nilainya tetap dihitung.
+      Mitra nonaktif tidak ditampilkan. Mitra yang ditandai duplikat tidak dihitung sebagai mitra, tapi volume & nilainya tetap dihitung.
     </div>
     ${kabs.map(blokKab).join('') || '<div class="empty-state">Tidak ada data untuk filter ini</div>'}`;
 }
@@ -7213,7 +7216,7 @@ async function unduhRekapExcel() {
     const wilSel = document.getElementById('rekap-wilayah');
     const wilLabel = wilSel.options[wilSel.selectedIndex].text;
     const info = [[`Rekap Mitra BISON — Periode: ${per} — Wilayah: ${wilLabel}`],
-                  [`Diunduh: ${new Date().toLocaleString('id-ID')}. Mitra nonaktif & ditandai duplikat tidak dihitung sebagai mitra; volume & nilai tetap dihitung.`], []];
+                  [`Diunduh: ${new Date().toLocaleString('id-ID')}. Mitra nonaktif tidak disertakan. Mitra ditandai duplikat tidak dihitung sebagai mitra; volume & nilai tetap dihitung.`], []];
 
     const shKab = [...info, ['Kabupaten/Kota', 'Jumlah SPBU', 'SPBU Pakai BISON', 'Mitra Terdaftar', 'Mitra Berkontrak Aktif',
       'Mitra Aktif 30 Hari', 'Jumlah Transaksi', 'Volume (Liter)', 'Nilai (Rp)'],
