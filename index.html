@@ -947,9 +947,33 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       <button class="filter-tab" onclick="filterUsers('operator',this)">Operator</button>
       <button class="filter-tab" id="filter-manager-btn" onclick="filterUsers('manager',this)">Manager</button>
       <button class="filter-tab" id="filter-mitra-btn" onclick="filterUsers('mitra',this)">Mitra</button>
+      <button class="filter-tab hidden" id="filter-monitor-btn" onclick="showMonitorLogin(this)">🔒 Monitor Login</button>
     </div>
 
-    <div class="tbl-wrap">
+    <div id="monitor-login-panel" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <select class="field-select" id="monitor-status" onchange="renderMonitorLogin()">
+          <option value="">Semua status</option>
+          <option value="belum">Belum pernah login</option>
+          <option value="login">Login, belum ganti password</option>
+          <option value="aman">Sudah ganti password</option>
+        </select>
+        <select class="field-select" id="monitor-role" onchange="renderMonitorLogin()">
+          <option value="">Semua role</option>
+          <option value="manager">Manager</option>
+          <option value="operator">Operator</option>
+          <option value="mitra">Mitra</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input class="field-input" id="monitor-cari" placeholder="Cari nama, email, atau SPBU..." oninput="renderMonitorLogin()" style="flex:1;min-width:0;"/>
+        <button class="add-btn" onclick="unduhMonitorExcel()">⬇ Excel</button>
+        <button class="add-btn" onclick="loadMonitorLogin()" title="Muat ulang" style="background:var(--navy);">↻</button>
+      </div>
+      <div id="monitor-login-content"></div>
+    </div>
+
+    <div class="tbl-wrap" id="users-table-wrap">
       <table>
         <thead><tr>
           <th>Nama</th>
@@ -2146,7 +2170,8 @@ function applyRoleTabs() {
 
   if (role === 'super_admin') {
     document.getElementById('tab-spbu')?.classList.remove('hidden');
-    document.getElementById('tab-rekap')?.classList.remove('hidden');   // Rekap: sementara khusus super admin
+    document.getElementById('tab-rekap')?.classList.remove('hidden');
+    document.getElementById('filter-monitor-btn')?.classList.remove('hidden');   // Monitor login: khusus super admin   // Rekap: sementara khusus super admin
     document.getElementById('filter-manager-btn')?.classList.remove('hidden');
     const btnKend = document.getElementById('btn-tambah-kendaraan');
     if (btnKend) btnKend.style.display = '';
@@ -5062,6 +5087,8 @@ async function loadUsers() {
 
 function filterUsers(filter, btn) {
   currentUserFilter = filter;
+  document.getElementById('monitor-login-panel').style.display = 'none';
+  document.getElementById('users-table-wrap').style.display = '';
   document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderUsersTable();
@@ -7259,6 +7286,163 @@ async function unduhRekapExcel() {
   } finally {
     btn.disabled = false; btn.textContent = lbl;
   }
+}
+
+// ─── MONITOR LOGIN & PASSWORD (super admin) ──────────────────
+let monitorData = [];
+
+function statusLogin(u) {
+  if (!u.wajib_ganti_password) return 'aman';          // sudah buat password sendiri
+  if (u.login_terakhir)        return 'login';         // pernah login, belum selesai ganti password
+  return 'belum';                                      // belum pernah login
+}
+const STATUS_LOGIN = {
+  aman:  { label: 'Sudah ganti password',       bg: '#E6F7EE', cl: '#065F46' },
+  login: { label: 'Login, belum ganti password', bg: '#FEF3C7', cl: '#92400E' },
+  belum: { label: 'Belum pernah login',          bg: '#FEE2E2', cl: '#991B1B' },
+};
+
+function waktuRelatif(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso), detik = (Date.now() - d.getTime()) / 1000;
+  if (detik < 3600)      return Math.max(1, Math.round(detik / 60)) + ' menit lalu';
+  if (detik < 86400)     return Math.round(detik / 3600) + ' jam lalu';
+  if (detik < 86400 * 7) return Math.round(detik / 86400) + ' hari lalu';
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function showMonitorLogin(btn) {
+  document.querySelectorAll('#user-filter-tabs .filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('users-table-wrap').style.display = 'none';
+  document.getElementById('monitor-login-panel').style.display = '';
+  loadMonitorLogin();
+}
+
+async function loadMonitorLogin() {
+  const box = document.getElementById('monitor-login-content');
+  box.innerHTML = '<div class="loading-msg" style="padding:30px;text-align:center;">Memuat...</div>';
+  const { data, error } = await sb.rpc('bison_monitor_login');
+  if (error) {
+    box.innerHTML = `<div class="error-msg" style="display:block;">Gagal memuat: ${escRekap(error.message)}.<br>
+      Pastikan migration_monitor_login.sql sudah dijalankan di Supabase.</div>`;
+    return;
+  }
+  monitorData = (data || []).filter(u => u.role !== 'super_admin');
+  renderMonitorLogin();
+}
+
+function renderMonitorLogin() {
+  const box = document.getElementById('monitor-login-content');
+  const fStatus = document.getElementById('monitor-status').value;
+  const fRole   = document.getElementById('monitor-role').value;
+  const cari    = document.getElementById('monitor-cari').value.trim().toLowerCase();
+
+  const aktif = monitorData.filter(u => u.aktif);
+  const hitung = list => ({
+    total: list.length,
+    aman:  list.filter(u => statusLogin(u) === 'aman').length,
+    login: list.filter(u => statusLogin(u) === 'login').length,
+    belum: list.filter(u => statusLogin(u) === 'belum').length,
+  });
+  const t = hitung(aktif);
+  const pct = n => t.total ? Math.round(n / t.total * 100) : 0;
+
+  const tampil = aktif.filter(u =>
+    (!fStatus || statusLogin(u) === fStatus) &&
+    (!fRole   || u.role === fRole) &&
+    (!cari    || [u.nama, u.email, u.spbu_nama, u.spbu_kode, u.mitra_nama].some(v => String(v || '').toLowerCase().includes(cari))));
+
+  // Kelompokkan per SPBU
+  const grup = {};
+  tampil.forEach(u => {
+    const key = u.spbu_id || '_tanpa';
+    (grup[key] ||= { kode: u.spbu_kode, nama: u.spbu_nama, kota: u.spbu_kota, users: [] }).users.push(u);
+  });
+  const grupList = Object.values(grup).map(g => ({ ...g, c: hitung(g.users) }))
+    // SPBU yang paling banyak belum patuh tampil di atas
+    .sort((a, b) => (a.c.aman / a.c.total) - (b.c.aman / b.c.total) || String(a.kode).localeCompare(String(b.kode)));
+
+  const kartu = (label, val, sub, warna) => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;">
+      <div style="font-size:10.5px;color:var(--text-muted);font-weight:600;letter-spacing:.03em;">${label}</div>
+      <div style="font-size:18px;font-weight:800;color:${warna};margin-top:2px;">${val}</div>
+      <div style="font-size:10.5px;color:var(--text-muted);">${sub}</div>
+    </div>`;
+  const badge = s => `<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;
+    background:${STATUS_LOGIN[s].bg};color:${STATUS_LOGIN[s].cl};">${STATUS_LOGIN[s].label}</span>`;
+  const bar = c => {
+    const w = n => c.total ? (n / c.total * 100) : 0;
+    return `<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:#F1F5F9;margin-top:6px;">
+      <div style="width:${w(c.aman)}%;background:#10B981;"></div>
+      <div style="width:${w(c.login)}%;background:#F59E0B;"></div>
+      <div style="width:${w(c.belum)}%;background:#EF4444;"></div></div>`;
+  };
+  const roleLabel = r => ({ operator: 'Operator', manager: 'Manager', mitra: 'Mitra' }[r] || r);
+
+  const barisUser = u => `
+    <div style="padding:9px 12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;">
+      <div style="min-width:0;">
+        <div style="font-weight:600;font-size:12.5px;">${escRekap(u.nama)}
+          <span style="font-weight:400;color:var(--text-muted);font-size:11px;"> · ${roleLabel(u.role)}${u.mitra_nama ? ' ' + escRekap(u.mitra_nama) : ''}</span></div>
+        <div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escRekap(u.email || '—')}</div>
+        <div style="margin-top:4px;">${badge(statusLogin(u))}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;font-size:11px;color:var(--text-muted);">
+        <div>Login terakhir</div>
+        <div style="font-weight:700;color:var(--text);">${waktuRelatif(u.login_terakhir)}</div>
+        ${u.password_diganti_at ? `<div style="margin-top:2px;">🔒 ${new Date(u.password_diganti_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</div>` : ''}
+      </div>
+    </div>`;
+
+  box.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      ${kartu('USER AKTIF', t.total, `${new Set(aktif.map(u => u.spbu_id).filter(Boolean)).size} SPBU`, 'var(--navy)')}
+      ${kartu('SUDAH GANTI PASSWORD', t.aman, pct(t.aman) + '% dari user aktif', '#059669')}
+      ${kartu('LOGIN, BELUM GANTI', t.login, pct(t.login) + '% · berhenti di layar password', '#B45309')}
+      ${kartu('BELUM PERNAH LOGIN', t.belum, pct(t.belum) + '% · perlu dihubungi', '#DC2626')}
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin:0 2px 8px;">
+      ${tampil.length} user ditampilkan · urutan: SPBU dengan kepatuhan terendah di atas · ketuk SPBU untuk melihat user
+    </div>
+    ${grupList.map(g => `
+      <details style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden;">
+        <summary style="list-style:none;cursor:pointer;padding:11px 12px;">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;">
+            <div style="font-weight:700;font-size:13px;color:var(--navy);">
+              ${g.kode ? escRekap(`${g.kode}${g.nama ? ' - ' + g.nama : ''}`) : 'Tanpa SPBU'}
+              ${g.kota ? `<span style="font-weight:400;font-size:11px;color:var(--text-muted);"> · ${escRekap(g.kota)}</span>` : ''}
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;"><b style="color:#059669">${g.c.aman}</b>/${g.c.total} aman</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">
+            ${g.c.login ? `<span style="color:#B45309;">${g.c.login} belum ganti</span> · ` : ''}${g.c.belum ? `<span style="color:#DC2626;">${g.c.belum} belum login</span>` : ''}
+            ${!g.c.login && !g.c.belum ? '<span style="color:#059669;">Semua user sudah ganti password</span>' : ''}
+          </div>
+          ${bar(g.c)}
+        </summary>
+        ${g.users.sort((a, b) => ['belum', 'login', 'aman'].indexOf(statusLogin(a)) - ['belum', 'login', 'aman'].indexOf(statusLogin(b))
+          || String(a.nama).localeCompare(String(b.nama))).map(barisUser).join('')}
+      </details>`).join('') || '<div class="empty-state">Tidak ada user untuk filter ini</div>'}`;
+}
+
+async function unduhMonitorExcel() {
+  if (!monitorData.length) { showToast('Data belum dimuat', true); return; }
+  try {
+    const XLSX = await loadXlsx();
+    const fmt = iso => iso ? new Date(iso).toLocaleString('id-ID') : '';
+    const aoa = [[`Monitor Login & Password BISON — diunduh ${new Date().toLocaleString('id-ID')}`], [],
+      ['Kode SPBU', 'Nama SPBU', 'Kab/Kota', 'Nama User', 'Email', 'Role', 'Mitra', 'Status Akun',
+       'Status Password', 'Login Terakhir', 'Password Diganti', 'Akun Dibuat'],
+      ...monitorData.map(u => [u.spbu_kode || '', u.spbu_nama || '', u.spbu_kota || '', u.nama, u.email || '',
+        u.role, u.mitra_nama || '', u.aktif ? 'Aktif' : 'Nonaktif', STATUS_LOGIN[statusLogin(u)].label,
+        fmt(u.login_terakhir), fmt(u.password_diganti_at), fmt(u.akun_dibuat)])];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [12, 18, 18, 22, 28, 10, 22, 11, 26, 20, 20, 20].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Monitor Login');
+    XLSX.writeFile(wb, `Monitor-Login-BISON-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  } catch (e) { showToast('Gagal membuat Excel: ' + e.message, true); }
 }
 
 // ─── START ───────────────────────────────────────────────────
