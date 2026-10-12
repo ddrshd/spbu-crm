@@ -277,3 +277,4 @@ ORDER BY p.role, p.nama;
 ### Auto-generate Changelog (GitHub Actions)
 File: `.github/workflows/update-changelog.yml`
 Setiap push ke main → baris commit message ditambahkan ke section "Auto-generated" di BISON.md
+2026-10-12: filter & kelompok SPBU per Kab/Kota
