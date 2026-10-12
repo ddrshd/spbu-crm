@@ -2114,7 +2114,7 @@ function renderUserTopbar() {
   badge.className = 'role-badge ' + (p.role !== 'operator' ? p.role : '');
 
   const spbuNama = currentSpbu
-    ? currentSpbu.nama + ' · ' + currentSpbu.kode
+    ? (currentSpbu.nama ? currentSpbu.nama + ' · ' : 'SPBU ') + currentSpbu.kode
     : 'Semua SPBU · Sulawesi Tenggara';
   document.getElementById('spbu-label').textContent = spbuNama;
   document.getElementById('popover-spbu').textContent = spbuNama;
@@ -5150,7 +5150,7 @@ function renderUsersTable() {
     const isMitra = u.role === 'mitra';
     const perusahaanCol = isMitra
       ? (u.mitra?.nama_perusahaan || '—')
-      : (u.spbu ? u.spbu.nama.replace('SPBU ', '') : '—');
+      : (u.spbu ? ((u.spbu.nama || '').replace('SPBU ', '') || u.spbu.kode || '—') : '—');
 
     return `<tr>
       <td>
