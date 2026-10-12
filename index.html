@@ -1469,11 +1469,35 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
       <span style="font-size:13px;font-weight:500">Data SPBU</span>
       <button class="add-btn" onclick="showAddSpbuModal()">+ Tambah SPBU</button>
     </div>
+    <div style="padding:0 14px;">
+      <input class="field-input" id="spbu-cari" type="search" autocomplete="off"
+        placeholder="Cari kode, nama, alamat, atau kab/kota..." oninput="renderSpbu()"
+        style="width:100%;box-sizing:border-box;margin-bottom:8px;"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <select class="field-select" id="spbu-f-kota" onchange="renderSpbu()">
+          <option value="">Semua Kab/Kota</option>
+        </select>
+        <select class="field-select" id="spbu-f-status" onchange="renderSpbu()">
+          <option value="">Semua status</option>
+          <option value="aktif">Aktif</option>
+          <option value="nonaktif">Nonaktif</option>
+          <option value="tanpa_nama">Nama belum diisi</option>
+          <option value="tanpa_user">Belum ada user</option>
+        </select>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;">
+        <div id="spbu-ringkas" style="font-size:11.5px;color:var(--text-muted);"></div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;cursor:pointer;">
+          <input type="checkbox" id="spbu-grup" checked onchange="renderSpbu()" style="width:16px;height:16px;"/>
+          Per Kab/Kota
+        </label>
+      </div>
+    </div>
     <div class="tbl-wrap">
       <table>
         <thead><tr>
           <th>Kode</th><th>Nama SPBU</th><th>Alamat</th><th>Kab/Kota</th><th>Wilayah</th>
-          <th>Operator</th><th>Status</th><th>Aksi</th>
+          <th>User</th><th>Status</th><th>Aksi</th>
         </tr></thead>
         <tbody id="spbu-body">
           <tr><td colspan="8" class="loading-msg">Memuat data SPBU...</td></tr>
@@ -6770,36 +6794,91 @@ async function loadSpbuList() {
   spbuList = data || [];
 }
 
+// ─── DATA SPBU: cari, filter, kelompok per Kab/Kota ─────────
+let spbuUserMap = {};                 // spbu_id → { operator, manager }
+const spbuGrupTutup = new Set();      // Kab/Kota yang sedang dilipat
+
 async function loadSpbu() {
   const tbody = document.getElementById('spbu-body');
   tbody.innerHTML = '<tr><td colspan="8" class="loading-msg">Memuat...</td></tr>';
 
   await loadSpbuList();
 
+  // Hitung user aktif (operator & manager) per SPBU
+  const { data: users } = await sb
+    .from('profiles')
+    .select('spbu_id, role')
+    .in('role', ['operator', 'manager'])
+    .eq('aktif', true)
+    .range(0, 9999);
+  spbuUserMap = {};
+  (users || []).forEach(p => {
+    if (!p.spbu_id) return;
+    const c = (spbuUserMap[p.spbu_id] ||= { operator: 0, manager: 0 });
+    c[p.role] = (c[p.role] || 0) + 1;
+  });
+
+  // Opsi Kab/Kota: urutan KAB_SULTRA, plus nilai lain yang ada di data
+  const sel = document.getElementById('spbu-f-kota');
+  const pilihan = sel.value;
+  const adaKota = new Set(spbuList.map(s => s.kota).filter(Boolean));
+  const kotaList = [...KAB_SULTRA.filter(k => adaKota.has(k)),
+                    ...[...adaKota].filter(k => !KAB_SULTRA.includes(k)).sort()];
+  const jml = k => spbuList.filter(s => (s.kota || '') === k).length;
+  sel.innerHTML = '<option value="">Semua Kab/Kota</option>' +
+    kotaList.map(k => `<option value="${escRekap(k)}">${escRekap(k)} (${jml(k)})</option>`).join('') +
+    (spbuList.some(s => !s.kota) ? `<option value="__kosong">Belum ada Kab/Kota (${jml('')})</option>` : '');
+  sel.value = [...sel.options].some(o => o.value === pilihan) ? pilihan : '';
+
+  renderSpbu();
+}
+
+function renderSpbu() {
+  const tbody = document.getElementById('spbu-body');
   if (!spbuList.length) {
     tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Belum ada data SPBU</td></tr>';
+    document.getElementById('spbu-ringkas').textContent = '';
+    return;
+  }
+  const cari    = document.getElementById('spbu-cari').value.trim().toLowerCase();
+  const cariAng = cari.replace(/\D/g, '');                 // "74.935.04" = "7493504"
+  const fKota   = document.getElementById('spbu-f-kota').value;
+  const fStatus = document.getElementById('spbu-f-status').value;
+  const grup    = document.getElementById('spbu-grup').checked;
+  const nUser   = s => { const c = spbuUserMap[s.id]; return c ? c.operator + c.manager : 0; };
+
+  const tampil = spbuList.filter(s => {
+    if (fKota === '__kosong' ? s.kota : (fKota && s.kota !== fKota)) return false;
+    if (fStatus === 'aktif'      && !s.aktif) return false;
+    if (fStatus === 'nonaktif'   &&  s.aktif) return false;
+    if (fStatus === 'tanpa_nama' && (s.nama || '').trim()) return false;
+    if (fStatus === 'tanpa_user' && nUser(s)) return false;
+    if (!cari) return true;
+    const teks = [s.kode, s.nama, s.alamat, s.kota].map(v => String(v || '').toLowerCase());
+    return teks.some(v => v.includes(cari)) ||
+           (cariAng.length >= 3 && String(s.kode || '').replace(/\D/g, '').includes(cariAng));
+  });
+
+  const nAktif = tampil.filter(s => s.aktif).length;
+  document.getElementById('spbu-ringkas').innerHTML =
+    `<b style="color:var(--navy)">${tampil.length}</b> dari ${spbuList.length} SPBU · ${nAktif} aktif`;
+
+  if (!tampil.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Tidak ada SPBU untuk filter ini</td></tr>';
     return;
   }
 
-  // Hitung jumlah operator per SPBU
-  const { data: opCounts } = await sb
-    .from('profiles')
-    .select('spbu_id')
-    .eq('role', 'operator')
-    .eq('aktif', true);
-
-  const countMap = {};
-  (opCounts || []).forEach(p => {
-    countMap[p.spbu_id] = (countMap[p.spbu_id] || 0) + 1;
-  });
-
-  tbody.innerHTML = spbuList.map(s => `<tr>
-    <td style="font-family:var(--fm);font-weight:500;">${s.kode}</td>
-    <td style="font-weight:500;">${s.nama || '<span style="color:var(--text-muted);font-weight:400;">— belum diisi —</span>'}</td>
-    <td style="font-size:12px;color:var(--text-muted);">${s.alamat || '—'}</td>
-    <td style="font-size:12px;">${KAB_SULTRA.includes(s.kota) ? s.kota : (s.kota ? `<span style="color:var(--red);">${s.kota} ⚠️</span>` : '—')}</td>
-    <td style="font-size:12px;">${s.wilayah_sbm || '—'}</td>
-    <td style="font-family:var(--fm);text-align:center;">${countMap[s.id] || 0}</td>
+  const baris = s => {
+    const c = spbuUserMap[s.id] || { operator: 0, manager: 0 };
+    return `<tr>
+    <td style="font-family:var(--fm);font-weight:500;">${escRekap(s.kode)}</td>
+    <td style="font-weight:500;">${s.nama ? escRekap(s.nama) : '<span style="color:var(--text-muted);font-weight:400;">— belum diisi —</span>'}</td>
+    <td style="font-size:12px;color:var(--text-muted);">${s.alamat ? escRekap(s.alamat) : '—'}</td>
+    <td style="font-size:12px;">${KAB_SULTRA.includes(s.kota) ? s.kota : (s.kota ? `<span style="color:var(--red);">${escRekap(s.kota)} ⚠️</span>` : '—')}</td>
+    <td style="font-size:12px;">${s.wilayah_sbm ? escRekap(s.wilayah_sbm) : '—'}</td>
+    <td style="font-size:11.5px;white-space:nowrap;">${c.manager + c.operator
+      ? `<b>${c.manager}</b> mgr · <b>${c.operator}</b> op`
+      : '<span style="color:var(--text-muted);">—</span>'}</td>
     <td>
       <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;
         background:${s.aktif ? '#d1fae5' : '#fee2e2'};color:${s.aktif ? '#065f46' : '#991b1b'};">
@@ -6813,7 +6892,37 @@ async function loadSpbu() {
         ${s.aktif ? 'Nonaktifkan' : 'Aktifkan'}
       </button>
     </td>
-  </tr>`).join('');
+  </tr>`;
+  };
+
+  if (!grup) { tbody.innerHTML = tampil.map(baris).join(''); return; }
+
+  // Kelompok per Kab/Kota (urutan KAB_SULTRA, lalu lainnya, lalu kosong)
+  const urut = k => { const i = KAB_SULTRA.indexOf(k); return k ? (i < 0 ? 900 : i) : 999; };
+  const kelompok = {};
+  tampil.forEach(s => (kelompok[s.kota || ''] ||= []).push(s));
+  const adaCari = !!cari;   // saat mencari, semua grup dibuka supaya hasil terlihat
+  tbody.innerHTML = Object.keys(kelompok)
+    .sort((a, b) => urut(a) - urut(b) || a.localeCompare(b))
+    .map(k => {
+      const list = kelompok[k], tutup = !adaCari && spbuGrupTutup.has(k);
+      const aktif = list.filter(s => s.aktif).length;
+      const tanpaNama = list.filter(s => !(s.nama || '').trim()).length;
+      const user = list.reduce((t, s) => t + nUser(s), 0);
+      return `<tr data-kota="${escRekap(k)}" onclick="toggleGrupSpbu(this.dataset.kota)" style="cursor:pointer;background:#EEF2F9;">
+        <td colspan="8" style="padding:9px 12px;font-size:12.5px;">
+          <div style="position:sticky;left:12px;display:inline-block;max-width:calc(100vw - 64px);white-space:normal;line-height:1.45;">
+          <span style="display:inline-block;width:14px;color:var(--navy);">${tutup ? '▸' : '▾'}</span>
+          <b style="color:var(--navy);">${k ? escRekap(k) : 'Belum ada Kab/Kota'}</b>
+          <span style="color:var(--text-muted);"> · ${list.length} SPBU · ${aktif} aktif · ${user} user${tanpaNama ? ` · <span style="color:#B45309;">${tanpaNama} tanpa nama</span>` : ''}</span>
+          </div>
+        </td></tr>` + (tutup ? '' : list.map(baris).join(''));
+    }).join('');
+}
+
+function toggleGrupSpbu(k) {
+  spbuGrupTutup.has(k) ? spbuGrupTutup.delete(k) : spbuGrupTutup.add(k);
+  renderSpbu();
 }
 
 function showAddSpbuModal() {
