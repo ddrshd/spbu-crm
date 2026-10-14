@@ -2906,6 +2906,8 @@ async function loadHistory() {
 let allMitraData  = [];
 let mitraKontrakMap = {}; // mitra_id → kontrak aktif atau null
 let mitraKuponMap   = {}; // mitra_id → { tersedia, dipakai, nilaiTersedia }
+let mitraSpbuMap    = {}; // spbu_id → { kode, nama, kota } (super admin)
+const mitraGrupTutup = new Set(); // Kab/Kota yang dilipat
 
 async function loadMitraView() {
   const listEl = document.getElementById('mitra-view-list');
@@ -2914,12 +2916,21 @@ async function loadMitraView() {
   try {
     // Query mitra
     let q = sb.from('mitra')
-      .select('id, nama_perusahaan, pic_nama, pic_telp, pic_email, alamat, status, created_at')
+      .select('id, nama_perusahaan, pic_nama, pic_telp, pic_email, alamat, status, created_at, spbu_id')
       .order('nama_perusahaan');
     if (currentProfile.role === 'manager' && currentSpbu)
       q = q.eq('spbu_id', currentSpbu.id);
     const { data: mitras } = await q;
     allMitraData = (mitras || []);
+
+    // Super admin: peta SPBU untuk pengelompokan per Kab/Kota → SPBU
+    if (currentProfile.role === 'super_admin') {
+      const { data: sp } = await sb.from('spbu').select('id, kode, nama, kota');
+      mitraSpbuMap = {};
+      (sp || []).forEach(s => { mitraSpbuMap[s.id] = s; });
+      const cariEl = document.getElementById('mitra-search');
+      if (cariEl) cariEl.placeholder = 'Cari mitra, PIC, kode/nama SPBU, atau Kab/Kota...';
+    }
 
     const ids = allMitraData.map(m => m.id);
     if (!ids.length) { renderMitraView([], {}, {}); return; }
@@ -3014,6 +3025,7 @@ function renderMitraView(mitras, kontrakMap, kuponMap) {
           <div style="font-size:12px;color:var(--text-muted);">
             ${m.pic_nama || '—'}${m.pic_telp ? ' · ' + m.pic_telp : ''}
           </div>
+          ${!aktif && currentProfile?.role === 'super_admin' ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">⛽ ${escRekap((mitraSpbuMap[m.spbu_id]?.kode || 'Tanpa SPBU') + (mitraSpbuMap[m.spbu_id]?.nama ? ' · ' + mitraSpbuMap[m.spbu_id].nama : ''))}</div>` : ''}
           <!-- Kupon summary -->
           ${aktif ? `<div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
             <div style="font-size:11px;color:var(--text-muted);">
@@ -3069,8 +3081,51 @@ function renderMitraView(mitras, kontrakMap, kuponMap) {
     </div>`;
   };
 
+  const grup = currentProfile?.role === 'super_admin';
+  const labelSpbu = m => {
+    const sp = mitraSpbuMap[m.spbu_id];
+    return sp ? `${sp.kode}${sp.nama ? ' · ' + sp.nama : ''}` : 'Tanpa SPBU';
+  };
+  const ringkas = list => {
+    const nilai = list.reduce((t, m) => t + (kuponMap?.[m.id]?.nilaiTersedia || 0), 0);
+    return `${list.length} mitra${nilai ? ' · kupon aktif Rp ' + nilai.toLocaleString('id-ID') : ''}`;
+  };
+  const renderAktif = () => {
+    if (!grup) return aktifList.map(renderKartu).join('');
+    // Kab/Kota → SPBU → mitra
+    const urutKab = k => { const i = KAB_SULTRA.indexOf(k); return k ? (i < 0 ? 900 : i) : 999; };
+    const kab = {};
+    aktifList.forEach(m => {
+      const sp = mitraSpbuMap[m.spbu_id];
+      const k = sp?.kota || '';
+      ((kab[k] ||= {})[m.spbu_id || '_'] ||= []).push(m);
+    });
+    const mencari = !!(document.getElementById('mitra-search')?.value || '').trim();
+    return Object.keys(kab).sort((a, b) => urutKab(a) - urutKab(b) || a.localeCompare(b)).map(k => {
+      const spbuIds = Object.keys(kab[k]).sort((a, b) =>
+        String(mitraSpbuMap[a]?.kode || 'zzz').localeCompare(String(mitraSpbuMap[b]?.kode || 'zzz')));
+      const semua = spbuIds.flatMap(id => kab[k][id]);
+      const tutup = !mencari && mitraGrupTutup.has(k);
+      return `
+      <div style="margin-bottom:14px;">
+        <div data-kota="${escRekap(k)}" onclick="toggleGrupMitra(this.dataset.kota)"
+          style="cursor:pointer;background:var(--navy);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:8px;">
+          <div style="font-size:13.5px;font-weight:700;">${tutup ? '▸' : '▾'} ${k ? escRekap(k) : 'Belum ada Kab/Kota'}</div>
+          <div style="font-size:11px;opacity:.85;margin-top:2px;padding-left:14px;">${spbuIds.length} SPBU · ${ringkas(semua)}</div>
+        </div>
+        ${tutup ? '' : spbuIds.map(id => `
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+            margin:10px 2px 6px;padding-bottom:4px;border-bottom:1px dashed var(--border);">
+            <div style="font-size:12.5px;font-weight:700;color:var(--navy);">⛽ ${escRekap(labelSpbu(kab[k][id][0]))}</div>
+            <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${ringkas(kab[k][id])}</div>
+          </div>
+          ${kab[k][id].map(renderKartu).join('')}`).join('')}
+      </div>`;
+    }).join('');
+  };
+
   listEl.innerHTML =
-    aktifList.map(renderKartu).join('') +
+    renderAktif() +
     (nonaktifList.length ? `
       <div style="font-size:11px;font-weight:600;color:var(--text-muted);
         letter-spacing:.05em;text-transform:uppercase;margin:16px 0 8px;">
@@ -3083,9 +3138,15 @@ function filterMitraView(q) {
   const filtered = !keyword ? allMitraData
     : allMitraData.filter(m =>
         m.nama_perusahaan.toLowerCase().includes(keyword) ||
-        (m.pic_nama || '').toLowerCase().includes(keyword)
+        (m.pic_nama || '').toLowerCase().includes(keyword) ||
+        ['kode', 'nama', 'kota'].some(f => String(mitraSpbuMap[m.spbu_id]?.[f] || '').toLowerCase().includes(keyword))
       );
   renderMitraView(filtered, mitraKontrakMap, mitraKuponMap);
+}
+
+function toggleGrupMitra(k) {
+  mitraGrupTutup.has(k) ? mitraGrupTutup.delete(k) : mitraGrupTutup.add(k);
+  filterMitraView(document.getElementById('mitra-search')?.value || '');
 }
 
 // Modal tambah mitra baru dari tab Mitra
