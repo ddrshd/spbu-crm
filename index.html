@@ -740,14 +740,16 @@ body{font-family:var(--ff);background:#F1F5F9;color:var(--text);font-size:14px;h
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Waktu</th><th>Nopol</th><th>Produk</th>
+          <th>Waktu</th><th>Nopol</th>
+          <th id="th-mitra" style="display:none">Mitra</th>
+          <th>Produk</th>
           <th>Volume</th><th>Total (Rp)</th><th>Status</th>
           <th>Operator</th>
           <th id="th-spbu" style="display:none">SPBU</th>
           <th id="th-aksi" style="display:none">Aksi</th>
         </tr></thead>
         <tbody id="history-body">
-          <tr><td colspan="8" class="loading-msg">Memuat data...</td></tr>
+          <tr><td colspan="10" class="loading-msg">Memuat data...</td></tr>
         </tbody>
       </table>
     </div>
@@ -2167,6 +2169,7 @@ function applyRoleTabs() {
   if (role === 'manager' || role === 'super_admin') {
     document.getElementById('th-aksi').style.display  = '';
     document.getElementById('th-spbu').style.display  = '';
+    document.getElementById('th-mitra').style.display = '';
   }
 
   // ── Tab per role ──────────────────────────────────────────
@@ -2806,7 +2809,7 @@ async function submitTrx() {
 // ─── RIWAYAT ─────────────────────────────────────────────────
 async function loadHistory() {
   const tbody = document.getElementById('history-body');
-  tbody.innerHTML = '<tr><td colspan="9" class="loading-msg">Memuat...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" class="loading-msg">Memuat...</td></tr>';
   const isAdminOrMgr = ['manager', 'super_admin'].includes(currentProfile.role);
 
   try {
@@ -2831,6 +2834,16 @@ async function loadHistory() {
       }
     }
 
+    // Load nama mitra (pelanggan institusi) — manager & super_admin
+    let mitraMap = {};
+    if (isAdminOrMgr && data?.length) {
+      const mitraIds = [...new Set(data.map(t => t.mitra_id).filter(Boolean))];
+      if (mitraIds.length) {
+        const { data: ms } = await sb.from('mitra').select('id, nama_perusahaan').in('id', mitraIds);
+        (ms || []).forEach(m => { mitraMap[m.id] = m.nama_perusahaan; });
+      }
+    }
+
     // Load nama SPBU — hanya untuk super_admin (manager sudah tahu SPBU-nya)
     let spbuMap = {};
     if (currentProfile.role === 'super_admin' && data?.length) {
@@ -2848,12 +2861,13 @@ async function loadHistory() {
     historyData = data.map(t => ({
       ...t,
       operator_nama: operatorMap[t.operator_id] || '—',
-      spbu_nama: spbuMap[t.spbu_id] || '—'
+      spbu_nama: spbuMap[t.spbu_id] || '—',
+      mitra_nama: t.mitra_id ? (mitraMap[t.mitra_id] || 'Mitra tidak ditemukan') : ''
     }));
     document.getElementById('history-count').textContent = (data?.length || 0) + ' transaksi terbaru';
 
     if (!data?.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Belum ada transaksi</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Belum ada transaksi</td></tr>';
       return;
     }
 
@@ -2870,6 +2884,10 @@ async function loadHistory() {
       const isR = nc[t.nopol] > 1;
       const isMitra = !!t.mitra_id;
       const opNama  = operatorMap[t.operator_id] || '—';
+      const mitraCol = isAdminOrMgr
+        ? `<td style="font-size:12px;${t.mitra_id ? 'font-weight:600;color:var(--text);' : 'color:var(--text-muted);'}min-width:120px;">${
+            t.mitra_id ? escRekap(mitraMap[t.mitra_id] || 'Mitra tidak ditemukan') : 'Umum'}</td>`
+        : '';
       const spbuCol = isAdminOrMgr
         ? `<td style="font-size:12px;color:var(--text-muted)">${spbuMap[t.spbu_id] || '—'}</td>`
         : '';
@@ -2886,6 +2904,7 @@ async function loadHistory() {
           ${t.nopol}
           ${isMitra ? '<span style="font-size:10px;background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:600;">B2B</span>' : ''}
         </td>
+        ${mitraCol}
         <td><span class="produk-pill pill-${pk}">${t.produk}</span></td>
         <td style="font-family:var(--fm)">${parseFloat(t.volume).toFixed(1)} L</td>
         <td style="font-family:var(--fm)">${parseInt(t.total).toLocaleString('id-ID')}</td>
@@ -2897,7 +2916,7 @@ async function loadHistory() {
     }).join('');
 
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Error: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">Error: ${e.message}</td></tr>`;
   }
 }
 
@@ -4581,7 +4600,7 @@ function exportCSV() {
   if (!historyData.length) { showToast('Load riwayat dulu', true); return; }
   const isAdminOrMgr = ['manager', 'super_admin'].includes(currentProfile.role);
   const headers = ['Waktu','Nopol','Produk','Volume (L)','Harga/L','Total (Rp)','Status','Operator'];
-  if (isAdminOrMgr) headers.push('SPBU');
+  if (isAdminOrMgr) headers.push('SPBU', 'Mitra');
   const rows = [headers];
   const nc = {}; historyData.forEach(t => { nc[t.nopol] = (nc[t.nopol] || 0) + 1; });
   historyData.forEach(t => {
@@ -4593,7 +4612,7 @@ function exportCSV() {
       nc[t.nopol] > 1 ? 'Repeat' : 'Baru',
       t.operator_nama || '—'
     ];
-    if (isAdminOrMgr) row.push(t.spbu_nama || '—');
+    if (isAdminOrMgr) row.push(t.spbu_nama || '—', t.mitra_nama || 'Umum');
     rows.push(row);
   });
   const csv = rows.map(r => r.map(v => '"' + v + '"').join(',')).join('\n');
