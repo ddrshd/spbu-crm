@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#0f172a"/>
-<title>Portal Mitra — SPBU Pertamina</title>
+<title>Portal Mitra — BISON</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
@@ -190,7 +190,24 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#fff;padding:12px 24px;border-radius:var(--radius);font-size:13px;font-weight:500;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:100;white-space:nowrap;}
 .toast.show{transform:translateX(-50%) translateY(0);}
 
+/* LOGO BISON */
+.logo-wrap{background:#fff;border-radius:10px;padding:5px 10px;display:flex;align-items:center;height:44px;}
+.logo-wrap img{height:34px;width:auto;display:block;}
+.topbar-sub-wrap{border-left:1px solid rgba(255,255,255,.15);padding-left:12px;}
+/* VISUAL PEMAKAIAN */
+.viz-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:12px;margin-bottom:16px;}
+.viz-card{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;}
+.viz-title{font-size:13px;font-weight:600;color:#0D1B3E;}
+.viz-sub{font-size:11px;color:var(--text-muted);margin-top:2px;margin-bottom:10px;}
+.viz-canvas{position:relative;height:200px;}
+.saldo-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#E2E8F0;margin:4px 0 6px;}
+.saldo-legend{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);}
+.estimasi{display:flex;gap:10px;align-items:center;border-radius:8px;padding:10px 12px;margin-top:12px;font-size:12.5px;line-height:1.45;}
 @media(max-width:640px){
+  .viz-grid{grid-template-columns:1fr;}
+  .logo-wrap{height:38px;padding:4px 8px;}
+  .logo-wrap img{height:28px;}
+  .topbar-sub-wrap{display:none;}
   .kpi-grid{grid-template-columns:repeat(2,1fr);}
   .tagihan-breakdown{grid-template-columns:1fr 1fr;}
   .kontrak-grid{grid-template-columns:1fr;}
@@ -203,9 +220,9 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-logo">
-      <div class="logo-badge">⛽</div>
-      <div>
-        <div class="topbar-brand">Portal Mitra SPBU</div>
+      <div class="logo-wrap"><img src="logo-bison.png" alt="BISON — Business Integrated System for Oil Network"/></div>
+      <div class="topbar-sub-wrap">
+        <div class="topbar-brand">Portal Mitra</div>
         <div class="topbar-sub" id="spbu-label">Pertamina Patra Niaga</div>
       </div>
     </div>
@@ -245,7 +262,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     <!-- Tagihan Card -->
     <div class="tagihan-card" id="tagihan-card">
       <div class="tagihan-header">
-        <span class="tagihan-title" id="tagihan-periode">Tagihan — <span id="tagihan-bulan">—</span></span>
+        <span class="tagihan-title" id="tagihan-periode">Pemakaian — <span id="tagihan-bulan">—</span></span>
         <span class="tagihan-status status-tagihan" id="tagihan-status-badge">Invoice</span>
       </div>
       <div class="tagihan-body">
@@ -300,6 +317,19 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
         </div>
       </div>
 
+      <!-- Saldo kupon: terpakai vs sisa + estimasi -->
+      <div style="margin-bottom:14px;">
+        <div class="saldo-bar">
+          <div id="saldo-bar-pakai" style="background:#16A34A;width:0%;"></div>
+          <div id="saldo-bar-sisa" style="background:#1A56C8;width:0%;"></div>
+        </div>
+        <div class="saldo-legend">
+          <span><b style="color:#16A34A">■</b> Terpakai <span id="saldo-pct-pakai">—</span></span>
+          <span><b style="color:#1A56C8">■</b> Sisa <span id="saldo-pct-sisa">—</span></span>
+        </div>
+        <div class="estimasi" id="estimasi-box" style="background:#F8FAFC;color:#334155;">Menghitung estimasi...</div>
+      </div>
+
       <!-- Kupon aktif terbaru -->
       <div style="font-size:11px;font-weight:600;color:#64748B;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;">
         Kupon aktif terbaru
@@ -312,7 +342,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
     <!-- KPI -->
     <div class="kpi-grid">
       <div class="kpi-card kpi-accent">
-        <div class="kpi-label">Total Tagihan Periode</div>
+        <div class="kpi-label">Total Pemakaian Periode</div>
         <div class="kpi-value" id="kpi-total">—</div>
         <div class="kpi-sub" id="kpi-total-sub"></div>
       </div>
@@ -333,6 +363,20 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
       </div>
     </div>
 
+    <!-- Visual pemakaian -->
+    <div class="viz-grid">
+      <div class="viz-card">
+        <div class="viz-title">Pemakaian harian</div>
+        <div class="viz-sub" id="viz-harian-sub">Rupiah per hari pada periode terpilih</div>
+        <div class="viz-canvas"><canvas id="chart-harian"></canvas></div>
+      </div>
+      <div class="viz-card">
+        <div class="viz-title">Komposisi produk</div>
+        <div class="viz-sub">Liter per jenis BBM</div>
+        <div class="viz-canvas"><canvas id="chart-produk"></canvas></div>
+      </div>
+    </div>
+
     <!-- Top kendaraan -->
     <div class="toolbar">
       <span style="font-size:13px;font-weight:500">Kendaraan Teraktif</span>
@@ -341,7 +385,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
       <table>
         <thead><tr>
           <th>#</th><th>Nopol</th><th>Produk Favorit</th>
-          <th>Kunjungan</th><th>Volume (L)</th><th>Tagihan (Rp)</th><th>Terakhir</th>
+          <th>Kunjungan</th><th>Volume (L)</th><th>Pemakaian (Rp)</th><th>Terakhir</th>
         </tr></thead>
         <tbody id="top-kendaraan-body">
           <tr><td colspan="7" class="loading-msg">Memuat...</td></tr>
@@ -447,6 +491,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--text);font-size:14px
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script src="/password.js"></script>
 <script>
 const SUPA_URL = 'https://vjmsqwdzprajgqrpohzl.supabase.co';
@@ -551,22 +596,27 @@ function setPeriod(p, btn) {
 
 async function loadDashboard() {
   const { start, end } = getPeriodRange(currentPeriod);
-  const bulanLabel = new Date(start).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  const fmtBln = d => new Date(d).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  const bulanLabel = currentPeriod === '3bulan'
+    ? new Date(start).toLocaleDateString('id-ID', { month: 'short' }) + ' – ' + new Date(end).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })
+    : fmtBln(start);
 
   document.getElementById('tagihan-bulan').textContent = bulanLabel;
 
-  const { data: trx } = await sb.from('transaksi')
+  const trx = await ambilSemua(() => sb.from('transaksi')
     .select('nopol, produk, volume, total, created_at, spbu_id')
     .eq('mitra_id', currentMitra.id)
     .is('deleted_at', null)
     .gte('created_at', start)
     .lte('created_at', end)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false }));
 
   const data = trx || [];
   const totalTagihan = data.reduce((s, t) => s + parseInt(t.total), 0);
   const totalVol = data.reduce((s, t) => s + parseFloat(t.volume), 0);
-  const kendaraanAktif = new Set(data.map(t => t.nopol)).size;
+  // Transaksi kupon dicatat dengan nopol "KUPON" (nopol asli tidak diisi) — bukan kendaraan
+  const adaNopol = t => t.nopol && t.nopol.toUpperCase() !== 'KUPON';
+  const kendaraanAktif = new Set(data.filter(adaNopol).map(t => t.nopol)).size;
 
   // Update tagihan card
   document.getElementById('tagihan-amount').textContent = 'Rp ' + totalTagihan.toLocaleString('id-ID');
@@ -577,10 +627,10 @@ async function loadDashboard() {
   document.getElementById('bd-kend').textContent = kendaraanAktif;
 
   // Badge mekanisme bayar
-  const isTunai = currentMitra.mekanisme_bayar === 'tunai';
+  // Seluruh pemakaian dibayar di depan lewat kupon prabayar
   const badge = document.getElementById('tagihan-status-badge');
-  badge.textContent = isTunai ? 'Tunai' : 'Invoice Bulanan';
-  badge.className = 'tagihan-status ' + (isTunai ? 'status-lunas' : 'status-tagihan');
+  badge.textContent = 'Prabayar · Kupon';
+  badge.className = 'tagihan-status status-lunas';
 
   // KPI
   document.getElementById('kpi-total').textContent = (totalTagihan/1e6).toFixed(2) + ' Jt';
@@ -588,7 +638,7 @@ async function loadDashboard() {
   document.getElementById('kpi-vol').textContent = totalVol.toFixed(0);
   document.getElementById('kpi-vol-sub').textContent = data.length + ' kali pengisian';
   document.getElementById('kpi-trx').textContent = data.length;
-  document.getElementById('kpi-trx-sub').textContent = kendaraanAktif + ' kendaraan';
+  document.getElementById('kpi-trx-sub').textContent = kendaraanAktif ? kendaraanAktif + ' kendaraan' : 'via kupon';
   document.getElementById('kpi-kend').textContent = '—';
 
   // Load kendaraan count
@@ -601,7 +651,7 @@ async function loadDashboard() {
 
   // Top kendaraan
   const stats = {};
-  data.forEach(t => {
+  data.filter(adaNopol).forEach(t => {
     if (!stats[t.nopol]) stats[t.nopol] = { visits: 0, vol: 0, total: 0, pk: {}, last: null };
     stats[t.nopol].visits++;
     stats[t.nopol].vol += parseFloat(t.volume);
@@ -625,9 +675,104 @@ async function loadDashboard() {
       <td style="font-family:var(--fm)">${s.total.toLocaleString('id-ID')}</td>
       <td style="color:var(--text-muted)">${ls}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="empty-state">Belum ada transaksi</td></tr>';
-  // Load kupon mitra untuk kupon card di dashboard
+  }).join('') : `<tr><td colspan="7" class="empty-state">${data.length
+      ? 'Transaksi periode ini memakai kupon tanpa nomor polisi, jadi belum bisa diurutkan per kendaraan.'
+      : 'Belum ada transaksi'}</td></tr>`;
+
+  renderGrafik(data, start, end);
+  // Load kupon mitra untuk kupon card di dashboard (+ estimasi sisa kupon)
   loadKuponMitra();
+}
+
+// Ambil semua baris (lewati batas 1000 baris per permintaan Supabase)
+async function ambilSemua(buatQuery) {
+  const hasil = [], step = 1000;
+  for (let i = 0; ; i += step) {
+    const { data, error } = await buatQuery().range(i, i + step - 1);
+    if (error) throw error;
+    hasil.push(...(data || []));
+    if (!data || data.length < step) break;
+  }
+  return hasil;
+}
+
+const rpSingkat = v => v >= 1e6 ? (v / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt'
+                     : v >= 1e3 ? Math.round(v / 1e3) + ' rb' : String(v);
+let chartHarian = null, chartProduk = null;
+
+function renderGrafik(data, start, end) {
+  if (typeof Chart === 'undefined') return;
+  // Pemakaian harian (Rp), hari tanpa transaksi = 0
+  const hari = [], peta = {};
+  const today = new Date(); today.setHours(23, 59, 59);
+  for (let d = new Date(start); d <= new Date(end) && d <= today; d.setDate(d.getDate() + 1)) {
+    const k = d.toLocaleDateString('sv-SE'); hari.push(k); peta[k] = 0;
+  }
+  data.forEach(t => { const k = new Date(t.created_at).toLocaleDateString('sv-SE'); if (k in peta) peta[k] += parseInt(t.total); });
+  const nilai = hari.map(k => peta[k]);
+  const aktif = nilai.filter(v => v > 0);
+  const puncak = Math.max(0, ...nilai);
+  document.getElementById('viz-harian-sub').textContent = aktif.length
+    ? `${aktif.length} hari ada pengisian · rata-rata Rp ${Math.round(aktif.reduce((a, b) => a + b, 0) / aktif.length).toLocaleString('id-ID')} per hari aktif · puncak Rp ${puncak.toLocaleString('id-ID')}`
+    : 'Belum ada pengisian pada periode ini';
+  chartHarian?.destroy();
+  chartHarian = new Chart(document.getElementById('chart-harian'), {
+    type: 'bar',
+    data: { labels: hari.map(k => new Date(k).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })),
+            datasets: [{ data: nilai, backgroundColor: nilai.map(v => v === puncak && v > 0 ? '#E3262F' : '#1A56C8'), borderRadius: 3, maxBarThickness: 18 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: c => 'Rp ' + c.parsed.y.toLocaleString('id-ID') } } },
+      scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 10 } } },
+                y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 }, callback: v => rpSingkat(v) } } } }
+  });
+
+  // Komposisi produk (liter)
+  const prod = {};
+  data.forEach(t => { prod[t.produk || 'Lainnya'] = (prod[t.produk || 'Lainnya'] || 0) + parseFloat(t.volume); });
+  const warna = { 'Pertamax': '#1A56C8', 'Pertamax Turbo': '#E3262F', 'Dexlite': '#16A34A', 'Pertamina Dex': '#0D1B3E', 'Pertamax Green': '#65A30D' };
+  const lbl = Object.keys(prod);
+  chartProduk?.destroy();
+  chartProduk = new Chart(document.getElementById('chart-produk'), {
+    type: 'doughnut',
+    data: { labels: lbl.length ? lbl : ['Belum ada data'],
+            datasets: [{ data: lbl.length ? lbl.map(k => Math.round(prod[k])) : [1],
+                         backgroundColor: lbl.length ? lbl.map((k, i) => warna[k] || ['#F59E0B', '#0891B2', '#7C3AED'][i % 3]) : ['#E2E8F0'], borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
+                 tooltip: { enabled: !!lbl.length, callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString('id-ID')} L` } } } }
+  });
+}
+
+// Estimasi berapa lama sisa kupon cukup, dari rata-rata pemakaian 30 hari terakhir
+async function renderEstimasi(nilaiTersedia) {
+  const box = document.getElementById('estimasi-box');
+  if (!box) return;
+  const d30 = new Date(Date.now() - 30 * 864e5);
+  let rows = [];
+  try {
+    rows = await ambilSemua(() => sb.from('transaksi').select('total, created_at')
+      .eq('mitra_id', currentMitra.id).is('deleted_at', null)
+      .gte('created_at', d30.toISOString()).order('created_at', { ascending: true }));
+  } catch (e) { box.textContent = 'Estimasi belum tersedia.'; return; }
+  const total30 = rows.reduce((s, t) => s + parseInt(t.total), 0);
+  if (!total30) {
+    box.style.background = '#F8FAFC'; box.style.color = '#334155';
+    box.innerHTML = '📊 Belum ada pemakaian dalam 30 hari terakhir, estimasi belum bisa dihitung.';
+    return;
+  }
+  // Rata-rata per hari kalender sejak transaksi pertama dalam jendela 30 hari
+  const hariAmatan = Math.max(7, Math.ceil((Date.now() - new Date(rows[0].created_at)) / 864e5));
+  const perHari = total30 / Math.min(30, hariAmatan);
+  const sisaHari = Math.floor(nilaiTersedia / perHari);
+  const habis = new Date(Date.now() + sisaHari * 864e5).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
+  const [bg, cl, ikon, saran] = sisaHari <= 7
+    ? ['#FEF2F2', '#991B1B', '⚠️', 'Segera hubungi SPBU untuk menambah deposit kupon.']
+    : sisaHari <= 14 ? ['#FFFBEB', '#92400E', '⏳', 'Siapkan penambahan deposit dalam waktu dekat.']
+    : ['#F0FDF4', '#166534', '✅', 'Saldo kupon masih aman.'];
+  box.style.background = bg; box.style.color = cl;
+  box.innerHTML = nilaiTersedia <= 0
+    ? `⚠️ <div><b>Sisa kupon habis.</b> Rata-rata pemakaian Rp ${Math.round(perHari).toLocaleString('id-ID')}/hari. Hubungi SPBU untuk menambah deposit.</div>`
+    : `${ikon} <div>Dengan rata-rata pemakaian <b>Rp ${Math.round(perHari).toLocaleString('id-ID')}/hari</b> (30 hari terakhir), sisa kupon cukup untuk <b>± ${sisaHari} hari</b> (sampai sekitar ${habis}). ${saran}</div>`;
 }
 
 async function loadTransaksiMitra() {
@@ -988,6 +1133,14 @@ function updateKuponCard(kupons, nilaiTotal, nilaiTersedia, nilaiDipakai, ctTota
   document.getElementById('kupon-sisa-count').textContent = ctTersedia + ' aktif';
   document.getElementById('kupon-pakai-val').textContent = 'Rp ' + nilaiDipakai.toLocaleString('id-ID');
   document.getElementById('kupon-pakai-count').textContent = ctDipakai + ' dipakai';
+
+  const basis = nilaiDipakai + nilaiTersedia;
+  const pPakai = basis ? Math.round(nilaiDipakai / basis * 100) : 0;
+  document.getElementById('saldo-bar-pakai').style.width = pPakai + '%';
+  document.getElementById('saldo-bar-sisa').style.width = (basis ? 100 - pPakai : 0) + '%';
+  document.getElementById('saldo-pct-pakai').textContent = pPakai + '%';
+  document.getElementById('saldo-pct-sisa').textContent = (basis ? 100 - pPakai : 0) + '%';
+  renderEstimasi(nilaiTersedia);
 
   // Tampilkan 6 kupon tersedia terbaru sebagai chip kode
   const aktif = kupons.filter(k => k.status === 'tersedia').slice(0, 8);
